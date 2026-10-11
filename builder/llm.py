@@ -62,11 +62,29 @@ class LLM:
                                   error=type(e).__name__)
             raise
         meta.update(backend="agent_sdk", seconds=round(time.time() - t0, 1), key=key, rate_limit=self.rate_limit)
+        meta["session_log"] = self._keep_session(meta.get("session_id"))
         self.trace.model_call(meta.pop("model", self.model), purpose, **meta)
         if self.record_dir:
             self.record_dir.mkdir(parents=True, exist_ok=True)
             (self.record_dir / f"{key}.json").write_text(json.dumps({"purpose": purpose, "model": self.model, "output": out}, indent=1))
         return out
+
+    def _keep_session(self, sid):
+        """Copy this call's Claude Code session transcript (the builder agent's own session log) next to the trace, redacted."""
+        import glob
+        import os
+        import pathlib
+        dest = os.environ.get("BUILDER_SESSION_DIR")
+        if not sid or not dest:
+            return None
+        hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{sid}.jsonl"))
+        if not hits:
+            return None
+        from builder.trace import redact
+        out = pathlib.Path(dest) / f"{sid}.jsonl"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(redact(pathlib.Path(hits[0]).read_text(encoding="utf-8", errors="replace")))
+        return str(out)
 
     async def _agent_sdk(self, system, prompt, schema, timeout_s, effort):
         from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, query
@@ -102,5 +120,5 @@ class LLM:
         meta = {"model": ",".join(sorted(models)) or self.model, "status": result.subtype, "turns": result.num_turns,
                 "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens"),
                 "cache_read_tokens": usage.get("cache_read_input_tokens"), "model_usage": result.model_usage,
-                "cost_estimate_usd": result.total_cost_usd}
+                "cost_estimate_usd": result.total_cost_usd, "session_id": getattr(result, "session_id", None)}
         return result.structured_output, meta

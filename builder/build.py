@@ -200,6 +200,29 @@ def self_test(wf, roles, api, ir, trace):
     return fails
 
 
+def _publish(wf, slot, trace, export_dir):
+    """Dry run, save, publish, read back and export (general path); returns (problems, export path)."""
+    import freya
+    st = v.stats(wf)
+    trace.test("platform dry run", json.dumps(freya.validate_workflow(slot, wf)))
+    res = freya.save_workflow(slot, wf)
+    trace.created(f"save returned workflow_id={res.get('workflow_id')} agent_id={res.get('agent_id')} version={res.get('version')}")
+    if "version" not in res:   # first creation: update once so agent_config gets the event model and it is published
+        res = freya.save_workflow(slot, wf)
+    trace.created(f"saved workflow_id={res['workflow_id']} agent_id={res['agent_id']} version={res.get('version')} steps={st['steps']} tools={st['tools']}", **res)
+    stored = freya.api("GET", f"/api/v2/workflow/{res['workflow_id']}", workspaceId=freya.workspace_id())["workflow"]["workflow"]
+    missing = [n for n in wf["nodes"] if n not in stored.get("nodes", {})]
+    lost = [n for n, node in wf["nodes"].items() if len(node.get("tools") or []) != len((stored.get("nodes", {}).get(n) or {}).get("tools") or [])]
+    trace.test("read-back: every node and tool stored", "pass" if not (missing or lost) else f"FAIL missing={missing} tools={lost}")
+    vs = freya.api("GET", f"/api/v2/versions/workflow/{res['workflow_id']}", workspaceId=freya.workspace_id())["versions"]
+    newest = max(vs, key=lambda x: x["versionNumber"])
+    trace.test("published version is the newest", "pass" if newest.get("isPublished") else "FAIL", version=newest["versionNumber"])
+    out = export_dir / f"{slot}.workflow.json"
+    freya.export_workflow(res["workflow_id"], str(out))
+    trace.created(f"exported to {out.relative_to(ROOT)} sha={sha(out)}")
+    return (missing or lost or not newest.get("isPublished")), out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("brief_path", help="the case: a folder or zip of documents (with its service contract inside), or one brief file")
@@ -246,7 +269,32 @@ def main():
     if not a.no_save and not os.environ.get("FREYA_API_KEY"):   # fail before the model calls, not after them
         trace.end("failed", error="FREYA_API_KEY is not set")
         raise SystemExit("FREYA_API_KEY is not set (source env.sh); nothing was built")
+    os.environ.setdefault("BUILDER_SESSION_DIR", str(trace_dir / f"{slot}.claude-sessions"))   # the builder agent's own session logs
     try:
+        why_general = None
+        try:
+            contract = bi.find_contract(contract_src, ROOT / "out" / "inputs" / f"{slot}-contract")
+            probe = ot.load(str(contract), tool_map=tool_map, base_url=mock_base or mock_url or None)
+            if probe["missing_tools"]:
+                why_general = f"the contract lacks the collections template's tools {probe['missing_tools']}"
+        except (bi.InputError, ot.OpenAPIError) as e:
+            why_general = f"no OpenAPI contract the template can use ({e})"
+        if why_general:
+            if not (mock_base or mock_url):
+                raise SystemExit("the general path needs the mock URL: build.py {case_folder} {mock_url}")
+            trace.step("general builder path: " + why_general)
+            from builder import generic
+            from builder.llm import LLM
+            wf, _notes = generic.build(a.brief_path, mock_base or mock_url, LLM(trace, deadline=deadline - 5 * 60), trace, ROOT, slot)
+            st = v.stats(wf)
+            (ROOT / "out" / f"{slot}.workflow.json").write_text(json.dumps(wf, indent=1))
+            trace.step(f"workflow written: {st['steps']} steps, {st['tools']} tools, {st['bytes']} bytes")
+            if a.no_save:
+                status = "compiled (not saved)"
+                return 0
+            bad, _out = _publish(wf, slot, trace, ROOT / ("out" if mock_base else "submission"))
+            status = "ok" if not bad else "ok with warnings"
+            return 0
         contract = bi.find_contract(contract_src, ROOT / "out" / "inputs" / f"{slot}-contract")
         brief, files = bi.read_brief(a.brief_path, ROOT / "out" / "inputs" / slot, exclude=[contract])
         trace.step(f"inputs read: {len(files)} file(s), brief text {len(brief)} chars, contract {contract.name} (sha {bi.sha_path(contract)})",
@@ -344,6 +392,11 @@ def main():
         return 1
     finally:
         trace.end(status)
+        sess = pathlib.Path(os.environ.get("BUILDER_SESSION_DIR", ""))
+        if sess.is_dir():   # the builder agent's own Claude Code session logs, redacted, appended to this run's printed trace
+            for f in sorted(sess.glob("*.jsonl"), key=lambda x: x.stat().st_mtime):
+                print(f"===== BUILDER AGENT SESSION LOG (Claude Code via Agent SDK): {f.name} =====", flush=True)
+                print(f.read_text(encoding="utf-8", errors="replace"), flush=True)
 
 
 if __name__ == "__main__":

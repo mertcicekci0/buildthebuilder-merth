@@ -285,7 +285,7 @@ def find_contract(path, dest):
     return hits[0]
 
 
-def read_brief(path, dest, exclude=()):
+def read_brief(path, dest, exclude=(), max_file_chars=None):
     """(brief text, files) where files = [{path, sha, bytes, read_as}]. A single text file is read exactly as before."""
     p = pathlib.Path(path)
     if p.is_file() and (p.suffix.lower() in (".docx", ".xlsx", ".pdf")
@@ -334,6 +334,9 @@ def read_brief(path, dest, exclude=()):
             meta.append({**entry, "read_as": "NOT READ: no text could be extracted (image, scanned PDF or binary)"})
             parts.append(f"=== FILE: {rel} (present but could not be read as text) ===\n")
             continue
+        if max_file_chars and len(text) > max_file_chars:   # a large data file: its beginning shows the structure; noted in the text and trace
+            how += f" (first {max_file_chars} of {len(text)} chars in the model input)"
+            text = text[:max_file_chars] + f"\n[... file truncated for the model input: {len(text)} chars in total ...]"
         parts.append(f"=== FILE: {rel} ===\n{text.strip()}\n")
         meta.append({**entry, "read_as": how})
     if not [m for m in meta if not str(m.get("read_as", "")).startswith(("NOT READ", "contract", "skipped"))]:
