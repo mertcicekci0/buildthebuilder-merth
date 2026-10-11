@@ -1,0 +1,6 @@
+[final] installing the locked environment incl. the dev group (uv sync --frozen) to run the offline tests
+[final] offline tests: 127 passed in 6.43s
+[final] code commit C=9c44283c24889e6e3e734bca3500490c5441b0a7 (HEAD) at 2026-10-11T14:42:50Z
+[final] final: exit 0, wall 146 s
+[final] artefact commit S=aafe4eee33a1def33c613af7907d8f8ab41ff692
+0 problem(s); code commit(s): ['9c44283c24889e6e3e734bca3500490c5441b0a7']; checked commit: aafe4ee

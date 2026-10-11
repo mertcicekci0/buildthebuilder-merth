@@ -1,0 +1,10 @@
+Archive:  /Users/mertcicekci/.claude/jobs/ea66f92a/tmp/practice-case.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  10-11-2026 17:42   docs/
+    10174  10-11-2026 17:42   docs/01-collections-policy.md
+     2393  10-11-2026 17:42   docs/02-multi-product-memo.md
+        0  10-11-2026 17:42   contract/
+    10557  10-11-2026 17:42   contract/bank-services.json
+---------                     -------
+    23124                     5 files
