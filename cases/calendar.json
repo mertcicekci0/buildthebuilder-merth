@@ -104,7 +104,7 @@
   "brief": "A",
   "family": "Calendar",
   "level": "boundary",
-  "title": "Christmas Eve: the floor on next week's last business day (31 December)",
+  "title": "Christmas Eve: a no to today, full too much -> attempt 1 = floor on next week's last business day (31 December)",
   "variables": {
    "first_name": "Priya",
    "last_name": "Nair",
@@ -124,7 +124,7 @@
     "minimum_payment": 637.5
    }
   ],
-  "script": "Verified. Says the full amount is too much. If asked how much she can pay, says 'you tell me'. Accepts the minimum payment on the date the agent proposes, and confirms.",
+  "script": "Verified. Cannot pay anything today and says the full amount is too much anyway. If asked how much she can pay, says 'you tell me'. Accepts the minimum payment on the date the agent proposes, and confirms.",
   "expected": {
    "outcome": "promise",
    "reason": null,
