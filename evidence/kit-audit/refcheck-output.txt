@@ -1,0 +1,52 @@
+supplied files: 16; entries: 17; extra non-kit entries: ['arxiv-2609.04611.pdf']
+code/doc references checked: 661; unresolved or out of range: 0
+PROBLEM kit/public-test-set.json: read 634/634, file has 635 lines
+findings whose evidence is missing or explicitly unverified: 48
+UNSUPPORTED kit/README.md | L3, L5-7 | Kit version 3, dated 10 Oct 2026. Changelog: in v3 the example builder waits up to 20 min per command for its 
+UNSUPPORTED kit/README.md | L36 | The example builder runs Claude through the Agent SDK with one skill: Claude writes the workflow, runs the pra
+UNSUPPORTED kit/README.md | L73 | After the final briefs open you may fix bugs but may not write any rule, value or name from a final brief into
+UNSUPPORTED kit/README.md | L78 | Final customers speak naturally. Practise with --style pieces, corrects, talkative, asks_back, in_words.
+UNSUPPORTED kit/env.example | L2 | FREYA_API_URL is https://staging-app.freyavoice.ai, which is also the default in kit/freya.py:8.
+UNSUPPORTED kit/docs/api.md | api.md L115 (agentVersionNumber on a simulation run) | Check the version a run used whenever a change seems to have no effect.
+UNSUPPORTED kit/docs/api.md | api.md L182-226 (POST /api/v2/simulations: agentId, mode chat, selectedPersonaIds, customerVariablesMap keyed by persona id, maxConcurrentCalls, runsPerPersona, maxCallDurationSeconds, 5 LLM overrides; pass all three agent overrides; 'use the models your event rules name') | The overrides decide which models a simulation uses. Call variables are keyed per persona, not per run.
+UNSUPPORTED kit/docs/api.md | api.md L224 (an override that is left out falls back to the agent's default model) | Outside a simulation that sets the overrides, routing and extraction use the agent's own configuration.
+UNSUPPORTED kit/docs/workflow-format.md | L155-164 (on_enter llm/tts/silent; {{var}} in tts; on_enter_first_entry_only) | Fixed tts lines with {{var}} are used for opening, verify, negotiate ({{debt_statement}} {{first_ask}}) and po
+UNSUPPORTED kit/docs/workflow-format.md | L200 (date values are formatted for speech when substituted into a prompt) | This differs from what we observed. In tts, ISO dates were substituted verbatim with no speech formatting. We 
+UNSUPPORTED kit/docs/workflow-format.md | L652 and L859 (the call's endedReason is the terminal's function.name) | This contradicts our evidence. Every call_ended event we have reports reason 'assistant-ended-call' (132 in ti
+UNSUPPORTED kit/docs/tools-and-code.md; sha256 56be9 | L99 (a model-filled field must not share its name with a variable already set) | If a model-filled body field has the same name as a variable that is already set, the value is silently baked 
+UNSUPPORTED kit/docs/tools-and-code.md; sha256 56be9 | L211-221, L587 (tool descriptions as triggers; tool rules before long reference text; one tool per message; speak after every result) | A description should be an instruction with its trigger ('CALL it when...'). task_message should put tool rule
+UNSUPPORTED kit/docs/tools-and-code.md; sha256 56be9 | L347-365 (timeoutMs, maxRetries, connect_retries default 2 and safe for POST; no retries on writes) | Retry reads, not non-idempotent writes.
+UNSUPPORTED kit/docs/tools-and-code.md; sha256 56be9 | L418-509, L586 (code nodes: vars in and out, never raise, no {{ or }}, string flags, arithmetic in code, passthrough with always; sandbox limits mostly undocumented) | Snippets read and write only through vars, never raise, contain no double braces, and handle dates and countin
+UNSUPPORTED kit/briefs/brief-a.md | L26 rule 3 accepted confirmations; ask once more; unclear after the 2nd ask; a question answered first makes the next ask the 2nd | Only explicit confirmations count. Two asks, then not_reached/unclear.
+UNSUPPORTED kit/briefs/brief-a.md | L33 rule 7 out-of-window: ask once more, then no schedule, not_reached/no_callback | One alternative ask.
+UNSUPPORTED kit/briefs/brief-a.md | L34 rule 8 wrong number | Close as not_reached/wrong_number.
+UNSUPPORTED kit/briefs/brief-a.md | L35 rule 9 deceased: 'I am sorry for your loss.', ask nothing else, not_reached/deceased | Fixed sentence plus close.
+UNSUPPORTED kit/briefs/brief-a.md | L42 rule 13 hint day_month_swapped: ask the month as a word; not counted | Swap retry.
+UNSUPPORTED kit/briefs/brief-a.md | L44 rule 15 decline: explain once; second refusal or second 'what is it about' -> not_verified/declined | Refusal count.
+UNSUPPORTED kit/briefs/brief-a.md | L83 rule 32 illness/death/job loss: one sympathy sentence, no persuasion, offer support; accept -> transfer support; decline -> no_promise/hardship; precedes 30 and 41 | Hardship.
+UNSUPPORTED kit/briefs/brief-a.md | L90 rule 36 one promise per product; recorded promise unchangeable; mobile app | Immutability.
+UNSUPPORTED kit/briefs/brief-a.md | L91 rule 37 say recorded only after ok:true; retry once; second failure -> could not record, no_promise/service_error | Recording failures.
+UNSUPPORTED kit/briefs/brief-a.md | L97 rule 40 dispute (incl. closed/paid off in the past) -> no_promise/dispute | Dispute.
+UNSUPPORTED kit/briefs/brief-a.md | L99 rule 42 human: ask once whether you can help; if they insist, transfer general | Human transfer.
+UNSUPPORTED kit/briefs/brief-a.md | L100 rule 43 scam question -> customer service number, continue | Scam.
+UNSUPPORTED kit/briefs/brief-a.md | L102 rule 45 says twice no talk -> no_promise/refused; before verification not_verified/declined; rule 42 applies before and after | Unwilling to talk.
+UNSUPPORTED kit/briefs/brief-b.md | L17 rule 9 dispute/paid on one product does not end the call | Continue after a per-product outcome.
+UNSUPPORTED kit/briefs/brief-b.md | L18 rule 10 restructuring transfers; recorded promises stay; agreed-but-unrecorded are not recorded; transferred/restructuring; no notes on any transfer | Transfer in multi-product.
+UNSUPPORTED kit/briefs/brief-b.md | L19 rule 11 one create_promise fails twice -> keep recorded ones, note service_error for the failed product | Partial recording failure.
+UNSUPPORTED kit/tools/openapi.json; identical copy a | L49-82 verify_identity response: ok, error, verified, wrong_answers_left (integer), all_verified, hint enum [day_month_swapped] (L72-77) | The identity flow must branch on all_verified, on the hint (a swap is not counted), on wrong_answers_left reac
+UNSUPPORTED kit/tools/openapi.json; identical copy a | L89-171 get_account: 'Refused until both questions are passed' (L91); products[] with product_id, type enum [credit_card, personal_loan, car_loan] (L132-138), card_last4 'credit cards only' (L140-143), past_due, days_late, minimum_payment 'credit cards only' (L150-153), instalment_amount 'loans only' (L154-157) | get_account may only be called after full verification. Each product type has its own floor field (minimum_pay
+UNSUPPORTED kit/tools/openapi.json; identical copy a | 500 responses on every operation: L83-85, L166-168, L228-230, L292-294, L348-350, L403-405, L465-467 ('The service failed. Nothing was recorded. The call may be repeated.') | Any tool can return HTTP 500. Repeating the call is safe, because a 500 records nothing.
+UNSUPPORTED kit/examples/base-agent.json; identical  | L67-102 and L264-299 end_call tool: message_mode none, trigger_pattern 'Have a good day|have a good day', trigger_pattern_both 'goodbye|bye|have a good day|you too|thank you|thanks|take care', trigger_timeout 3; description and task_messages (L140, L315) tell the model to end with 'Have a good day.' | The example ends a call by detecting a spoken phrase, with end_call available as a fallback tool.
+UNSUPPORTED kit/freya.py | freya.py:8-10 | The base URL defaults to https://staging-app.freyavoice.ai. HEADERS is built once at import from FREYA_API_KEY
+UNSUPPORTED kit/freya.py | freya.py:12-20 | api() uses a 120 s timeout and no retries. HTTPError becomes RuntimeError('METHOD path -> code: body[:1500]').
+UNSUPPORTED kit/freya.py | freya.py:48 | validate_workflow posts with dryRun=true and returns the result. It raises only on HTTP errors.
+UNSUPPORTED kit/freya.py | freya.py:70-78 | get_iteration pages with limit=100/offset and concatenates runs. The route returns 30 runs by default and 100 
+UNSUPPORTED kit/tools/run_cases.py | run_cases.py:3-5, 10-11 | The usage line is `run_cases.py <agent_id> [--brief A|B] [--cases] [--out] [--reps] [--style]`. It needs FREYA
+UNSUPPORTED kit/tools/run_cases.py | run_cases.py:35-47 | persona_for: a third party (family 'Third party' or case.third_party) gets 'You are NOT <name> ... do not know
+UNSUPPORTED kit/tools/run_cases.py | run_cases.py:64-73 | Each repetition is a SEPARATE simulation (run_once per rep). With --rerun-if-slow N, a repetition whose median
+UNSUPPORTED kit/.claude/skills/build-phone-agent/SKI | SKILL.md:29 | When a tool call fails, the agent must say so and must never claim something is recorded when it is not. This 
+UNSUPPORTED arxiv-2609.04611.pdf | sec 6 'Inherited code is largely rewritten' p10-11 | No build ran the seed code before rewriting it. Seeds scoring 0.12 and 0.36 were discarded without measurement
+UNSUPPORTED arxiv-2609.04611.pdf | sec 6 'Developers struggle with quiet client API defects' p11; App. H Table 6 p37 | Loud failures (timeouts) get noticed. Quiet ones get missed: pagination cursors, field renames, value remaps, 
+UNSUPPORTED arxiv-2609.04611.pdf | sec 6 'Developers cheat themselves when writing tests' p11; Fig 6 panel 6; App. C Fig 8 p21 | Developers relax failing assertions or mock the failing endpoint. In the worked example all 10 self-written pr
+UNSUPPORTED arxiv-2609.04611.pdf | App. D 'Superseded policy', 'Distractor threads', 'Class anonymity' p22-23; App. E p23-31 | Later decisions supersede earlier ones without explicit markers (the authoring rules ban 'this supersedes'), s
+UNSUPPORTED arxiv-2609.04611.pdf | App. J Evaluation user simulator p39-40 | The simulated user gives information a piece at a time and stops only after the agent confirms the action is d
