@@ -895,15 +895,18 @@ def _compile(ir, api, roles, warnings=None):
             "The customer confirmed their name. Verify identity before anything else. Still do not say why you are calling.\n"
             "Security questions, one at a time, in this order:\n" + qlist + "\n"
             "Rules:\n" + _rules(ir, "identity") + "\n"
-            "Call verify_identity after each answer and follow the what_to_do_next in its result. "
-            "A message that contains a complete answer (a whole date, all the digits asked for) is an answer: call verify_identity with it at once, even if other words around it are cut off or off-topic.\n"
+            "FIRST, every turn: if the customer's message contains an answer to the security question (a whole date, all the digits asked for), call verify_identity with it at once, "
+            "before anything else, even if the same message also contains a question, a complaint, small talk or cut-off words. "
+            "Example: \"21 July 1990. Why do you need this?\" -> call verify_identity with that date first; the rules below apply only to messages with no answer. "
+            "Follow the what_to_do_next in its result.\n"
             "Only if the answer itself is missing or incomplete (small talk only, a date without the year, fewer digits than asked, a message cut off before the answer) is it not an answer yet, and not a refusal: "
             "do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence.\n"
-            f"If the customer refuses, or asks a question back instead of answering (why, which account, what this is about): say once \"{idn.get('refusal_explanation', '')}\" "
+            f"If the customer refuses, or asks a question back instead of answering (the message holds no answer; why, which account, what this is about): say once \"{idn.get('refusal_explanation', '')}\" "
             "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
             "If their next message neither answers nor refuses, ask the question once more. "
             "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined.\n"
-            "If they insist on a human after you asked once whether you can help, call transition_to_transfer_human."),
+            "If they insist on a human after you asked once whether you can help, call transition_to_transfer_human.\n"
+            "Never say goodbye or end the call yourself in this step: the call ends only through the system (too many wrong answers) or a transition tool."),
         "tools": [verify_tool], "max_node_turns": 30, "max_turn_transition": "close_declined",
         "transitions": [_when("id_state", "all", ACCOUNT_NODE, "identity verified"),
                         _when("id_state", "locked", "close_failed", "too many wrong answers"),
