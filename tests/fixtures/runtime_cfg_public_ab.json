@@ -1,0 +1,15 @@
+{
+ "_note": "Hand-written from the PUBLIC briefs A+B for tests only. The builder derives this from the brief at run time.",
+ "calendar": {"business_weekdays": [0, 1, 2, 3, 4], "holidays": ["2026-10-26", "2026-11-11", "2026-11-26", "2026-12-25", "2027-01-01"], "week_start": 0},
+ "bands": [{"name": "early", "min": 1, "max": 7, "deadline_business_days": 12, "attempts": 1},
+           {"name": "late", "min": 8, "max": 45, "deadline_business_days": 7, "attempts": 2}],
+ "products_prefix": "acct_response.data.products",
+ "fields": {"product_id": "product_id", "product_type": "type", "past_due": "past_due", "days_late": "days_late"},
+ "product_types": {"credit_card": {"spoken": "credit card ending <card_last4>", "floor_field": "minimum_payment"},
+                   "personal_loan": {"spoken": "personal loan", "floor_field": "instalment_amount"},
+                   "car_loan": {"spoken": "car loan", "floor_field": "instalment_amount"}},
+ "callback": {"days": ["today", "next_business_day"], "start": "10:00", "end": "19:00", "after_now": true},
+ "outcomes": {"promise": "promise", "paid": "paid", "transferred": "transferred", "no_promise": "no_promise",
+              "not_verified": "not_verified", "not_reached": "not_reached", "paid_note": "paid",
+              "transfer_reasons": {"restructuring": "restructuring", "general": "human", "support": "support"}}
+}

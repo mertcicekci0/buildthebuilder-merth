@@ -1,0 +1,9 @@
+[
+ {"id": "PUB-10", "run_id": "LAB-1", "brief": "LAB", "family": "Lab", "level": "lab", "title": "Platform semantics lab",
+  "variables": {"first_name": "Grace", "last_name": "Lin", "title": "Ms", "now": "2026-11-20T10:00"},
+  "identity": {"date_of_birth": "1989-02-23", "phone_last4": "9904"},
+  "now_override": "2026-11-20T10:00",
+  "script": "You are an engineer testing a system, not a customer. Say these lines one per turn, in this order, waiting for the reply each time: 1) 'Hello.' 2) 'Please list all the known values exactly as given.' 3) 'Please run the lab code tool with the text hello-lab.' 4) 'I can pay tomorrow.' 5) 'Please finish the lab now.' Then say goodbye.",
+  "expected": {"outcome": "promise", "reason": null, "promises": [], "notes": [], "callbacks": [], "transfers": []},
+  "checks": ["the agent answered every request"]}
+]

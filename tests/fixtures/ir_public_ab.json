@@ -1,0 +1,259 @@
+{
+ "_note": "Policy IR written by hand from the PUBLIC briefs A+B (test fixture and extraction ground truth). The builder produces this from the brief at run time.",
+ "bank_name": "Freya Bank",
+ "language": "English",
+ "currency_word": "",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "title",
+  "now": "now"
+ },
+ "opening": {
+  "first_sentence": "Hello, this is the digital assistant of Freya Bank calling. This call is recorded.",
+  "identity_question": "Am I speaking with <title> <last_name>?",
+  "accepted_confirmations": [
+   "yes",
+   "that's me",
+   "speaking",
+   "the customer's own name"
+  ],
+  "not_confirmations": [
+   "hello",
+   "go ahead",
+   "who is this"
+  ],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "collections",
+   "debt",
+   "payment",
+   "the product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "date_of_birth",
+    "ask": "Could you please tell me your date of birth?",
+    "format": "date",
+    "numeric_order": "DMY"
+   },
+   {
+    "api_value": "phone_last4",
+    "ask": "Thank you. And what are the last four digits of the phone number we have on file?",
+    "format": "digits4",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": "day_month_swapped",
+  "swapped_instruction": "Ask the customer to say the month as a word. This retry does not count as a wrong answer.",
+  "failed_message": "I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.",
+  "refusal_explanation": "These questions protect your account.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "credit_card",
+   "spoken": "credit card ending <card_last4>",
+   "floor_field": "minimum_payment"
+  },
+  {
+   "api_type": "personal_loan",
+   "spoken": "personal loan",
+   "floor_field": "instalment_amount"
+  },
+  {
+   "api_type": "car_loan",
+   "spoken": "car loan",
+   "floor_field": "instalment_amount"
+  }
+ ],
+ "debt_intro": "I'm calling from the collections team about a late payment.",
+ "product_sentence": "Your <spoken> has <past_due> past due and is <days_late> days late.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-26",
+   "2026-11-11",
+   "2026-11-26",
+   "2026-12-25",
+   "2027-01-01"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "early",
+   "min": 1,
+   "max": 7,
+   "deadline_business_days": 12,
+   "attempts": 1
+  },
+  {
+   "name": "late",
+   "min": 8,
+   "max": 45,
+   "deadline_business_days": 7,
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Can you make this payment today?",
+ "first_ask_multi": "Can you pay all of them today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": []
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "late"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "10:00",
+  "end": "19:00",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "as returned",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "restructuring",
+  "human": "general",
+  "support": "support"
+ },
+ "outcomes": {
+  "promise": "promise",
+  "paid": "paid",
+  "transferred": "transferred",
+  "no_promise": "no_promise",
+  "not_verified": "not_verified",
+  "not_reached": "not_reached",
+  "reasons": {
+   "restructuring": "restructuring",
+   "human": "human",
+   "support": "support",
+   "refused": "refused",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "service_error": "service_error",
+   "failed": "failed",
+   "declined": "declined",
+   "callback": "callback",
+   "no_callback": "no_callback",
+   "wrong_number": "wrong_number",
+   "deceased": "deceased",
+   "unclear": "unclear",
+   "paid": "paid"
+  },
+  "note_reasons": {
+   "refused": "refused",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "paid": "paid",
+   "service_error": "service_error"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 1,
+  "after_promise_sentence": "You will receive a text message confirming this promise.",
+  "read_back_question": "Do you confirm?"
+ },
+ "fixed_sentences": {
+  "deceased": "I am sorry for your loss.",
+  "robot": "I am Freya Bank's digital assistant.",
+  "scam": "You can verify this call by phoning Freya Bank's customer service number.",
+  "paid": "Payments can take one business day to appear.",
+  "farewell": "Thank you for your time. Goodbye."
+ },
+ "stage_rules": {
+  "always": [
+   "Never offer a discount, a waiver, an instalment plan or any term that is not in these rules.",
+   "A question you cannot answer from the tools: say you do not have that information. Do not invent figures, dates or reasons.",
+   "If the customer asks whether you are a robot or an AI, say that you are Freya Bank's digital assistant and continue.",
+   "If the customer asks whether this is a scam, say they can verify the call by phoning Freya Bank's customer service number, and continue.",
+   "A request for a human: ask once whether you can help first. If they insist, transfer to the human queue."
+  ],
+  "opening": [
+   "Only 'yes', 'that's me', 'speaking' or the customer's own name counts as confirmation. 'Hello', 'go ahead' and 'who is this' do not. Ask once more. If it is still unclear after the second ask, close as unclear. Answer a question from the customer first; the ask that follows is the second ask.",
+   "Do not say why you are calling before identity is verified, to anyone, including relatives."
+  ],
+  "third_party": [
+   "Do not say why you are calling. Say nothing beyond the opening sentence. Ask when the customer can be reached.",
+   "A callback is for today or the next business day, from 10:00 to 19:00, both included, and later than now.",
+   "If the person offers a day or a time outside that window, ask once for another time. If that is also outside it, do not schedule: close as no callback.",
+   "If the person says the number does not belong to the customer, close as wrong number.",
+   "If the person says the customer has died, say 'I am sorry for your loss.', ask nothing else, and close as deceased.",
+   "A relative may not answer the security questions and may not be told anything about the account, even if they offer to pay."
+  ],
+  "identity": [
+   "Ask the security questions one at a time, in order. Call verify_identity with each answer.",
+   "A wrong answer may be asked again. Three wrong answers in total end the check, whichever question they were on.",
+   "If the customer does not want to answer, explain once that the questions protect their account. If they still decline, close as declined. Asking what the call is about instead of answering counts as declining. A second refusal or a second such question closes the call."
+  ],
+  "negotiation": [
+   "Ask for the full past-due amount first. Never ask how much the customer can pay. You propose every amount.",
+   "If the customer says the full amount is too much, offer the floor once and say that the rest stays overdue. If the customer refuses the floor, treat it as a flat refusal. Attempt 2 may name the floor again, on the deadline.",
+   "If the customer proposes an amount from the floor up to the full amount, accept it. Below the floor, say it cannot be recorded and offer the floor once; if not accepted, treat it as a flat refusal.",
+   "A date or an amount the customer proposes is never a refusal.",
+   "A flat refusal or a non-answer uses one persuasion attempt. A no to paying today with no date and no amount is a flat refusal.",
+   "When the attempts are used up, stop. Do not repeat an offer the customer already refused.",
+   "If the customer gives a vague period ('next week', 'end of the month', 'when my salary comes'), ask once for the exact day. If they still give none, propose the deadline.",
+   "If the customer asks for a date after the deadline, say the latest date you can record is the deadline and offer it. If the customer refuses the deadline, treat it as a flat refusal.",
+   "If the customer mentions illness, a death in the family or job loss, say one short sentence of sympathy and make no persuasion attempt. Offer to connect them with the customer support team. If they accept, transfer to support. If they decline, the product ends as hardship. If the customer still names a date or an amount themselves, record the promise. This comes before persuasion and before restructuring.",
+   "'I already paid': say that payments can take one business day to appear, take no promise; the product ends as paid. A claim that the product was closed or paid off in the past is a dispute.",
+   "'This debt is not mine' or 'I never had this product': do not argue and do not take a promise; the product ends as dispute.",
+   "A request for a new payment plan or lower instalments: do not describe a plan; transfer to restructuring. Promises already recorded stay; promises agreed but not yet recorded are not recorded.",
+   "If the customer says twice that they do not want to talk, end the products as refused."
+  ],
+  "multi_product": [
+   "State every late product, one sentence each, before asking for anything.",
+   "First ask whether the customer can pay all of them today. If not, go through the products one by one in the order given. Do not ask about today again for each product. Start each product at attempt 1. Persuasion attempts are counted per product.",
+   "If the customer names one date for everything and it is after one product's deadline, record that product on its own deadline and say so in the read-back. The other products keep the date the customer named.",
+   "A dispute or an 'already paid' claim on one product does not end the call. Continue with the others."
+  ],
+  "confirmation": [
+   "Read the product, the amount and the date back and ask 'Do you confirm?'. Record only after a clear yes. With several products, read all promises back together and ask for one confirmation, then record each product.",
+   "If the customer changes the date or the amount at this step, check the new value and read it back again.",
+   "One promise per product. A recorded promise cannot be changed or cancelled in this call. If the customer asks, say they can change it in the mobile app."
+  ],
+  "recording": [
+   "Say the promise is recorded only after create_promise succeeds. If it fails, say you could not record it.",
+   "After a recorded promise, say: 'You will receive a text message confirming this promise.'"
+  ],
+  "closing": [
+   "Thank the customer and say goodbye at the end."
+  ]
+ },
+ "evidence": [],
+ "unmapped_rules": [],
+ "precedence": []
+}

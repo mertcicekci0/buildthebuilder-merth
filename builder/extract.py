@@ -1,0 +1,91 @@
+"""Read a brief + tool API into a policy IR with the model; verify it with code. The only model-using module.
+
+Passes (each one model call through llm.ask_json, traced):
+  1. extract  - full IR from the brief and the API digest, with verbatim evidence and a precedence log.
+  2. audit    - independent re-read of the brief against the IR: omissions, wrong values, wrong precedence.
+               Returns the corrected IR and a change list (source quotes for every change).
+  3. repair   - only if deterministic checks (policy_schema.check) still fail; at most `max_repairs` times.
+Nothing from any specific brief is written here: the guide below describes the IR's meaning, not a bank's rules.
+"""
+import json
+
+from . import openapi_tools as ot
+from . import policy_schema as ps
+
+GUIDE = """You fill a policy IR for a compiler that builds an outbound phone agent for a bank (or similar lender).
+The compiler owns the call STRUCTURE: opening and "who is on the line" -> third party/callback or identity check ->
+account lookup -> stating the debt -> negotiation per product (persuasion ladder, dates, amounts) -> one read-back and
+confirmation -> recording promises -> notes for products without a promise -> transfers -> closing outcome.
+You supply the POLICY: every number, name, sentence, calendar and rule, taken only from the brief and the tool API.
+
+Field meanings:
+- call_variables: the names of the call variables the brief lists for: customer id, first name, last name, title, current date-time ("now").
+- opening.first_sentence: the agent's exact first sentence satisfying every opening requirement (who it is, which bank, recording disclosure...). Do not mention the purpose if the brief forbids it before verification.
+- opening.identity_question: the question confirming the person, with <variable> placeholders for call variables, e.g. "<title> <last_name>" if the brief says so.
+- opening.forbidden_before_verification: words/topics that must not be said before identity is verified.
+- identity.questions: in the brief's order. api_value MUST be one of verify_identity's allowed field values. format: "date" (sent as YYYY-MM-DD), "digitsN" (N digits, e.g. digits4), "upper_nospace", or "text". numeric_order: DMY or MDY for dates said as numbers (from the brief), else "".
+- identity.swapped_hint_value: the API hint value meaning day/month swapped, or null if none.
+- product_types: one entry per product type in the API enum. spoken: how to name it, with <field> placeholders for get_account product fields (e.g. a card's last digits). floor_field: the get_account field that is the minimum acceptable amount for that type, or null.
+- debt_intro / product_sentence: how the debt is stated after verification. product_sentence placeholders: <spoken> <past_due> <days_late> <floor>.
+- calendar: business_weekdays as numbers 0=Monday..6=Sunday; holidays as YYYY-MM-DD (resolve the year from the brief); week_start 0=Monday.
+- bands: lateness bands from days late: min/max days (inclusive), deadline_business_days = the N in "the N-th business day after today", attempts = persuasion attempts allowed.
+- first_ask_single / first_ask_multi: the first question about paying (one product / several products).
+- ladder: the persuasion steps in order. amount: full | floor | full_or_floor ("full, or the floor if the customer already said the full amount is too much"). date: today | end_of_week (last business day of this week, or of next week if today is that day) | deadline. bands: band names the step applies to ([] = all).
+- callback: allowed days ("today", "next_business_day", or "within_business_days:N"), window start/end HH:MM (inclusive), after_now, alternative_asks.
+- multi_product / notes: whether several products and notes apply; notes.default_reason is the reason for a product left without promise or explicit outcome.
+- transfer_queues: map restructuring / human / support to the API's queue values ("" if the brief has no such transfer).
+- outcomes: map each semantic outcome to the close_call outcome value of THIS API, and each semantic reason (reasons, note_reasons) to the exact API/brief value. If the brief names outcomes with codes (a code list), map them to the API's values.
+- recording: retries after a failed write (e.g. "try once more" = 1), the exact sentence required after a recorded promise, the read-back question.
+- fixed_sentences: exact sentences the brief requires (deceased condolence, robot/AI answer, scam answer, already-paid explanation, farewell). Use the brief's wording when it gives one.
+- stage_rules: the brief's rules rewritten as short imperative instructions for the phone agent, grouped by stage. Include EVERY behavioural rule, including ones the fields above already encode (the agent needs the wording). Keep the brief's numbers and quoted phrases. Never add rules the brief does not state.
+- evidence: for each important value (bands, holidays, deadlines, floors, callback window, outcomes, identity questions, required sentences), the path and a SHORT VERBATIM quote copied character for character from the brief.
+- precedence: when a later memo, amendment or notice changes an earlier rule, record both quotes and why the later one governs. Use the governing rule everywhere.
+- unmapped_rules: brief rules you could not express anywhere above (should be rare; they are still put in stage_rules).
+Return only the IR."""
+
+
+def api_digest(api, roles):
+    item = ot.product_item_schema(api) or {}
+    lines = [ot.summary(api, roles), "get_account product fields: " + json.dumps(item.get("properties", {}))]
+    if api.get("api_description"):
+        lines.append("API description: " + api["api_description"])
+    for t, c in api["tools"].items():
+        if c.get("summary"):
+            lines.append(f"{t}: {c['summary']}")
+        for f in c["fields"]:
+            if f.get("description"):
+                lines.append(f"  {t}.{f['name']}: {f['description']}")
+    return "\n".join(lines)
+
+
+def extract(llm, brief_text, api, roles, trace, max_repairs=2):
+    schema = ps.schema()
+    digest = api_digest(api, roles)
+    base = f"TOOL API (authoritative for field names and allowed values):\n{digest}\n\nBRIEF (authoritative for policy):\n<<<\n{brief_text}\n>>>"
+    ir = llm.ask_json("extract the policy IR from the brief and the tool API", GUIDE,
+                      base + "\n\nFill the policy IR.", schema)
+    trace.step("extraction pass returned", evidence=len(ir.get("evidence", [])), precedence=len(ir.get("precedence", [])))
+    audit_schema = {"type": "object", "additionalProperties": False, "required": ["changes", "ir"],
+                    "properties": {"changes": {"type": "array", "items": {"type": "object", "additionalProperties": False,
+                                                                          "required": ["path", "problem", "quote"],
+                                                                          "properties": {"path": {"type": "string"}, "problem": {"type": "string"}, "quote": {"type": "string"}}}},
+                                   "ir": schema}}
+    audit = llm.ask_json("audit the IR against the brief for omissions, wrong values and precedence", GUIDE + """
+
+AUDIT TASK: another reader produced the IR below. Re-read the whole brief sentence by sentence. For every rule, number,
+date, name, sentence or exception: is it in the IR, correct, and does the latest governing version win (memos,
+amendments, code lists)? List every problem with a verbatim quote, then return the full corrected IR. Change nothing
+that is correct. Empty changes list if the IR is right.""",
+                         base + "\n\nIR TO AUDIT:\n" + json.dumps(ir, indent=1), audit_schema)
+    changes = audit.get("changes", [])
+    trace.step(f"audit pass: {len(changes)} change(s)", changes=changes)
+    ir = audit.get("ir") or ir
+    for attempt in range(max_repairs + 1):
+        problems = ps.check(ir, api, roles, brief_text)
+        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems)
+        if not problems or attempt == max_repairs:
+            return ir, problems, changes
+        ir = llm.ask_json("repair the IR so the deterministic checks pass", GUIDE,
+                          base + "\n\nIR:\n" + json.dumps(ir, indent=1) + "\n\nThese checks failed; fix exactly these, from the brief and the API, change nothing else:\n- " +
+                          "\n- ".join(problems), schema)
+    return ir, problems, changes

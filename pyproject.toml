@@ -1,0 +1,18 @@
+[project]
+name = "freya-builder"
+version = "0.1.0"
+description = "Builder for Freya x YC 'Build the Builder': brief + OpenAPI -> Freya phone-agent workflow"
+requires-python = ">=3.10"
+dependencies = [
+    "claude-agent-sdk==0.2.165", # Agent SDK: example-builder baseline and agentic alternative
+    "jsonschema==4.26.0", # validating the policy IR and tool request schemas
+]
+
+[dependency-groups]
+dev = ["pytest==9.1.1"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

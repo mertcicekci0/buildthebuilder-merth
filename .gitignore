@@ -1,0 +1,27 @@
+# secrets
+env.sh
+.env
+.env.*
+*.pem
+*.key
+# local state written by kit tools (workspace-specific ids)
+.freya-agents.json
+.personas.json
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# run outputs (final artifacts are copied to submission/, which IS tracked)
+out/*
+!out/.gitkeep
+results/*
+!results/.gitkeep
+exports/*
+!exports/.gitkeep
+traces/*
+!traces/.gitkeep
+*.log
+.DS_Store
+# local checkpoints of raw results (large)
+archive/
