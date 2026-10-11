@@ -1,0 +1,18 @@
+r5-a-plain             agent 66b8c003 styles=plain now=case: runs 30, ledger correct 30/30, conversation pass 30 / fail 0 / verdict missing 0, run passes 30/30, cases passing every rep 10/10
+r5-b-plain             agent 369c3762 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 8 / fail 1 / verdict missing 0, run passes 8/9, cases passing every rep 2/3
+    FAIL PUB-12#r1 [plain] conversation: The assistant followed most of the verification and recording instructions: it asked the phone verification question again once (Message 6), verified the DOB only once (Message 2), recorded exactly one prom
+r5-b-styled            agent 369c3762 styles=asks_back,talkative now=case: runs 18, ledger correct 16/18, conversation pass 16 / fail 2 / verdict missing 0, run passes 16/18, cases passing every rep 2/3
+    FAIL PUB-13#r4 [talkative] outcome ('not_verified', 'declined'), expected ('promise', None)
+    FAIL PUB-13#r4 [talkative] promises [], expected [('p1', 300.0, '2026-10-30'), ('p2', 900.0, '2026-10-23')]
+    FAIL PUB-13#r4 [talkative] conversation: The call failed to meet any of the success criteria because identity verification was never completed. The agent repeatedly asked for the last four digits of the phone number ([Message 4], [Message 10]), bu
+    FAIL PUB-13#r6 [talkative] outcome ('no_promise', 'refused'), expected ('promise', None)
+    FAIL PUB-13#r6 [talkative] promises [], expected [('p1', 300.0, '2026-10-30'), ('p2', 900.0, '2026-10-23')]
+    FAIL PUB-13#r6 [talkative] conversation: The conversation failed to meet all specified success criteria. 1) No credit card payment was recorded for October 30th. 2) No loan payment was recorded for October 23rd. 3) No read-back of dates occurred. 
+r5-a-styled            agent 66b8c003 styles=asks_back,talkative,in_words now=case: runs 30, ledger correct 30/30, conversation pass 30 / fail 0 / verdict missing 0, run passes 30/30, cases passing every rep 10/10
+r5-a-cal               agent 66b8c003 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 6 / fail 3 / verdict missing 0, run passes 6/9, cases passing every rep 2/3
+    FAIL CAL-XMAS#r1 [plain] conversation: The agent failed to meet the first criterion. While it correctly proposed Thursday 31 December (Messages 8, 10, 12) and did not ask the customer how much they could pay, it did not fulfill the requirement t
+    FAIL CAL-XMAS#r2 [plain] conversation: The agent failed to mention that the rest of the balance stays overdue when offering the minimum payment. Although the agent correctly proposed the floor amount (637.50) and the specific date of Thursday 31
+    FAIL CAL-XMAS#r3 [plain] conversation: The agent failed to satisfy the requirement of stating that the rest of the balance stays overdue when offering the minimum payment. In Message 8, the agent proposed the floor amount (minimum payment) of 63
+r5-b-cal               agent 369c3762 styles=plain,pieces,corrects now=case: runs 3, ledger correct 3/3, conversation pass 3 / fail 0 / verdict missing 0, run passes 3/3, cases passing every rep 1/1
+TOTAL                  runs 99, ledger correct 97, conversation pass 93 / fail 6 / verdict missing 0, run passes 93, cases passing every rep 27/30
+REGRESS_DONE
