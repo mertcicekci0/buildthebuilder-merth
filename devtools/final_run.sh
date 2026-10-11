@@ -17,7 +17,8 @@ TOOLMAP=""
 while :; do   # options before the input pairs
   case "${1:-}" in
     --commit) COMMIT=1; shift;;
-    --tool-map) TOOLMAP=$2; shift 2; [ -f "$TOOLMAP" ] || { echo "ABORT: tool map not found: $TOOLMAP"; exit 2; };;
+    --tool-map) [ -f "${2:-}" ] || { echo "ABORT: tool map not found: ${2:-}"; exit 2; }
+                TOOLMAP="$(cd "$(dirname "$2")" && pwd -P)/$(basename "$2")"; shift 2;;   # absolute: resolved before the cd below
     *) break;;
   esac
 done
@@ -69,21 +70,24 @@ while [ $# -ge 2 ]; do
   BRIEF=$1; API=$2; shift 2
   N=$(basename "$BRIEF"); N=${N%.*}
   NAMES="$NAMES $N"
-  if [ -e "traces/$N.log" ] || [ -e "traces/$N.jsonl" ] || [ -e "submission/$N.workflow.json" ]; then
+  if [ -e "traces/$N.log" ] || [ -e "traces/$N.jsonl" ] || [ -e "submission/$N.workflow.json" ] || [ -e "out/$N.tool-map.json" ]; then
     A="archive/final-runs/$N-$(date -u +%Y%m%dT%H%M%SZ)"
-    mkdir -p "$A" && for f in "traces/$N.log" "traces/$N.jsonl" "submission/$N.workflow.json" "out/$N.policy.json"; do [ -e "$f" ] && cp -p "$f" "$A/"; done
+    mkdir -p "$A" && for f in "traces/$N.log" "traces/$N.jsonl" "submission/$N.workflow.json" "out/$N.policy.json" "out/$N.tool-map.json"; do [ -e "$f" ] && cp -p "$f" "$A/"; done
     rm -f "traces/$N.log" "traces/$N.jsonl" "submission/$N.workflow.json"
     echo "[final] earlier attempt of $N kept in $A"
   fi
   S=$(date +%s)
-  if [ -n "$TOOLMAP" ]; then mkdir -p out && cp "$TOOLMAP" "out/$N.tool-map.json"; fi
+  rm -f "out/$N.tool-map.json"   # never reuse an earlier attempt's map (it was archived above)
+  if [ -n "$TOOLMAP" ]; then mkdir -p out && cp "$TOOLMAP" "out/$N.tool-map.json" || { echo "ABORT: cannot copy the tool map"; exit 1; }; fi
   ( python3 builder/build.py "$BRIEF" "$API" ${TOOLMAP:+--tool-map "out/$N.tool-map.json"} 2>&1; echo "__exit=$?" > "archive/final-runs/.$N.exit" ) | tee "traces/$N.log"
   RC=$(sed -n 's/^__exit=//p' "archive/final-runs/.$N.exit"); rm -f "archive/final-runs/.$N.exit"
   echo "[final] $N: exit $RC, wall $(( $(date +%s) - S )) s"
   if [ "$RC" != "0" ] || ! grep -q "status=ok" "traces/$N.log" || [ ! -s "submission/$N.workflow.json" ] || [ ! -s "traces/$N.jsonl" ]; then
     echo "[final] $N: NOT OK (exit/status/export/trace) - inspect traces/$N.log before submitting"; FAIL=1
     if git cat-file -e "HEAD:traces/$N.log" 2>/dev/null; then
-      echo "[final] $N: the committed artefacts of the earlier run were moved to archive/final-runs; to restore them: git checkout -- traces/$N.log traces/$N.jsonl submission/$N.workflow.json"
+      R="traces/$N.log traces/$N.jsonl submission/$N.workflow.json"
+      for o in "out/$N.policy.json" "out/$N.tool-map.json"; do git cat-file -e "HEAD:$o" 2>/dev/null && R="$R $o"; done
+      echo "[final] $N: the committed artefacts of the earlier run were moved to archive/final-runs; to restore them: git checkout -- $R"
     fi
   elif grep -q "status=ok with warnings" "traces/$N.log"; then
     echo "[final] WARNING $N: build ended 'ok with warnings' (a self-test or read-back check failed) - read traces/$N.log and decide before submitting"

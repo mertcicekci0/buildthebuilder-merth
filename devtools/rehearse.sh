@@ -13,10 +13,11 @@ git clone -q "$SRC" "$W/repo" && (cd "$W/repo" && git checkout -q "$C") || exit 
 NAMES=""
 ARGS=""
 while [ $# -ge 3 ]; do   # inputs keep their extension: a .md brief, or a .zip / folder bundle (the contract may be the same bundle)
-  case "$2" in *.*) EB=".${2##*.}";; *) EB="";; esac
-  case "$3" in *.*) EA=".${3##*.}";; *) EA="";; esac
+  bb=$(basename "$2"); ba=$(basename "$3")
+  case "$bb" in *.*) EB=".${bb##*.}";; *) EB="";; esac
+  case "$ba" in *.*) EA=".${ba##*.}";; *) EA="";; esac
   cp -R "$2" "$W/inputs/$1$EB" && cp -R "$3" "$W/inputs/$1.contract$EA" || exit 1
-  NAMES="$NAMES $1"; ARGS="$ARGS ../inputs/$1$EB ../inputs/$1.contract$EA"; shift 3
+  NAMES="$NAMES $1"; ARGS="$ARGS ../inputs/$1$EB ../inputs/$1.contract$EA"; eval "IN_$(echo "$1" | tr -c 'A-Za-z0-9_\n' _)=\"../inputs/$1$EB ../inputs/$1.contract$EA\""; shift 3
 done
 cd "$W/repo" || exit 1
 mkdir -p traces submission
@@ -28,7 +29,8 @@ if [ -f devtools/final_run.sh ]; then   # rehearse the exact final procedure (co
 fi
 for n in $NAMES; do
   s=$(date +%s)
-  python3 builder/build.py "../inputs/$n.md" "../inputs/$n.openapi.json" 2>&1 | tee "traces/$n.log" > /dev/null
+  eval "set -- \$IN_$(echo "$n" | tr -c 'A-Za-z0-9_\n' _)"   # this name's recorded input paths (fallback for commits without final_run.sh)
+  python3 builder/build.py "$1" "$2" 2>&1 | tee "traces/$n.log" > /dev/null
   echo "$n wall_s=$(( $(date +%s) - s ))" | tee -a ../timings.txt
 done
 for n in $NAMES; do git add "submission/$n.workflow.json" "traces/$n.log" "traces/$n.jsonl"; done
