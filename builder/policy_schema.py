@@ -45,7 +45,7 @@ def schema():
                                                  "date": {"type": "string", "enum": ["today", "end_of_week", "deadline"]}, "bands": SL})},
         "callback": _o({"days": SL, "start": S, "end": S, "after_now": B, "alternative_asks": I}),
         "multi_product": _o({"enabled": B, "per_product_order": S, "one_confirmation": B, "clip_shared_date_to_deadline": B}),
-        "notes": _o({"enabled": B, "skip_on_any_transfer": B, "default_reason": S}),
+        "notes": _o({"enabled": B, "skip_on_any_transfer": B, "default_reason": {"type": "string", "enum": NOTE_KEYS}}),
         "transfer_queues": _o({"restructuring": S, "human": S, "support": S}),
         "outcomes": _o({"promise": S, "paid": S, "transferred": S, "no_promise": S, "not_verified": S, "not_reached": S,
                         "reasons": _o({k: S for k in REASON_KEYS}), "note_reasons": _o({k: S for k in NOTE_KEYS})}),

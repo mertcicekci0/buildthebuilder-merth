@@ -34,7 +34,7 @@ Field meanings:
 - first_ask_single / first_ask_multi: the first question about paying (one product / several products).
 - ladder: the persuasion steps in order. amount: full | floor | full_or_floor ("full, or the floor if the customer already said the full amount is too much"). date: today | end_of_week (last business day of this week, or of next week if today is that day) | deadline. bands: band names the step applies to ([] = all).
 - callback: allowed days ("today", "next_business_day", or "within_business_days:N"), window start/end HH:MM (inclusive), after_now, alternative_asks.
-- multi_product / notes: whether several products and notes apply; notes.default_reason is the reason for a product left without promise or explicit outcome.
+- multi_product / notes: whether several products and notes apply; notes.default_reason is the semantic reason (refused, hardship, dispute, paid or service_error) for a product left without promise or explicit outcome; outcomes.note_reasons maps it to the API value.
 - transfer_queues: map restructuring / human / support to the API's queue values ("" if the brief has no such transfer).
 - outcomes: map each semantic outcome to the close_call outcome value of THIS API, and each semantic reason (reasons, note_reasons) to the exact API/brief value. If the brief names outcomes with codes (a code list), map them to the API's values. reasons.<key> is the reason sent with close_call in that situation: "" when the brief lists no reason for it (e.g. an outcome whose table row has no reason) or has no such situation. If the brief closes a situation under a different outcome than its name suggests (e.g. "already paid" closed as no_promise with reason X), put that outcome value in outcomes.<key> and X in reasons.<key>.
 - recording: retries after a failed write (e.g. "try once more" = 1), the exact sentence required after a recorded promise, the read-back question.
@@ -69,15 +69,42 @@ def extract(llm, brief_text, api, roles, trace, max_repairs=2):
     schema = ps.schema()
     digest = api_digest(api, roles)
     base = f"TOOL API (authoritative for field names and allowed values):\n{digest}\n\nBRIEF (authoritative for policy):\n<<<\n{brief_text}\n>>>"
-    ir = llm.ask_json("extract the policy IR from the brief and the tool API", GUIDE,
-                      base + "\n\nFill the policy IR.", schema)
+    try:
+        ir = llm.ask_json("extract the policy IR from the brief and the tool API", GUIDE, base + "\n\nFill the policy IR.", schema)
+    except Exception as e:  # noqa: BLE001  one bounded retry (a timeout or a malformed answer); no loop
+        trace.warn(f"extraction call failed ({type(e).__name__}: {str(e)[:200]}); retrying once")
+        ir = llm.ask_json("extract the policy IR (retry after a failed call)", GUIDE, base + "\n\nFill the policy IR.", schema)
     trace.step("extraction pass returned", evidence=len(ir.get("evidence", [])), precedence=len(ir.get("precedence", [])))
     audit_schema = {"type": "object", "additionalProperties": False, "required": ["changes", "ir"],
                     "properties": {"changes": {"type": "array", "items": {"type": "object", "additionalProperties": False,
                                                                           "required": ["path", "problem", "quote"],
                                                                           "properties": {"path": {"type": "string"}, "problem": {"type": "string"}, "quote": {"type": "string"}}}},
                                    "ir": schema}}
-    audit = llm.ask_json("audit the IR against the brief for omissions, wrong values and precedence", GUIDE + """
+    try:
+        audit = _audit(llm, base, ir, audit_schema)
+    except Exception as e:  # noqa: BLE001  the first-pass IR is complete on its own; the checks below still run
+        trace.warn(f"audit call failed ({type(e).__name__}: {str(e)[:200]}); continuing with the first-pass IR")
+        audit = {"changes": [], "ir": ir}
+    changes = audit.get("changes", [])
+    trace.step(f"audit pass: {len(changes)} change(s)", changes=changes)
+    ir = audit.get("ir") or ir
+    for attempt in range(max_repairs + 1):
+        problems = ps.check(ir, api, roles, brief_text)
+        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems)
+        if not problems or attempt == max_repairs:
+            return ir, problems, changes
+        try:
+            ir = llm.ask_json("repair the IR so the deterministic checks pass", GUIDE,
+                              base + "\n\nIR:\n" + json.dumps(ir, indent=1) + "\n\nThese checks failed; fix exactly these, from the brief and the API, change nothing else:\n- " +
+                              "\n- ".join(problems), schema)
+        except Exception as e:  # noqa: BLE001
+            trace.warn(f"repair call failed ({type(e).__name__}: {str(e)[:200]}); keeping the current IR")
+            return ir, problems, changes
+    return ir, problems, changes
+
+
+def _audit(llm, base, ir, audit_schema):
+    return llm.ask_json("audit the IR against the brief for omissions, wrong values and precedence", GUIDE + """
 
 AUDIT TASK: another reader produced the IR below. Re-read the whole brief sentence by sentence. For every rule, number,
 date, name, sentence or exception: is it in the IR, correct, and does the latest governing version win (memos,
@@ -90,16 +117,4 @@ amendments, code lists)? In particular:
 (e) stage rules follow the writing rules above (no rule numbers, no tool names, endings say call or product).
 List every problem with a verbatim quote, then return the full corrected IR. Change nothing that is correct.
 Empty changes list if the IR is right.""",
-                         base + "\n\nIR TO AUDIT:\n" + json.dumps(ir, indent=1), audit_schema)
-    changes = audit.get("changes", [])
-    trace.step(f"audit pass: {len(changes)} change(s)", changes=changes)
-    ir = audit.get("ir") or ir
-    for attempt in range(max_repairs + 1):
-        problems = ps.check(ir, api, roles, brief_text)
-        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems)
-        if not problems or attempt == max_repairs:
-            return ir, problems, changes
-        ir = llm.ask_json("repair the IR so the deterministic checks pass", GUIDE,
-                          base + "\n\nIR:\n" + json.dumps(ir, indent=1) + "\n\nThese checks failed; fix exactly these, from the brief and the API, change nothing else:\n- " +
-                          "\n- ".join(problems), schema)
-    return ir, problems, changes
+                        base + "\n\nIR TO AUDIT:\n" + json.dumps(ir, indent=1), audit_schema)

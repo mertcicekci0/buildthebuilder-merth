@@ -16,10 +16,10 @@ ROLE_PATTERNS = {
     "customer_id":      ("*", [r"^customer_?id$", r"^client_?id$", r"customer", r"^id$"]),
     "verify_field":     ("verify_identity", [r"^field$", r"question", r"^type$", r"kind"]),
     "verify_answer":    ("verify_identity", [r"^answer$", r"value", r"response"]),
-    "promise_product":  ("create_promise", [r"^product_?id$", r"product", r"account"]),
+    "promise_product":  ("create_promise", [r"^product_?id$", r"product", r"account", r"_id$"]),
     "promise_amount":   ("create_promise", [r"^amount$", r"amount", r"sum", r"value"]),
     "promise_date":     ("create_promise", [r"^date$", r"date", r"day", r"when"]),
-    "note_product":     ("add_note", [r"^product_?id$", r"product", r"account"]),
+    "note_product":     ("add_note", [r"^product_?id$", r"product", r"account", r"_id$"]),
     "note_reason":      ("add_note", [r"^reason$", r"reason", r"code", r"category"]),
     "note_text":        ("add_note", [r"^text$", r"text", r"comment", r"note", r"detail"]),
     "callback_date":    ("schedule_callback", [r"^date$", r"date", r"day"]),
@@ -31,7 +31,7 @@ ROLE_PATTERNS = {
 }
 
 PRODUCT_ROLE_PATTERNS = {  # resolved in this order; a name taken by an earlier role is not reused
-    "product_id": [r"^product_?id$", r"^id$", r"product"],
+    "product_id": [r"^product_?id$", r"^id$", r"_id$", r"product"],
     "days_late": [r"days_?late", r"days_?past_?due", r"dpd", r"days_?overdue", r"^days", r"late"],
     "product_type": [r"^type$", r"product_?type", r"kind", r"category"],
     "past_due": [r"past_?due", r"overdue", r"arrears", r"due_?amount", r"amount_?due", r"balance"],

@@ -81,3 +81,11 @@ def test_refusal_ladder_today_is_idempotent_and_offers_count():
     assert "attempt 1 of 2 for p2" in refuse("p2", "today")
     assert "attempt 2 of 2 for p2" in refuse("p2", "offer")
     assert "no persuasion attempt left for p2" in refuse("p2", "offer")
+
+
+def test_pinned_sdk_matches_pyproject():
+    import re as _re
+    sys.path.insert(0, str(ROOT / "builder"))
+    import build
+    pin = _re.search(r'claude-agent-sdk==([0-9.]+)', (ROOT / "pyproject.toml").read_text()).group(1)
+    assert build.PINNED_SDK == pin

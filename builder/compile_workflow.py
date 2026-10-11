@@ -148,6 +148,27 @@ def _api_tool(api, tool, body_defaults, description="", max_retries=0, pre=None,
 
 
 # ------------------------------------------------------------------ runtime config
+NOTE_KEYS = ("refused", "hardship", "dispute", "paid", "service_error")
+
+
+def clean_var(name, default):
+    """A call-variable name as written by the model ('now', '{{now}}', '`now`') -> identifier, else the default."""
+    n = re.sub(r"[{}`<>\s]", "", str(name or ""))
+    return n if re.fullmatch(r"[A-Za-z_]\w*", n) else default
+
+
+def semantic_note_reason(value, outcomes):
+    """Notes are stored as semantic keys; accept an API/brief value from the IR and map it back."""
+    v = str(value or "").strip()
+    if v in NOTE_KEYS:
+        return v
+    for table in (outcomes.get("note_reasons") or {}, outcomes.get("reasons") or {}):
+        for k, x in table.items():
+            if x and x == v and k in NOTE_KEYS:
+                return k
+    return "refused"
+
+
 def runtime_config(ir, api, roles):
     pf = roles["product_fields"]
     item = ot.product_item_schema(api) or {}
@@ -162,9 +183,13 @@ def runtime_config(ir, api, roles):
     for key in ("promise", "paid", "transferred", "no_promise", "not_verified", "not_reached"):
         if close_enum and o.get(key) and o[key] not in close_enum:
             raise CompileError(f"outcome {key} -> {o[key]} is not allowed by close_call ({close_enum})")
-    reasons = o.get("reasons", {})
+    reasons = dict(o.get("reasons", {}))
+    if o.get("paid") != o.get("no_promise"):
+        reasons["paid"] = ""   # a distinct paid outcome carries no reason; only a brief that closes "paid" under no_promise names one
+    notes = dict(ir.get("notes") or {"enabled": False})
+    notes["default_reason"] = semantic_note_reason(notes.get("default_reason"), o)
     return {
-        "now_var": (ir.get("call_variables") or {}).get("now") or "now",
+        "now_var": clean_var((ir.get("call_variables") or {}).get("now"), "now"),
         "calendar": ir["calendar"], "bands": ir["bands"], "table_days": 45,
         "products_prefix": f"{ACCOUNT_NODE}_response.data.{roles['products_key']}",
         "fields": {"product_id": pf["product_id"], "product_type": pf.get("product_type", "type"), "past_due": pf["past_due"], "days_late": pf["days_late"]},
@@ -175,7 +200,7 @@ def runtime_config(ir, api, roles):
                      "reasons": reasons, "note_reasons": o.get("note_reasons", {})},
         "transfer_queues": ir.get("transfer_queues", {}),
         "identity": ir["identity"],
-        "notes": ir.get("notes", {"enabled": False}),
+        "notes": notes,
         "texts": {"after_promise": (ir.get("recording") or {}).get("after_promise_sentence", ""), "debt_intro": ir.get("debt_intro", ""), "product_sentence": ir.get("product_sentence", ""),
                   "first_ask_single": ir.get("first_ask_single", ""), "first_ask_multi": ir.get("first_ask_multi", ir.get("first_ask_single", "")),
                   "currency": ir.get("currency_word", "")},
@@ -186,7 +211,7 @@ def runtime_config(ir, api, roles):
 # ------------------------------------------------------------------ code entries (run inside Freya)
 ENTRY_INIT = """
 try:
-    now = parse_now(vars.get(CFG.get('now_var') or 'now'))
+    now = parse_now(vars.get(CFG.get('now_var') or 'now') or vars.get('now'))
     st = get_state(vars)
     put_state(vars, st)
     vars['today_spoken'] = spoken_date(now.date()) if now else 'unknown'
@@ -236,7 +261,7 @@ def _ladder_text(p, today):
     return '; '.join(parts) if parts else 'no persuasion attempt'
 
 try:
-    now = parse_now(vars.get(CFG.get('now_var') or 'now'))
+    now = parse_now(vars.get(CFG.get('now_var') or 'now') or vars.get('now'))
     today = now.date()
     prods = product_facts(load_products(vars, CFG), today, CFG)
     st = get_state(vars)
@@ -390,7 +415,7 @@ def hook_callback_pre(roles):
         get_dt = "raw = str(b.get(R_DT) or '')\nd_iso, t = raw[:10], raw[11:16]\n"
     else:
         get_dt = "d_iso, t = str(b.get(R_D) or '')[:10], str(b.get(R_T) or '')[:5]\n"
-    return _join("b = config.get('body') if isinstance(config.get('body'), dict) else {}\n" + get_dt + """now = parse_now(vars.get(CFG.get('now_var') or 'now'))
+    return _join("b = config.get('body') if isinstance(config.get('body'), dict) else {}\n" + get_dt + """now = parse_now(vars.get(CFG.get('now_var') or 'now') or vars.get('now'))
 v = callback_check(d_iso, t, now, CFG)
 if v != 'ok':
     st = get_state(vars)
@@ -436,7 +461,7 @@ SAVE_PLAN_PRE = """
 st = get_state(vars)
 b = config.get('body') if isinstance(config.get('body'), dict) else {}
 raw = str(b.get('plan') or '')
-today = parse_now(vars.get(CFG.get('now_var') or 'now')).date()
+today = parse_now(vars.get(CFG.get('now_var') or 'now') or vars.get('now')).date()
 prods = st.get('products', {})
 items, errors = [], []
 for part in [x.strip() for x in re.split(r'[;\\n]+', raw) if x.strip()]:
@@ -544,6 +569,9 @@ def offer_text(p, step, n, total):
 p = prods[pid]
 steps = steps_for(p)
 made = int(str(vars.get('att__' + pid) or '0'))
+if made > len(steps):
+    raise Exception('REFUSAL RESULT: no persuasion attempt left for ' + pid + ' (' + p['spoken'] + '); this was already recorded. Do not repeat an offer. '
+                    'Call set_product_outcome with outcome refused for ' + pid + ' if you have not yet.')
 if kind == 'today' and 0 < made <= len(steps):
     # a no to "today" never uses an attempt, and it is recorded once per product
     raise Exception('REFUSAL RESULT: the no to paying today is already recorded for ' + pid + '; nothing changed. If you have NOT yet proposed ' +
@@ -555,13 +583,15 @@ nxt = made + 1 if (kind != 'today' or made > 0) else 1
 if nxt <= len(steps):
     vars['att__' + pid] = str(nxt)
     raise Exception('REFUSAL RESULT: ' + offer_text(p, steps[nxt - 1], nxt, len(steps)) + '. Propose it now in one short sentence. Never ask about today again.')
-vars['att__' + pid] = str(made)
+vars['att__' + pid] = str(len(steps) + 1)   # exhausted
 order = st.get('order', [])
 later = [prods[x] for x in order[order.index(pid) + 1:]] if pid in order else []
 hint = ''
 if later:
     q = later[0]
     qs = steps_for(q)
+    if qs and not str(vars.get('att__' + q['product_id']) or ''):
+        vars['att__' + q['product_id']] = '1'
     hint = (' Next product in order: ' + offer_text(q, qs[0], 1, len(qs)) + ' (propose it directly; never ask about today again).') if qs else ''
 raise Exception('REFUSAL RESULT: no persuasion attempt left for ' + pid + ' (' + p['spoken'] + '). Do not repeat an offer. Call set_product_outcome with outcome refused for ' + pid + '.' +
                 (hint or ' Then read back the agreed promises, if any.'))
@@ -571,7 +601,7 @@ raise Exception('REFUSAL RESULT: no persuasion attempt left for ' + pid + ' (' +
 CHECK_DATE_PRE = """
 st = get_state(vars)
 b = config.get('body') if isinstance(config.get('body'), dict) else {}
-today = parse_now(vars.get(CFG.get('now_var') or 'now')).date()
+today = parse_now(vars.get(CFG.get('now_var') or 'now') or vars.get('now')).date()
 prods = st.get('products', {})
 pid = str(b.get('product_id') or '').strip()
 chosen = [prods[pid]] if pid in prods else list(prods.values())
@@ -658,11 +688,12 @@ def _rules(ir, *stages):
     return "\n".join("- " + r for r in out)
 
 
-def compile_workflow(ir, api, roles):
+def compile_workflow(ir, api, roles, warnings=None):
     if api["missing_tools"]:
         raise CompileError(f"tool API lacks {api['missing_tools']}")
     cfg = runtime_config(ir, api, roles)
-    cv = ir.get("call_variables", {})
+    cv = {k: clean_var(v, "") for k, v in (ir.get("call_variables") or {}).items()}
+    cv = {k: v for k, v in cv.items() if v}
     cust = "{{" + cv.get("customer_id", "customer_id") + "}}"
     bank = ir.get("bank_name", "the bank")
     multi = bool(ir.get("multi_product", {}).get("enabled"))
@@ -679,13 +710,22 @@ def compile_workflow(ir, api, roles):
         if queue_enum and q not in queue_enum:
             raise CompileError(f"transfer queue {sem} -> {q} not in API enum {queue_enum}")
 
-    cv = {k: v for k, v in cv.items() if v}
-    others = [x for x in ir.get("other_call_variables", []) if re.fullmatch(r"[A-Za-z_]\w*", x or "")]
+    others = [clean_var(x, "") for x in ir.get("other_call_variables", [])]
+    others = [x for x in others if x]
     name_map = {**{v: "{{" + v + "}}" for v in list(cv.values()) + others}, **{k: "{{" + v + "}}" for k, v in cv.items()}}  # <title> and <salutation> both work
-    identity_question = _fill(ir["opening"]["identity_question"], name_map)
-    for leftover in re.findall(r"<([A-Za-z_]\w*)>", identity_question):  # the question may only name call variables
-        identity_question = identity_question.replace("<" + leftover + ">", "{{" + leftover + "}}")
-        others.append(leftover)
+    if "first_name" in cv and "last_name" in cv:
+        name_map.setdefault("full_name", "{{" + cv["first_name"] + "}} {{" + cv["last_name"] + "}}")
+        name_map.setdefault("name", name_map["full_name"])
+    raw_q = re.sub(r"(?<!\{)\{([A-Za-z_]\w*)\}(?!\})", r"<\1>", ir["opening"]["identity_question"])   # {title} -> <title>
+    identity_question = _fill(raw_q, name_map)
+    for leftover in re.findall(r"<([A-Za-z_]\w*)>", identity_question):
+        if leftover in ("customer_id", "first_name", "last_name", "title", "now"):   # a role the brief has no variable for: drop it
+            identity_question = identity_question.replace("<" + leftover + ">", "")
+        else:
+            identity_question = identity_question.replace("<" + leftover + ">", "{{" + leftover + "}}")
+        if warnings is not None:
+            warnings.append(f"identity question placeholder <{leftover}> is not a declared call variable")
+    identity_question = re.sub(r"\s+([?,.!])", r"\1", re.sub(r"\s{2,}", " ", identity_question)).strip()
     opening_line = (ir["opening"]["first_sentence"].strip() + " " + identity_question).strip()
     system_prompt = (
         f"You are the digital assistant of {bank}, speaking {ir.get('language', 'English')} on an outbound phone call.\n"
@@ -744,7 +784,8 @@ def compile_workflow(ir, api, roles):
                         _tool_transition("close_deceased", "The customer has died")]}
     # ---- identity
     fmt_by_value = {q["api_value"]: q["format"] for q in idn["questions"]}
-    order_by_value = {q["api_value"]: (q.get("numeric_order") or "DMY").upper() for q in idn["questions"] if q["format"] == "date"}
+    order_by_value = {q["api_value"]: ("MDY" if re.sub(r"[^DMY]", "", str(q.get("numeric_order") or "").upper())[:1] == "M" else "DMY")
+                      for q in idn["questions"] if q["format"] == "date"}
     date_note = ""
     if order_by_value:
         date_note = " (dates as YYYY-MM-DD; " + ("month before day" if "MDY" in order_by_value.values() else "day before month") + " when said only as numbers)"
@@ -919,5 +960,5 @@ def compile_workflow(ir, api, roles):
                       pre=_hook(cfg, hook_close_pre(roles)))
     close["config"]["alwaysRunsAt"] = ["end_of_call"]
     test_vars = {cv[k]: v for k, v in {"customer_id": "c_test", "first_name": "Daniel", "last_name": "Reyes", "title": "Mr", "now": "2026-10-14T11:00"}.items() if k in cv}
-    test_vars.update({x: "Example " + x.replace("_", " ") for x in others if x not in test_vars})
+    test_vars.update({x: "Example " + x.replace("_", " ") for x in others if x not in test_vars})   # declared variables only
     return {"initial_node": "init", "system_prompt": system_prompt, "nodes": nodes, "global_nodes": {}, "tools": [close], "test_variables": test_vars}

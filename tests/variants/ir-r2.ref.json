@@ -1,0 +1,234 @@
+{
+ "_note": "Hand-written reference IR for tests/variants/brief-r2.md + api-r2.json (our own generalisation test: SME/business lending, one facility, no notes). 'Already paid' closes as no_arrangement / payment_claimed (no paid outcome in the API). note_reasons are empty because the brief never uses add_note. stage_rules are left empty (free text, ignored by ir_diff).",
+ "bank_name": "Copperleaf Business Finance",
+ "language": "English",
+ "currency_word": "pounds",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "title",
+  "now": "now"
+ },
+ "other_call_variables": [
+  "company_name"
+ ],
+ "opening": {
+  "first_sentence": "Hello, this is the automated assistant of Copperleaf Business Finance. This call is recorded.",
+  "identity_question": "Am I speaking with <title> <last_name> of <company_name>?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "that's right",
+   "the director's own last name"
+  ],
+  "not_confirmations": [
+   "hello",
+   "go on",
+   "who wants to know"
+  ],
+  "max_asks": 3,
+  "forbidden_before_verification": [
+   "arrears",
+   "debt",
+   "repayment",
+   "recoveries",
+   "any facility"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "company_number",
+    "ask": "Could you tell me the company's registration number?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "founded_year",
+    "ask": "And in which year was the company founded?",
+    "format": "digits4",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 2,
+  "swapped_hint_value": null,
+  "swapped_instruction": "",
+  "failed_message": "I'm sorry, I can't go further on this call. Please call us on the number in your facility agreement.",
+  "refusal_explanation": "These questions protect the company's account.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "business_loan",
+   "spoken": "business loan",
+   "floor_field": "monthly_repayment"
+  },
+  {
+   "api_type": "overdraft",
+   "spoken": "business overdraft on the account ending <account_last4>",
+   "floor_field": "minimum_due"
+  },
+  {
+   "api_type": "merchant_advance",
+   "spoken": "merchant cash advance",
+   "floor_field": "weekly_minimum"
+  }
+ ],
+ "debt_intro": "I'm calling about arrears on <company_name>'s account.",
+ "product_sentence": "The <spoken> has <past_due> in arrears and is <days_late> days in arrears.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "holidays": [
+   "2026-10-31",
+   "2026-11-16",
+   "2026-12-24",
+   "2026-12-25",
+   "2026-12-26",
+   "2027-01-01"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "Stage 1",
+   "min": 1,
+   "max": 10,
+   "deadline_business_days": 10,
+   "attempts": 0
+  },
+  {
+   "name": "Stage 2",
+   "min": 11,
+   "max": 30,
+   "deadline_business_days": 7,
+   "attempts": 1
+  },
+  {
+   "name": "Stage 3",
+   "min": 31,
+   "max": 90,
+   "deadline_business_days": 6,
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Can the company pay the arrears today?",
+ "first_ask_multi": "",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": [
+    "Stage 2",
+    "Stage 3"
+   ]
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "Stage 3"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "within_business_days:2"
+  ],
+  "start": "09:30",
+  "end": "16:30",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": false,
+  "per_product_order": "",
+  "one_confirmation": false,
+  "clip_shared_date_to_deadline": false
+ },
+ "notes": {
+  "enabled": false,
+  "skip_on_any_transfer": false,
+  "default_reason": ""
+ },
+ "transfer_queues": {
+  "restructuring": "restructuring_desk",
+  "human": "relationship_team",
+  "support": "business_support"
+ },
+ "outcomes": {
+  "promise": "arrangement_made",
+  "paid": "no_arrangement",
+  "transferred": "escalated",
+  "no_promise": "no_arrangement",
+  "not_verified": "security_failed",
+  "not_reached": "no_contact",
+  "reasons": {
+   "restructuring": "restructure_request",
+   "human": "human_request",
+   "support": "support_referral",
+   "refused": "declined_to_pay",
+   "hardship": "financial_difficulty",
+   "dispute": "disputed",
+   "service_error": "system_error",
+   "failed": "failed_checks",
+   "declined": "declined_checks",
+   "callback": "callback_booked",
+   "no_callback": "no_callback_time",
+   "wrong_number": "wrong_number",
+   "deceased": "director_deceased",
+   "unclear": "unconfirmed",
+   "paid": "payment_claimed"
+  },
+  "note_reasons": {
+   "refused": "",
+   "hardship": "",
+   "dispute": "",
+   "paid": "",
+   "service_error": ""
+  }
+ },
+ "recording": {
+  "retries_after_failure": 0,
+  "after_promise_sentence": "A confirmation letter will be sent to the company's registered office.",
+  "read_back_question": "Is that correct?"
+ },
+ "fixed_sentences": {
+  "deceased": "I am very sorry to hear that.",
+  "robot": "I am Copperleaf Business Finance's automated assistant.",
+  "scam": "You can check this call by phoning the number in your facility agreement.",
+  "paid": "Payments can take up to two business days to reach us.",
+  "farewell": "Thank you for your time. Goodbye."
+ },
+ "stage_rules": {
+  "always": [],
+  "opening": [],
+  "third_party": [],
+  "identity": [],
+  "negotiation": [],
+  "multi_product": [],
+  "confirmation": [],
+  "recording": [],
+  "closing": []
+ },
+ "evidence": [],
+ "unmapped_rules": [
+  "After both security answers pass, before anything else, say: \"Before we go on, please note that this call is about the company's account, not your personal finances.\"",
+  "Never call the director by their first name, even if they introduce themselves by it or ask you to.",
+  "Only the named director counts: another director, the company secretary, the accountant, a shareholder or an employee is a third party.",
+  "Never record more than the arrears amount; if the director offers more, say early settlement is arranged by the account team and offer the arrears amount (not a refusal).",
+  "Never mention court action, insolvency, a personal guarantee or the director's personal credit file.",
+  "\"The company owes this, not me\" is not a dispute or a refusal: agree the call is about the company's account and continue.",
+  "Say every amount in pounds and pence exactly as the tools return it; never round."
+ ],
+ "precedence": []
+}

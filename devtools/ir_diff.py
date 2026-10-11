@@ -55,7 +55,8 @@ def diff(got, ref):
            (p.startswith("notes.") and p != "notes.enabled" and not notes) or (p == "identity.swapped_hint_value" and not dates):
             continue  # not used by the compiler in this configuration
         a, b = get(got, p), get(ref, p)
-        if p == "outcomes.reasons":   # the 'paid' outcome has no reason in either brief family; the compiler never sends it
+        if p == "outcomes.reasons" and ref["outcomes"]["paid"] != ref["outcomes"]["no_promise"]:
+            # a distinct paid outcome carries no reason; the compiler sends reasons.paid only when paid closes under no_promise
             a, b = {k: v for k, v in a.items() if k != "paid"}, {k: v for k, v in b.items() if k != "paid"}
         if isinstance(a, list) and isinstance(b, list) and p.endswith(("business_weekdays", "days")):
             a, b = sorted(a), sorted(b)

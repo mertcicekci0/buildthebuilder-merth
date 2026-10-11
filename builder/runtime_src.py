@@ -350,7 +350,7 @@ def normalize_answer(fmt, text, order="DMY"):
         return digits or str(text)
     if fmt == "upper_nospace":
         spoken = {"zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9"}
-        return "".join(spoken.get(t.lower(), t) for t in re.findall(r"[A-Za-z]+|\d+", str(text))).upper()
+        return "".join(spoken.get(t.lower(), t) for t in re.findall(r"[^\W\d_]+|\d+", str(text))).upper()
     return str(text).strip()
 
 

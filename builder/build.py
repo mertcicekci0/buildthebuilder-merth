@@ -33,42 +33,75 @@ DEADLINE_MIN = float(os.environ.get("BUILDER_DEADLINE_MIN", "27"))   # hard stop
 T0 = float(os.environ.get("BUILDER_T0") or time.time())             # kept across a runtime re-exec
 
 
-def ensure_model_runtime():
-    """The model boundary needs claude-agent-sdk. Use this interpreter if it has it; otherwise the repo's .venv;
-    otherwise create .venv from the locked, hash-pinned requirements (uv.lock via `uv sync --frozen`, else
-    requirements.hashes.txt via pip --require-hashes) and re-run this command with it. Every step is printed."""
+PINNED_SDK = "0.2.165"   # = pyproject.toml / uv.lock
+
+
+def _installed_sdk(python=None):
+    """Version of claude-agent-sdk importable by `python` (default: this interpreter), or None."""
+    if python is None:
+        try:
+            import importlib.metadata
+            import claude_agent_sdk  # noqa: F401
+            return importlib.metadata.version("claude-agent-sdk")
+        except Exception:  # noqa: BLE001
+            return None
+    import subprocess
     try:
-        import claude_agent_sdk  # noqa: F401
+        r = subprocess.run([str(python), "-c", "import importlib.metadata as m, claude_agent_sdk; print(m.version('claude-agent-sdk'))"],
+                           capture_output=True, text=True, timeout=120)
+        return r.stdout.strip() if r.returncode == 0 else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def ensure_model_runtime():
+    """The model boundary needs claude-agent-sdk (pinned version). Use this interpreter if it has that version; otherwise
+    the repo's .venv, creating or repairing it from the lock files (`uv sync --frozen`, else pip --require-hashes on
+    Python >= 3.10), and re-run this command there. If that fails but this interpreter has another SDK version, continue
+    with it and say so. Every step is printed."""
+    import shutil
+    import subprocess
+    here = _installed_sdk()
+    if here == PINNED_SDK:
         return
-    except ImportError:
-        pass
-    venv_py = ROOT / ".venv" / "bin" / "python"
     if os.environ.get("BUILDER_REEXEC") == "1":
-        raise SystemExit("claude-agent-sdk is not importable even in .venv; run `uv sync --frozen` "
-                         "(or pip install -r requirements.hashes.txt --require-hashes) and retry")
-    if not venv_py.exists():
-        import shutil
-        import subprocess
-        print(f"[runtime] {sys.executable} lacks claude-agent-sdk and there is no .venv: creating it from the lock files", flush=True)
-        if shutil.which("uv"):
-            cmd = ["uv", "sync", "--frozen", "--no-dev"]
-            ok = subprocess.run(cmd, cwd=ROOT).returncode == 0
-        else:
-            ok = subprocess.run([sys.executable, "-m", "venv", str(ROOT / ".venv")]).returncode == 0 and \
-                subprocess.run([str(venv_py), "-m", "pip", "install", "-q", "--require-hashes", "-r", str(ROOT / "requirements.hashes.txt")]).returncode == 0
-        if not ok or not venv_py.exists():
-            raise SystemExit("could not create .venv; run `uv sync --frozen` (or pip install -r requirements.hashes.txt --require-hashes)")
-    print(f"[runtime] re-running with {venv_py.relative_to(ROOT)} (has the pinned claude-agent-sdk)", flush=True)
-    env = dict(os.environ, BUILDER_REEXEC="1", BUILDER_T0=str(T0))
-    os.execve(str(venv_py), [str(venv_py), str(pathlib.Path(__file__).resolve())] + sys.argv[1:], env)
+        if here:
+            print(f"[runtime] warning: claude-agent-sdk {here} in .venv (pinned {PINNED_SDK}); continuing", flush=True)
+            return
+        raise SystemExit("claude-agent-sdk is not importable even in .venv; run `uv sync --frozen` and retry")
+    venv_py = ROOT / ".venv" / "bin" / "python"
+    print(f"[runtime] {sys.executable} has claude-agent-sdk {here or 'not installed'} (pinned {PINNED_SDK})", flush=True)
+    ok = venv_py.exists() and _installed_sdk(venv_py) == PINNED_SDK
+    if not ok:
+        existed = (ROOT / ".venv").exists()
+        print("[runtime] preparing .venv from the lock files", flush=True)
+        try:
+            if shutil.which("uv"):
+                ok = subprocess.run(["uv", "sync", "--frozen", "--no-dev"], cwd=ROOT, timeout=900).returncode == 0
+            if not ok and sys.version_info >= (3, 10):
+                if not venv_py.exists():
+                    subprocess.run([sys.executable, "-m", "venv", str(ROOT / ".venv")], timeout=300)
+                ok = venv_py.exists() and subprocess.run([str(venv_py), "-m", "pip", "install", "-q", "--require-hashes", "-r",
+                                                          str(ROOT / "requirements.hashes.txt")], timeout=900).returncode == 0
+        except Exception as e:  # noqa: BLE001
+            print(f"[runtime] preparing .venv failed: {e}", flush=True)
+            ok = False
+        ok = ok and _installed_sdk(venv_py) == PINNED_SDK
+        if not ok and not existed and (ROOT / ".venv").exists():
+            shutil.rmtree(ROOT / ".venv", ignore_errors=True)   # never leave a half-built .venv behind
+    if ok:
+        print(f"[runtime] re-running with .venv/bin/python (claude-agent-sdk {PINNED_SDK})", flush=True)
+        env = dict(os.environ, BUILDER_REEXEC="1", BUILDER_T0=str(T0))
+        os.execve(str(venv_py), [str(venv_py), str(pathlib.Path(__file__).resolve())] + sys.argv[1:], env)
+    if here:
+        print(f"[runtime] warning: could not prepare .venv; continuing with claude-agent-sdk {here}", flush=True)
+        return
+    raise SystemExit("claude-agent-sdk is not available and .venv could not be prepared: install uv and run `uv sync --frozen` "
+                     "(or, on Python >= 3.10, pip install -r requirements.hashes.txt --require-hashes)")
 
 
 def _sdk_version():
-    try:
-        import claude_agent_sdk
-        return getattr(claude_agent_sdk, "__version__", "unknown")
-    except ImportError:
-        return "not installed"
+    return _installed_sdk() or "not installed"
 
 
 def _git_commit():
@@ -174,7 +207,10 @@ def main():
         if problems:
             trace.warn("continuing with unresolved policy problems: " + "; ".join(problems[:10]))
 
-        wf = cw.compile_workflow(ir, api, roles)
+        compile_warnings = []
+        wf = cw.compile_workflow(ir, api, roles, warnings=compile_warnings)
+        for w in compile_warnings:
+            trace.warn("compile: " + w)
         lint = v.lint(wf, api)
         st = v.stats(wf)
         trace.test("workflow lint", "pass" if not lint else f"{len(lint)} problem(s)", problems=lint)
