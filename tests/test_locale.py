@@ -135,3 +135,9 @@ def test_vague_words_and_identity_dates_in_the_locale():
     _, _, wf = _build(_ir_tr())
     tool = le._tool(wf, "verify", "verify_identity")
     assert le.run_pre(tool, {}, {"customer_id": "c", "field": "date_of_birth", "answer": "14 Mart 1988"})["answer"] == "1988-03-14"
+
+
+def test_holiday_written_with_locale_month_name_is_found():
+    assert not ps._date_mentioned("2026-10-29", "Resmi tatil: 29 Ekim (Cumhuriyet Bayrami).")
+    assert ps._date_mentioned("2026-10-29", "Resmi tatil: 29 Ekim'de ofis kapali.", LOCALE["month_names"])
+    assert ps._date_mentioned("2026-12-25", "25 December", LOCALE["month_names"])

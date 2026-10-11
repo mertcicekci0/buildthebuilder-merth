@@ -160,7 +160,7 @@ def check(ir, api, roles, brief_text="", warnings=None):
                 p.append(f"evidence[{i}] ({e['path']}) quote is not in the brief verbatim: {e['quote'][:80]!r}")
         for h in ir["calendar"]["holidays"]:
             try:
-                mentioned = _date_mentioned(h, brief_text)
+                mentioned = _date_mentioned(h, brief_text, loc.get("month_names"))
             except ValueError:
                 continue   # a non-ISO holiday is already a problem above
             if not mentioned and warnings is not None:
@@ -173,12 +173,14 @@ _ORD = r"(?:st|nd|rd|th)?"
 _RANGE = r"(?:\s*(?:-|\u2013|\u2014|to|through|thru|until|till|and|&)\s*(\d{1,2})" + _ORD + r")?"
 
 
-def _month_re(month):
+def _month_re(month, extra_months=None):
     names = {_MONTHS[month - 1], _MONTHS[month - 1][:3]} | ({"sept"} if month == 9 else set())
+    if extra_months and len(extra_months) == 12 and str(extra_months[month - 1]).strip():
+        names.add(re.escape(str(extra_months[month - 1]).strip().lower()))   # the brief's language (IR locale)
     return r"\b(?:" + "|".join(sorted(names, key=len, reverse=True)) + r")\b\.?"
 
 
-def _date_mentioned(iso_date, text):
+def _date_mentioned(iso_date, text, extra_months=None):
     """Is this date written in the text? Reads ISO, day-month and month-day with full or short month names and ordinals
     ("25 Dec", "December 25th", "the 25th of December", "Friday 25 December"), day ranges ("24-26 December",
     "24 to 26 December", "December 24-26") and numeric dates ("25.12.2026", "25-12-2026", "12/25/2026", "25/12", "25.12.")."""
@@ -186,7 +188,7 @@ def _date_mentioned(iso_date, text):
     t = re.sub(r"\s+", " ", re.sub(r"[*_`]", "", str(text).lower().replace("\u00a0", " ")))
     if iso_date in t:
         return True
-    mon = _month_re(d.month)
+    mon = _month_re(d.month, extra_months)
 
     def within(lo, hi):
         lo = int(lo)
