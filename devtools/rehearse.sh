@@ -8,7 +8,8 @@
 set -u
 W=$1; C=$2; shift 2
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
-rm -rf "$W" && mkdir -p "$W/inputs" || exit 1
+[ -n "$W" ] && [ ! -e "$W" ] || { echo "ABORT: work directory must be a new path (never reused or deleted): '$W'"; exit 1; }
+mkdir -p "$W/inputs" || exit 1
 git clone -q "$SRC" "$W/repo" && (cd "$W/repo" && git checkout -q "$C") || exit 1
 NAMES=""
 ARGS=""
