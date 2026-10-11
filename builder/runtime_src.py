@@ -462,4 +462,8 @@ def outcome_fold(st, cfg):
             return o["no_promise"], r
     if st.get("end_reason"):
         return o["no_promise"], st["end_reason"]
-    return o.get("fallback_outcome", o["no_promise"]), o.get("fallback_reason", "")
+    if not st.get("contact"):
+        return o["not_reached"], "unclear"          # the call ended before anyone was confirmed
+    if st.get("verified") != "yes":
+        return o["not_verified"], "declined"        # the customer left during the identity check
+    return o.get("fallback_outcome", o["no_promise"]), o.get("fallback_reason") or "refused"   # never an empty no_promise reason

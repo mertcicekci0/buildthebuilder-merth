@@ -109,3 +109,61 @@ def test_optional_tools_may_be_absent():
     prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1111", "past_due": 300, "days_late": 4, "minimum_payment": 90}]
     r = le.smoke(wf, roles, prods, promise=("p1", 300, "2026-10-16"))
     assert r["close_body"]["outcome"] == "promise"
+
+
+def _negotiation_vars(wf, prods):
+    vars = {**wf["test_variables"], "now": "2026-10-14T11:00"}
+    le.run_code_node(wf, "init", vars)
+    vars.update(le.flatten_products("load_account_response.data.products", prods))
+    le.run_code_node(wf, "account", vars)
+    return vars
+
+
+def _oracle(wf, node, name, vars, body):
+    try:
+        le.run_pre(le._tool(wf, node, name), vars, body)
+    except le.Blocked as b:
+        return str(b)
+    raise AssertionError("oracle must raise")
+
+
+TWO = [{"product_id": "p1", "type": "credit_card", "card_last4": "9015", "past_due": 300, "days_late": 4, "minimum_payment": 90},
+       {"product_id": "p2", "type": "personal_loan", "past_due": 900, "days_late": 20, "instalment_amount": 300}]
+
+
+def test_identity_completes_when_the_bank_omits_all_verified():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    tool = le._tool(wf, "verify", "verify_identity")
+    vars = {}
+    le.run_pre(tool, vars, {"customer_id": "c", "field": "date_of_birth", "answer": "1988-03-14"})
+    le.run_post(tool, vars, {"ok": True, "verified": True, "wrong_answers_left": 3})
+    assert vars["id_state"] == "next"
+    le.run_pre(tool, vars, {"customer_id": "c", "field": "phone_last4", "answer": "4471"})
+    le.run_post(tool, vars, {"ok": True, "verified": True, "wrong_answers_left": 3})   # no all_verified key (already-verified customer)
+    assert vars["id_state"] == "all"
+
+
+def test_finish_call_is_guarded_once_and_sets_the_route_variable():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    vars = _negotiation_vars(wf, TWO)
+    first = _oracle(wf, "negotiate", "finish_call", vars, {"summary": "x"})
+    assert first.startswith("BLOCKED") and "p1, p2" in first and vars.get("wrap_req") != "yes"
+    assert _oracle(wf, "negotiate", "finish_call", vars, {"summary": "x"}).startswith("FINISHED") and vars["wrap_req"] == "yes"
+    assert any(t.get("condition", {}).get("variable") == "wrap_req" or "wrap_req" in json.dumps(t) for t in wf["nodes"]["negotiate"]["transitions"])
+    assert not any(t.get("is_tool_call") and t["target_node"] == "wrap_up" for n in ("negotiate", "post_record") for t in wf["nodes"][n]["transitions"])
+
+
+def test_vague_words_ignore_the_models_own_date():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    vars = _negotiation_vars(wf, TWO[:1])
+    msg = _oracle(wf, "negotiate", "check_date", vars, {"product_id": "p1", "customer_words": "the week after next", "date": "2026-10-26"})
+    assert "no exact day" in msg and "26 October is not" not in msg
+
+
+def test_fold_fallbacks_never_send_an_empty_no_promise_reason():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    close = lambda st: le.run_pre(wf["tools"][0], {"st_json": json.dumps(st)}, {"customer_id": "c1", "outcome": "", "reason": ""})
+    base = {"products": {}, "promises": {}, "notes": {}, "order": [], "transfer": "", "verified": "", "contact": ""}
+    assert close(base) == {"customer_id": "c1", "outcome": "not_reached", "reason": "unclear"}
+    assert close({**base, "contact": "customer"}) == {"customer_id": "c1", "outcome": "not_verified", "reason": "declined"}
+    assert close({**base, "contact": "customer", "verified": "yes"}) == {"customer_id": "c1", "outcome": "no_promise", "reason": "refused"}

@@ -402,7 +402,10 @@ try:
     for i, q in enumerate(QUESTIONS):
         if q['api_value'] == asked and i + 1 < len(QUESTIONS):
             nxt = QUESTIONS[i + 1]['ask']
-    if true(d.get('all_verified')):
+    if true(d.get('verified')) and asked:
+        vars['idok__' + asked] = 'yes'
+    every = all(str(vars.get('idok__' + q['api_value']) or '') == 'yes' for q in QUESTIONS)
+    if true(d.get('all_verified')) or (d.get('all_verified') is None and true(d.get('verified')) and every):
         vars['id_state'] = 'all'
         msg = 'Identity verified. The system continues now.'
     elif SWAPPED and str(d.get('hint')) == SWAPPED:
@@ -621,6 +624,18 @@ raise Exception('REFUSAL RESULT: no persuasion attempt left for ' + pid + ' (' +
 """
 
 
+FINISH_PRE = """
+st = get_state(vars)
+open_ = [pid for pid in st.get('order', []) if pid not in st.get('promises', {}) and not str(vars.get('oc__' + pid) or '') and not st.get('notes', {}).get(pid)]
+if open_ and str(vars.get('wrap_warned') or '') != 'yes' and not st.get('transfer'):
+    vars['wrap_warned'] = 'yes'
+    raise Exception('BLOCKED, nothing changed: ' + ', '.join(open_) + ' has no recorded promise and no outcome yet. Continue with it, or call set_product_outcome for it. '
+                    'If the conversation is really over, call finish_call again.')
+vars['wrap_req'] = 'yes'
+raise Exception('FINISHED: the system says goodbye and ends the call now. Say nothing more.')
+"""
+
+
 CHECK_DATE_PRE = """
 st = get_state(vars)
 b = config.get('body') if isinstance(config.get('body'), dict) else {}
@@ -630,7 +645,9 @@ pid = str(b.get('product_id') or '').strip()
 chosen = [prods[pid]] if pid in prods else list(prods.values())
 words = str(b.get('customer_words') or '')
 d, kind = resolve_day_words(words, today, CFG) if words else (None, 'none')
-if kind not in ('today', 'relative', 'next_weekday', 'this_weekday', 'weekday') or d is None:
+if kind == 'vague':
+    d = None
+elif kind not in ('today', 'relative', 'next_weekday', 'this_weekday', 'weekday') or d is None:
     try:
         d = datetime.date.fromisoformat(str(b.get('date') or '')[:10])
         kind = 'explicit'
@@ -939,7 +956,7 @@ def _compile(ir, api, roles, warnings=None):
                   "pre_process_code": _hook(cfg, CHECK_DATE_PRE)}
     refusal_tool = {"type": "function", "config": {"timeoutMs": 8000, "maxRetries": 0},
                     "function": {"name": "record_refusal", "handler": "__function__:api_call",
-                                 "description": "CALL it every time the customer flatly refuses or gives a non-answer for a product (including 'no' to paying today, or refusing an offer). It tells you the next offer, or that the attempts are used up.",
+                                 "description": "CALL it every time the customer flatly refuses or gives a complete non-answer for a product (including 'no' to paying today, or refusing an offer); never for a cut-off message or small talk. It tells you the next offer, or that the attempts are used up.",
                                  "parameters": {"type": "object", "properties": {
                                      "url": {"type": "string", "default": acct["url"]}, "method": {"type": "string", "default": acct["method"]},
                                      "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
@@ -949,6 +966,16 @@ def _compile(ir, api, roles, warnings=None):
                                                      "default": "{{refused}}"}},
                                          "required": ["product_id", "refused"]}}}},
                     "pre_process_code": _hook(cfg, REFUSAL_PRE)}
+    finish_tool = {"type": "function", "config": {"timeoutMs": 8000, "maxRetries": 0},
+                   "function": {"name": "finish_call", "handler": "__function__:api_call",
+                                "description": "CALL it on its own when every product has a recorded promise or an outcome and nothing is left to discuss. The system then says goodbye and ends the call.",
+                                "parameters": {"type": "object", "properties": {
+                                    "url": {"type": "string", "default": acct["url"]}, "method": {"type": "string", "default": acct["method"]},
+                                    "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
+                                    "body": {"type": "object", "properties": {
+                                        "summary": {"type": "string", "description": "one short line: how each product ended", "default": "{{summary}}"}},
+                                        "required": ["summary"]}}}},
+                   "pre_process_code": _hook(cfg, FINISH_PRE)}
     neg_rules = _rules(ir, "negotiation") + ("\n" + _rules(ir, "multi_product") if multi else "") + "\n" + _rules(ir, "confirmation") + "\n" + _rules(ir, "recording")
     nodes["negotiate"] = {
         "name": "negotiate", "node_type": "conversation",
@@ -959,18 +986,21 @@ def _compile(ir, api, roles, warnings=None):
             "Rules:\n" + neg_rules + "\n\n"
             "DATES: never calculate or judge a date yourself. Whenever the customer names or changes a day, call check_date first and follow its DATE CHECK RESULT exactly "
             "(it arrives looking like an error; that is normal).\nWeekday words:\n{{relative_dates}}\n\n"
-            "If the customer asks about an offer you just made (how much, which day), answer with that same offer, including every condition you said with it, in one sentence. That is an answer, not a new attempt: no tool.\n\n"
+            "If the customer asks about an offer you just made (how much, which day), answer with that same offer, including every condition you said with it, in one sentence. That is an answer, not a new attempt: no tool.\n"
+            "A message that stops mid-sentence or is only small talk is not a refusal and not a non-answer: reply with two or three words such as \"Take your time.\" or \"Go on.\", call no tool and make no new offer; after two such replies, repeat your last question. "
+            "A non-answer is a complete turn with no yes, no no, no date and no amount.\n"
+            "Make every offer only once (a persuasion step, the support team, the floor). Propose only offers that a REFUSAL RESULT or the PRODUCTS list gives you.\n\n"
             "TOOLS:\n"
             "- record_refusal: every flat refusal or non-answer for a product: refused=today for the first question about paying today, refused=offer for an offer you proposed. Propose exactly what its REFUSAL RESULT says; never count attempts yourself. When you move on to the next product, propose its attempt 1 directly and never ask about today again.\n"
             "- check_date: every time a day is named or changed (product id or all, the customer's exact words, your YYYY-MM-DD reading).\n"
             "- save_promises: once, after a clear yes to the read-back of all agreed promises. If it returns BLOCKED, follow the instruction. ACCEPTED means the system records them now.\n"
             "- set_product_outcome: for every product that ends without a promise.\n"
             "- transfer_to_agent: restructuring, accepted support, or insisted human; then the system says goodbye.\n"
-            "- transition_to_wrap_up: when every product has a recorded promise or an outcome, and you have nothing left to say except goodbye. Do not say goodbye yourself; the system does."),
-        "tools": [check_tool, refusal_tool, save_tool, set_outcome_tool, transfer_tool], "max_node_turns": 60, "max_turn_transition": "wrap_up",
+            "- finish_call: when every product has a recorded promise or an outcome, and you have nothing left to say except goodbye. Call it on its own, after the other tools have returned. Do not say goodbye yourself; the system does."),
+        "tools": [check_tool, refusal_tool, save_tool, set_outcome_tool, transfer_tool, finish_tool], "max_node_turns": 60, "max_turn_transition": "wrap_up",
         "transitions": [_when("plan_ready", "yes", "record_next", "confirmed promises to record"),
                         _when("transfer_done", "yes", "goodbye_transfer", "transfer done"),
-                        _tool_transition("wrap_up", "Every product has a recorded promise or an outcome; the conversation is finished")]}
+                        _when("wrap_req", "yes", "wrap_up", "the conversation is finished")]}
     # ---- sequential recording (no model involvement, verified: re-entry re-bakes values; engine retries HTTP 500)
     nodes["record_next"] = _code_node("record_next", cfg, ENTRY_RECORD_NEXT, [_when("rec_go", "yes", "write_promise", "record one promise"), _always("post_record")])
     rec_body = {roles["customer_id"]: cust, roles["promise_product"]: "{{cur_pid}}", roles["promise_amount"]: "{{cur_amount}}", roles["promise_date"]: "{{cur_date}}"}
@@ -988,10 +1018,10 @@ def _compile(ir, api, roles, warnings=None):
             "PRODUCTS:\n{{facts_text}}\n"
             "Rules:\n" + _rules(ir, "confirmation", "recording", "closing") + "\n"
             "If a product still has no promise and no outcome, call set_product_outcome for it. If the customer asks for restructuring, support or a human, use transfer_to_agent.\n"
-            "When nothing is left, call transition_to_wrap_up. Do not say goodbye yourself; the system does."),
-        "tools": [set_outcome_tool, transfer_tool], "max_node_turns": 10, "max_turn_transition": "wrap_up",
+            "When nothing is left, call finish_call on its own (after the other tools have returned). Do not say goodbye yourself; the system does."),
+        "tools": [set_outcome_tool, transfer_tool, finish_tool], "max_node_turns": 10, "max_turn_transition": "wrap_up",
         "transitions": [_when("transfer_done", "yes", "goodbye_transfer", "transfer done"),
-                        _tool_transition("wrap_up", "Nothing is left to discuss")]}
+                        _when("wrap_req", "yes", "wrap_up", "the conversation is finished")]}
     # ---- wrap-up and notes
     nodes["wrap_up"] = _code_node("wrap_up", cfg, ENTRY_FINALIZE, [
         _when("notes_pending", "yes", "note_next", "notes to write"),
