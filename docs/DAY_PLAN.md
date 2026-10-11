@@ -77,3 +77,12 @@ revisions (separate Freya slots, frozen scripts). Missing verdicts stay pending.
 - 16:40 docs/RESOURCE_AUDIT.md (aee8fbb): 16/16 kit files + paper read in full; decisions; gaps. Merge dev/c10 -> dev/overnight dry run:
   no conflicts, 106 tests pass, dev/overnight's R5/R6/devtools files byte-identical after merge (detached worktree ../fh-merge-check, 2b21ed0).
 - Promotion rule: promote C14 only if r14 >= r9 (C9: runs 94, groups 27/30) without a new failure class; otherwise keep C5.
+- 16:50 Mert asked me to stop 5c60e9fa: PUT status=completed -> 'completed' (first collection kept as results/t1-c12-a.firstcollect-outage).
+- 16:51 r14 attempt 1 FAILED BEFORE CREATING ANYTHING: every part died at the mock-bank session call (devtools/bank.py session ->
+  URLError Errno 54 'Connection reset by peer'); credits unchanged (394.0695 before/after); logs kept as results/r14-*.log.
+- 16:52-16:57 connectivity (bounded, one request each): DNS freya-bank-mock.freyavoice.workers.dev -> 188.114.96.0/97.0 OK; TCP 443 OK;
+  TLS reset right after ClientHello (curl 35 / LibreSSL errno 54) for the bank AND for https://workers.dev/; https://www.cloudflare.com/
+  TLS + HTTP 200 OK; Freya staging-app OK; no proxy variables. The bank worked from this machine at 13:34. Hypothesis (unconfirmed):
+  SNI filtering of *.workers.dev on the current network. Asked Mert to change network/VPN. Relauncher results/r14b-launch.sh waits
+  (1 request / 120 s), then re-collects t1-c12-a read-only and runs the identical frozen suite as r14b; gives up at 18:25.
+- Suite duration (log times): r5 24 min, r9 21 min -> a launch at 18:25 ends ~18:50, inside the 19:30 stop.
