@@ -95,6 +95,32 @@ def normalize_model_fields(wf):
     return changes
 
 
+ORDER_RULE = ("Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result "
+              "has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing "
+              "else, first call that action's tool, tell the caller the result, and only then use this transition.")
+
+
+def guard_exits(wf):
+    """A confirmed action must be written (and its result told) before the call ends: in live tests the dialogue model took an exit
+    tool-transition straight after 'yes, confirm, nothing else' and the confirmed write was never sent. Every tool-call exit from a
+    conversation node that holds api_call tools to an end node gets the ordering rule in the description the model sees."""
+    nodes, changed = wf.get("nodes") or {}, []
+    for name, node in nodes.items():
+        if node.get("node_type") != "conversation":
+            continue
+        if not any((t.get("function") or {}).get("handler") == "__function__:api_call" for t in node.get("tools") or []):
+            continue
+        for tr in node.get("transitions") or []:
+            target = nodes.get(tr.get("target_node")) or {}
+            if tr.get("is_tool_call") and target.get("node_type") == "end_call" and ORDER_RULE not in str(tr.get("description", "")):
+                tr["description"] = (str(tr.get("description") or "").rstrip(". ") + ". " + ORDER_RULE).strip()
+                cond = tr.get("condition") or {}
+                if cond.get("operator") == "matches_intent":
+                    cond["description"] = (str(cond.get("description") or "").rstrip(". ") + ". " + ORDER_RULE).strip()
+                changed.append(f"{name} -> {tr.get('target_node')}")
+    return changed
+
+
 def problems(wf, mock_url):
     p = list(v.lint(wf))
     urls = api_urls(wf)
@@ -123,6 +149,9 @@ def build(case_path, mock_url, llm, trace, root, slot, max_rounds=3):
         changed = normalize_model_fields(wf)
         if changed:
             trace.step("model-filled api_call fields given their {{field}} default (kit docs rule)", fields=changed)
+        guarded = guard_exits(wf)
+        if guarded:
+            trace.step("exit transitions after confirmed actions given the ordering rule", transitions=guarded)
         probs = problems(wf, mock_url)
         trace.test(f"workflow checks (round {rnd})", "pass" if not probs else f"{len(probs)} problem(s)", problems=probs[:30])
         if not probs:
