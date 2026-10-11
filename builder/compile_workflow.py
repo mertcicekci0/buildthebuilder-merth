@@ -235,7 +235,8 @@ def runtime_config(ir, api, roles):
     for p in ir["product_types"]:
         if p.get("floor_field") and known_fields and p["floor_field"] not in known_fields:
             raise CompileError(f"floor field {p['floor_field']} is not in get_account's product schema {sorted(known_fields)}")
-        ptypes[p["api_type"]] = {"spoken": p["spoken"], "floor_field": p.get("floor_field")}
+        # no floor in the policy: the full past-due amount is the only acceptable amount (never 'floor None', never any amount)
+        ptypes[p["api_type"]] = {"spoken": p["spoken"], "floor_field": p.get("floor_field") or pf["past_due"]}
     if not pf.get("product_type"):   # no type field: one product type applies to every product; several cannot be told apart
         if len(ptypes) > 1:
             raise CompileError(f"get_account's products have no recognisable type field, but the policy has {len(ptypes)} product types {sorted(ptypes)}")

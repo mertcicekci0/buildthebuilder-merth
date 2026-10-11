@@ -339,3 +339,15 @@ def test_contract_warnings_flag_silent_runtime_failures_and_stay_quiet_on_known_
     assert any("'CBK'" in w for w in contract_warnings(r5, rr5, ir5))
     ir5["outcomes"]["by_reason"] = {"callback": "CBK"}
     assert not any("'CBK'" in w for w in contract_warnings(r5, rr5, ir5))
+
+
+def test_a_product_type_without_floor_accepts_only_the_full_amount():
+    from builder import compile_workflow as cw
+    ir = {k: x for k, x in json.loads((ROOT / "tests/fixtures/ir_public_ab.json").read_text()).items() if not k.startswith("_")}
+    for p in ir["product_types"]:
+        p["floor_field"] = None
+    api = ot.load(str(KIT_API)); roles, _ = ot.infer_roles(api)
+    cfg = cw.runtime_config(ir, api, roles)
+    assert all(t["floor_field"] == roles["product_fields"]["past_due"] for t in cfg["product_types"].values())
+    wf = json.dumps(cw.compile_workflow(ir, api, roles, warnings=[]))
+    assert "Floor None" not in wf and "floor None" not in wf
