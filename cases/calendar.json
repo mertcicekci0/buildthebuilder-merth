@@ -1,0 +1,220 @@
+[
+ {
+  "id": "PUB-10",
+  "brief": "A",
+  "family": "Calendar",
+  "level": "boundary",
+  "title": "Friday: attempt 1 rolls to next week's Friday; first write fails",
+  "variables": {
+   "first_name": "Grace",
+   "last_name": "Lin",
+   "title": "Ms",
+   "now": "2026-10-16T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1989-02-23",
+   "phone_last4": "9904"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "7740",
+    "past_due": 365.0,
+    "days_late": 8,
+    "minimum_payment": 109.5
+   }
+  ],
+  "script": "Verified. Cannot pay today. Agrees to pay the full amount on the first date the agent proposes, and confirms.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 365.0,
+     "date": "2026-10-23"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "attempt 1 proposes Friday 23 October (today is the last business day of this week)",
+   "create_promise is tried again after the first failure",
+   "text-message sentence said after the promise"
+  ],
+  "faults": [
+   {
+    "tool": "create_promise",
+    "fail_first_n": 1
+   }
+  ],
+  "run_id": "CAL-FRI",
+  "now_override": "2026-10-16T11:00"
+ },
+ {
+  "id": "PUB-07",
+  "brief": "A",
+  "family": "Calendar",
+  "level": "boundary",
+  "title": "'Next Monday' is a holiday",
+  "variables": {
+   "first_name": "Samuel",
+   "last_name": "Ortiz",
+   "title": "Mr",
+   "now": "2026-10-21T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1975-12-05",
+   "phone_last4": "7093"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 540.0,
+    "days_late": 5,
+    "instalment_amount": 180.0
+   }
+  ],
+  "script": "Verified. Cannot pay today. When asked for a day, says 'next Monday'. Accepts the next business day when it is offered, and confirms.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 540.0,
+     "date": "2026-10-27"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says next Monday (26 October) is not possible because it is a holiday and offers Tuesday 27 October",
+   "create_promise called exactly once"
+  ],
+  "run_id": "CAL-HOL",
+  "now_override": "2026-10-21T11:00"
+ },
+ {
+  "id": "PUB-06",
+  "brief": "A",
+  "family": "Calendar",
+  "level": "boundary",
+  "title": "Christmas Eve: the floor on next week's last business day (31 December)",
+  "variables": {
+   "first_name": "Priya",
+   "last_name": "Nair",
+   "title": "Ms",
+   "now": "2026-12-24T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1986-05-17",
+   "phone_last4": "1502"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "1903",
+    "past_due": 2125.1,
+    "days_late": 12,
+    "minimum_payment": 637.5
+   }
+  ],
+  "script": "Verified. Says the full amount is too much. If asked how much she can pay, says 'you tell me'. Accepts the minimum payment on the date the agent proposes, and confirms.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 637.5,
+     "date": "2026-12-31"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent offers the minimum payment once and says the rest stays overdue",
+   "the proposed date is Thursday 31 December",
+   "never asks how much the customer can pay"
+  ],
+  "run_id": "CAL-XMAS",
+  "now_override": "2026-12-24T11:00"
+ },
+ {
+  "id": "PUB-11",
+  "brief": "B",
+  "family": "Calendar",
+  "level": "boundary",
+  "title": "Friday, three products: all on next week's Friday",
+  "variables": {
+   "first_name": "Sofia",
+   "last_name": "Almeida",
+   "title": "Ms",
+   "now": "2026-10-16T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1987-06-03",
+   "phone_last4": "2288"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "2288",
+    "past_due": 220.0,
+    "days_late": 9,
+    "minimum_payment": 66.0
+   },
+   {
+    "type": "personal_loan",
+    "past_due": 640.0,
+    "days_late": 9,
+    "instalment_amount": 213.0
+   },
+   {
+    "type": "car_loan",
+    "past_due": 75.0,
+    "days_late": 3,
+    "instalment_amount": 25.0
+   }
+  ],
+  "script": "Verified. Cannot pay today. Agrees to pay each product in full on the date the agent proposes for it. Confirms once at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 220.0,
+     "date": "2026-10-23"
+    },
+    {
+     "product_id": "p2",
+     "amount": 640.0,
+     "date": "2026-10-23"
+    },
+    {
+     "product_id": "p3",
+     "amount": 75.0,
+     "date": "2026-10-23"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "every product is stated before any question about paying",
+   "today is asked about once for all products",
+   "one read-back of all three promises and one confirmation"
+  ],
+  "run_id": "CAL-FRI-B",
+  "now_override": "2026-10-16T11:00"
+ }
+]
