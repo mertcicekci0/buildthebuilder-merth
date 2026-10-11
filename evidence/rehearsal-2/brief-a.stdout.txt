@@ -1,0 +1,59 @@
+/private/tmp/claude-501/-Users-mertcicekci-buildthebuilder/903eae90-23bf-4db7-82f9-e9e02931a95f/scratchpad/rehearsal2/repo/builder/compile_workflow.py:393: SyntaxWarning: "\d" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\d"? A raw string is also an option.
+  if (_n.isdigit() and not (_v.isdigit() and len(_v) == int(_n))) or (_f == 'date' and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', _v)):
+[runtime] /opt/homebrew/opt/python@3.14/bin/python3.14 has claude-agent-sdk not installed (pinned 0.2.165)
+[runtime] preparing .venv from the lock files
+Using CPython 3.12.6 interpreter at: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12
+Creating virtual environment at: .venv
+Installed 30 packages in 51ms
+ + annotated-types==0.8.0
+ + anyio==4.15.1
+ + attrs==26.1.0
+ + cffi==2.1.1
+ + claude-agent-sdk==0.2.165
+ + click==8.5.0
+ + cryptography==50.0.2
+ + h11==0.16.0
+ + httpcore2==2.13.1
+ + httpx2==2.13.1
+ + idna==3.20
+ + jsonschema==4.26.0
+ + jsonschema-specifications==2025.9.1
+ + mcp==2.3.0
+ + mcp-types==2.3.0
+ + opentelemetry-api==1.45.1
+ + pycparser==3.11
+ + pydantic==2.14.0
+ + pydantic-core==2.50.0
+ + pyjwt==2.15.1
+ + python-multipart==0.0.32
+ + referencing==0.37.0
+ + rpds-py==2026.9.1
+ + sniffio==1.3.1
+ + sse-starlette==3.5.0
+ + starlette==1.7.0
+ + truststore==0.10.4
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + uvicorn==0.54.0
+[runtime] re-running with .venv/bin/python (claude-agent-sdk 0.2.165)
+/private/tmp/claude-501/-Users-mertcicekci-buildthebuilder/903eae90-23bf-4db7-82f9-e9e02931a95f/scratchpad/rehearsal2/repo/builder/compile_workflow.py:380: SyntaxWarning: invalid escape sequence '\d'
+  return _join("""
+[2026-10-11T03:20:23+00:00 +   3.0s] START    builder run started brief=../inputs/brief-a.md brief_sha=d57c049c89aec461 tool_api=../inputs/brief-a.openapi.json api_sha=9a8410b12e5c82b6 slot=brief-a builder_model=claude-opus-5-5 llm_backend=agent_sdk python=3.12.6 agent_sdk=0.2.165 commit=b9073e35d5be58014c54a26aa47e76cbe9ee9b95 started_before_s=3.0
+[2026-10-11T03:20:23+00:00 +   3.0s] STEP     tool API parsed: 7 tools at https://freya-bank-mock.freyavoice.workers.dev/v1
+[2026-10-11T03:21:14+00:00 +  53.8s] MODEL    model=claude-opus-5-5 purpose="extract the policy IR from the brief and the tool API" status=success input_tokens=2 output_tokens=6207 backend=agent_sdk seconds=50.8 aux_model=claude-haiku-5-5(in=5707,out=20) rate_limit=status:allowed,window:five_hour,resets_at:1791703200
+[2026-10-11T03:21:14+00:00 +  53.8s] STEP     extraction pass returned
+[2026-10-11T03:22:01+00:00 + 100.9s] MODEL    model=claude-opus-5-5 purpose="audit the IR against the brief for omissions, wrong values and precedence" status=success input_tokens=2 output_tokens=6472 backend=agent_sdk seconds=47.1 aux_model=claude-haiku-5-5(in=11637,out=23) rate_limit=status:allowed,window:five_hour,resets_at:1791703200
+[2026-10-11T03:22:01+00:00 + 100.9s] STEP     audit pass: 1 change(s)
+[2026-10-11T03:22:01+00:00 + 100.9s] TEST     policy checks (round 1): pass
+[2026-10-11T03:22:01+00:00 + 101.0s] TEST     workflow lint: pass
+[2026-10-11T03:22:01+00:00 + 101.0s] STEP     workflow compiled: 25 steps, 27 tools, 240611 bytes
+[2026-10-11T03:22:01+00:00 + 101.0s] TEST     local: init + account facts on synthetic products: pass
+[2026-10-11T03:22:01+00:00 + 101.0s] TEST     local: guarded promise on the deadline is sent; close outcome = promise: pass
+[2026-10-11T03:22:01+00:00 + 101.0s] TEST     local: promise after the deadline is blocked before sending: pass
+[2026-10-11T03:22:02+00:00 + 101.8s] TEST     platform dry run: {"valid": true, "dryRun": true}
+[2026-10-11T03:22:03+00:00 + 103.1s] FREYA    save returned workflow_id=050534b6-2bc8-4a8f-9d55-2bacf81bd0ca agent_id=3c855ae8-3aa1-4a8a-905b-79eef6367839 version=None
+[2026-10-11T03:22:05+00:00 + 105.0s] FREYA    saved workflow_id=050534b6-2bc8-4a8f-9d55-2bacf81bd0ca agent_id=3c855ae8-3aa1-4a8a-905b-79eef6367839 version=1 steps=25 tools=27
+[2026-10-11T03:22:05+00:00 + 105.4s] TEST     read-back: every node and tool stored: pass
+[2026-10-11T03:22:06+00:00 + 105.7s] TEST     published version is the newest: pass
+[2026-10-11T03:22:06+00:00 + 106.4s] FREYA    exported to submission/brief-a.workflow.json sha=0b9670ded676b932
+[2026-10-11T03:22:06+00:00 + 106.4s] END      builder run ended status=ok duration_s=106 model_calls=2
