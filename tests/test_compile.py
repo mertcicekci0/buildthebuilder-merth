@@ -190,3 +190,12 @@ def test_attempt_one_date_never_after_a_short_deadline():
     prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1", "past_due": 300, "days_late": 4, "minimum_payment": 90}]
     p = le.smoke(wf, roles, prods)["state"]["products"]["p1"]     # Wed 14 Oct: deadline Thu 15, end of week Fri 16
     assert p["deadline"] == "2026-10-15" and p["attempt1_date"] == "2026-10-15"
+
+
+def test_c9_ported_rules_are_in_the_prompts():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    verify, neg = wf["nodes"]["verify"]["task_message"], wf["nodes"]["negotiate"]["task_message"]
+    assert "the words after it were cut off: call verify_identity" in verify and "A wrong answer that you do not send" in verify
+    assert "After two such replies in a row, ask the question again" in verify          # C5 behaviour kept (C7 removed it and regressed)
+    assert "never complete it yourself" in neg and "everything the rules attach to a floor offer" in neg
+    assert "including products you already marked as refused" in neg
