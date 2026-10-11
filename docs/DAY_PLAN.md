@@ -86,3 +86,12 @@ revisions (separate Freya slots, frozen scripts). Missing verdicts stay pending.
   SNI filtering of *.workers.dev on the current network. Asked Mert to change network/VPN. Relauncher results/r14b-launch.sh waits
   (1 request / 120 s), then re-collects t1-c12-a read-only and runs the identical frozen suite as r14b; gives up at 18:25.
 - Suite duration (log times): r5 24 min, r9 21 min -> a launch at 18:25 ends ~18:50, inside the 19:30 stop.
+- 17:24 ORGANISER UPDATE (Yavuz, relayed by Mert; supersedes the two-hidden-brief plan on these points only): the final is ONE case,
+  opening 17:00 UTC as a zip with the bank's documents and its own service contract. (1) They do not run our builder: they take the
+  builder's trace and the exported workflow JSON of the final agent and test that workflow in their own workspace; no model access needed.
+  (2) The practice bank is not used for the final: we write our own mock of the bank's services from the case's contract; outcome and
+  reason values come from that case. Details in the 17:00 UTC mail. -> Superseded: two briefs, organiser rebuild of the commit,
+  top-10 rerun credentials. Provisional (not addressed): repo/commit form fields, trace content rules, deadline 20:00 UTC, no hidden
+  content in the builder. r14b (old practice bank) now only informs conversation quality, not suitability for the new contract.
+- 17:35 final_run.sh test gate made mandatory: a fresh checkout installs the locked env incl. dev group (`uv sync --frozen`) and runs the
+  tests; ABORT if impossible. Tested in a fresh worktree with a stubbed build (51 passed; failure path reported correctly).

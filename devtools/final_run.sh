@@ -41,9 +41,16 @@ fi
 DIRTY=$(git status --porcelain -- builder kit pyproject.toml uv.lock requirements.hashes.txt requirements.lock.txt .python-version)
 if [ -n "$DIRTY" ]; then echo "ABORT: execution-relevant files differ from the last commit:"; echo "$DIRTY"; exit 1; fi
 C=$(git rev-parse HEAD) || exit 1
-if [ -x .venv/bin/python ]; then
-  .venv/bin/python -m pytest -q tests > /dev/null 2>&1 || { echo "ABORT: offline tests fail"; exit 1; }
+# The offline tests are a required gate, never skipped: a fresh checkout has no .venv (or one built by the builder with --no-dev, so
+# without pytest); then the locked dev group is installed with `uv sync --frozen` (same pinned versions + pytest 9.1.1).
+if ! { [ -x .venv/bin/python ] && .venv/bin/python -c "import pytest" > /dev/null 2>&1; }; then
+  command -v uv > /dev/null 2>&1 || { echo "ABORT: no pytest in .venv and no uv to install the locked dev group; cannot run the offline tests"; exit 1; }
+  echo "[final] installing the locked environment incl. the dev group (uv sync --frozen) to run the offline tests"
+  uv sync --frozen -q || { echo "ABORT: uv sync --frozen failed; cannot run the offline tests"; exit 1; }
 fi
+TESTS=$(.venv/bin/python -m pytest -q -p no:cacheprovider tests 2>&1) || { echo "$TESTS" | tail -15; echo "ABORT: offline tests fail"; exit 1; }
+PY=.venv/bin/python
+echo "[final] offline tests: $(echo "$TESTS" | tail -1)"
 echo "[final] code commit C=$C ($(git rev-parse --abbrev-ref HEAD)) at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 mkdir -p traces submission archive/final-runs
 NAMES=""
