@@ -33,9 +33,12 @@ class LLM:
         self.replay_dir = pathlib.Path(os.environ.get("BUILDER_REPLAY_DIR", "replay"))
         rec = os.environ.get("BUILDER_RECORD_DIR")
         self.record_dir = pathlib.Path(rec) if rec else None
+        self.rate_limit = None   # last rate-limit state the CLI reported (status, window, utilization, reset time)
 
     def ask_json(self, purpose, system, prompt, schema, timeout_s=600, effort=None):
+        """Every attempt is traced: successes, failures, timeouts and calls skipped for lack of time."""
         if self.deadline and time.time() + 30 > self.deadline:
+            self.trace.model_call(self.model, purpose, backend=self.backend, status="skipped_no_time", seconds=0)
             raise LLMError(f"no time left for model call: {purpose}")
         if self.deadline:
             timeout_s = max(30, min(timeout_s, self.deadline - time.time() - 15))
@@ -48,8 +51,13 @@ class LLM:
             rec = json.loads(f.read_text())
             self.trace.model_call(rec.get("model", self.model), purpose, backend="replay", seconds=0, status="replayed", key=key)
             return rec["output"]
-        out, meta = asyncio.run(self._agent_sdk(system, prompt, schema, timeout_s, effort))
-        meta.update(backend="agent_sdk", seconds=round(time.time() - t0, 1), key=key)
+        try:
+            out, meta = asyncio.run(self._agent_sdk(system, prompt, schema, timeout_s, effort))
+        except Exception as e:  # noqa: BLE001  traced, then re-raised to the caller (bounded retry lives in extract.py)
+            self.trace.model_call(self.model, purpose, backend="agent_sdk", status="failed", seconds=round(time.time() - t0, 1), key=key,
+                                  error=f"{type(e).__name__}: {str(e)[:300]}", rate_limit=self.rate_limit)
+            raise
+        meta.update(backend="agent_sdk", seconds=round(time.time() - t0, 1), key=key, rate_limit=self.rate_limit)
         self.trace.model_call(meta.pop("model", self.model), purpose, **meta)
         if self.record_dir:
             self.record_dir.mkdir(parents=True, exist_ok=True)
@@ -58,6 +66,10 @@ class LLM:
 
     async def _agent_sdk(self, system, prompt, schema, timeout_s, effort):
         from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, query
+        try:
+            from claude_agent_sdk import RateLimitEvent
+        except ImportError:  # older SDKs
+            RateLimitEvent = ()
         opts = ClaudeAgentOptions(
             model=self.model, system_prompt=system, tools=[], allowed_tools=[], setting_sources=[],
             permission_mode="dontAsk", max_turns=6, output_format={"type": "json_schema", "schema": schema},
@@ -72,6 +84,9 @@ class LLM:
                     models.add(m.model)
                 elif isinstance(m, ResultMessage):
                     result = m
+                elif RateLimitEvent and isinstance(m, RateLimitEvent):
+                    i = m.rate_limit_info
+                    self.rate_limit = {"status": i.status, "window": i.rate_limit_type, "utilization": i.utilization, "resets_at": i.resets_at}
         try:
             await asyncio.wait_for(run(), timeout=timeout_s)
         except asyncio.TimeoutError:

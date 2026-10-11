@@ -31,6 +31,33 @@ from builder.trace import Trace  # noqa: E402
 
 DEADLINE_MIN = float(os.environ.get("BUILDER_DEADLINE_MIN", "27"))   # hard stop below the 30-minute limit
 T0 = float(os.environ.get("BUILDER_T0") or time.time())             # kept across a runtime re-exec
+HARD_LIMIT_S = float(os.environ.get("BUILDER_HARD_LIMIT_S", str(29 * 60)))   # whole process, below the official 30 minutes
+
+
+class BuilderTimeout(BaseException):   # not an Exception: generic handlers (bounded retries) must not swallow it
+    pass
+
+
+def arm_watchdog():
+    """Whole-process limit measured from T0 (the first interpreter, before any re-exec). At HARD_LIMIT_S the run is
+    interrupted inside Python (traced as a timeout); 45 s later a thread ends the process unconditionally."""
+    import signal
+    import threading
+    left = T0 + HARD_LIMIT_S - time.time()
+    if left <= 1:
+        raise BuilderTimeout("no time left before the hard limit")
+
+    def on_alarm(signum, frame):
+        raise BuilderTimeout(f"hard limit of {HARD_LIMIT_S / 60:.1f} minutes since start reached")
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, on_alarm)
+        signal.setitimer(signal.ITIMER_REAL, left)
+
+    def last_resort():
+        time.sleep(max(1.0, left + 45))
+        print(f"[watchdog] hard limit exceeded by 45 s; exiting", flush=True)
+        os._exit(3)
+    threading.Thread(target=last_resort, daemon=True).start()
 
 
 PINNED_SDK = "0.2.165"   # = pyproject.toml / uv.lock
@@ -75,14 +102,15 @@ def ensure_model_runtime():
     if not ok:
         existed = (ROOT / ".venv").exists()
         print("[runtime] preparing .venv from the lock files", flush=True)
+        budget = max(60, min(900, T0 + HARD_LIMIT_S - time.time() - 10 * 60))   # leave >= 10 minutes for the build itself
         try:
             if shutil.which("uv"):
-                ok = subprocess.run(["uv", "sync", "--frozen", "--no-dev"], cwd=ROOT, timeout=900).returncode == 0
+                ok = subprocess.run(["uv", "sync", "--frozen", "--no-dev"], cwd=ROOT, timeout=budget).returncode == 0
             if not ok and sys.version_info >= (3, 10):
                 if not venv_py.exists():
-                    subprocess.run([sys.executable, "-m", "venv", str(ROOT / ".venv")], timeout=300)
+                    subprocess.run([sys.executable, "-m", "venv", str(ROOT / ".venv")], timeout=min(300, budget))
                 ok = venv_py.exists() and subprocess.run([str(venv_py), "-m", "pip", "install", "-q", "--require-hashes", "-r",
-                                                          str(ROOT / "requirements.hashes.txt")], timeout=900).returncode == 0
+                                                          str(ROOT / "requirements.hashes.txt")], timeout=budget).returncode == 0
         except Exception as e:  # noqa: BLE001
             print(f"[runtime] preparing .venv failed: {e}", flush=True)
             ok = False
@@ -173,6 +201,7 @@ def main():
     ap.add_argument("--ir", help="use this policy IR instead of extracting one (no model call)")
     ap.add_argument("--no-save", action="store_true")
     a = ap.parse_args()
+    arm_watchdog()
     if not a.ir and os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk") == "agent_sdk":
         ensure_model_runtime()
     slot = a.slot or pathlib.Path(a.brief_path).stem
@@ -180,7 +209,7 @@ def main():
         (ROOT / d).mkdir(exist_ok=True)
     trace_dir = ROOT / os.environ.get("BUILDER_TRACE_DIR", "traces")   # development runs use traces/dev (ignored)
     trace_dir.mkdir(parents=True, exist_ok=True)
-    trace = Trace(trace_dir / f"{slot}.jsonl")
+    trace = Trace(trace_dir / f"{slot}.jsonl", t0=T0)
     deadline = T0 + DEADLINE_MIN * 60
     trace.start(brief=a.brief_path, brief_sha=sha(a.brief_path), tool_api=a.tool_api_path, api_sha=sha(a.tool_api_path), slot=slot,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
@@ -242,6 +271,10 @@ def main():
         trace.created(f"exported to {out.relative_to(ROOT)} sha={sha(out)}")
         status = "ok" if not (fails or missing or lost_tools) else "ok with warnings"
         return 0
+    except BuilderTimeout as e:
+        trace.warn(f"timeout: {e}")
+        status = "timeout"
+        return 1
     except SystemExit as e:
         trace.warn(str(e))
         return 1

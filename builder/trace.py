@@ -32,8 +32,8 @@ def now_iso():
 
 
 class Trace:
-    def __init__(self, jsonl_path=None, stream=sys.stdout):
-        self.t0 = time.time()
+    def __init__(self, jsonl_path=None, stream=sys.stdout, t0=None):
+        self.t0 = t0 or time.time()   # the builder passes its process start (kept across a runtime re-exec)
         self.stream = stream
         self.jsonl = open(jsonl_path, "a") if jsonl_path else None
         self.model_calls = []
@@ -53,7 +53,9 @@ class Trace:
 
     def model_call(self, model, purpose, **data):
         self.model_calls.append({"model": model, "purpose": purpose, **data})
-        extra = " ".join(f"{k}={v}" for k, v in data.items() if k in ("seconds", "input_tokens", "output_tokens", "status", "backend"))
+        extra = " ".join(f"{k}={v}" for k, v in data.items() if k in ("seconds", "input_tokens", "output_tokens", "status", "backend", "error"))
+        if data.get("rate_limit"):
+            extra += " rate_limit=" + ",".join(f"{k}:{v}" for k, v in data["rate_limit"].items() if v is not None)
         self._emit("model", f"model={model} purpose=\"{purpose}\" {extra}", **data)
 
     def created(self, text, **data):

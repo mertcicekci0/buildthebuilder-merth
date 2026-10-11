@@ -32,3 +32,28 @@ def test_replay_backend_needs_no_model_and_traces(tmp_path, monkeypatch):
     out = io.StringIO(); t = Trace(stream=out)
     assert llm_mod.LLM(t).ask_json("p", "s", "u", {"type": "object"}) == {"x": 1}
     assert 'model=claude-opus-5-5 purpose="p"' in out.getvalue() and len(t.model_calls) == 1
+
+
+
+def test_failed_and_skipped_model_calls_are_traced(tmp_path):
+    import asyncio, time as _t
+    from builder import llm as L
+    from builder.trace import Trace
+    tr = Trace(tmp_path / "t.jsonl", stream=open(tmp_path / "out.txt", "w"))
+    m = L.LLM(tr, backend="agent_sdk")
+
+    async def boom(*a, **k):
+        raise L.LLMError("model call timed out after 30s")
+    m._agent_sdk = boom
+    try:
+        m.ask_json("purpose one", "sys", "prompt", {"type": "object", "properties": {}})
+    except L.LLMError:
+        pass
+    m.deadline = _t.time()            # no time left: the attempt is still traced
+    try:
+        m.ask_json("purpose two", "sys", "prompt", {"type": "object", "properties": {}})
+    except L.LLMError:
+        pass
+    calls = [c for c in tr.model_calls]
+    assert [c["status"] for c in calls] == ["failed", "skipped_no_time"]
+    assert "timed out" in calls[0]["error"]
