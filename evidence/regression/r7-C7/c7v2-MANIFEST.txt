@@ -1,0 +1,14 @@
+0bb122192520dbf9  submission/c7-a.workflow.json  2026-10-11T07:09:44
+a2688e8c08272a7c  submission/c7-ab.workflow.json  2026-10-11T07:10:35
+b30494a826acdb10  out/c7-a.policy.json  2026-10-11T07:09:39
+e8ce98105783c4ed  out/c7-ab.policy.json  2026-10-11T07:10:31
+0ad6069b9e909429  traces/dev/c7-a.jsonl  2026-10-11T07:09:44
+a4ce8a2c9117b697  traces/dev/c7-ab.jsonl  2026-10-11T07:10:35
+400ca672ef1031ca  out/runs/c7-a-2.log  2026-10-11T07:09:44
+a1e4df504b3d06de  out/runs/c7-ab-2.log  2026-10-11T07:10:36
+r7-a-plain simulation: ecd77bfc-09d6-4971-afe7-11b89386374a agent: 1b3adbd5-bd0e-4a30-ac29-e4f677ee4d28
+c7-a 3b0d1e7d-9fed-40f9-94e5-3deac1f824c3 versions: [1, 2] published: [2] ['2026-10-11T04:09:41.402Z']
+c7-a export updated_at: 2026-10-11T04:09:41.326Z
+c7-ab cd41c6cf-f352-44f1-bca6-41e858b0fa29 versions: [1, 2] published: [2] ['2026-10-11T04:10:33.006Z']
+c7-ab export updated_at: 2026-10-11T04:10:32.930Z
+Builder commit: 5ff498a (C7 v2). r7 suite started ~07:17 Istanbul, after the v2 builds (07:09-07:10); results/r7-artifacts holds the unmeasured v1 build (05ccb43).

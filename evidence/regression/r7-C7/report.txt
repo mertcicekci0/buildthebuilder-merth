@@ -1,0 +1,26 @@
+r7-a-plain             agent 1b3adbd5 styles=plain now=case: runs 30, ledger correct 30/30, conversation pass 21 / fail 2 / verdict missing 7, run passes 21/30, cases passing every rep 3/10
+    FAIL PUB-02#r1 [plain] conversation: no verdict
+    FAIL PUB-03#r1 [plain] conversation: no verdict
+    FAIL PUB-04#r1 [plain] conversation: no verdict
+    FAIL PUB-06#r1 [plain] conversation: no verdict
+    FAIL PUB-04#r2 [plain] conversation: Call ended but analysis never arrived (300s)
+    FAIL PUB-08#r2 [plain] conversation: no verdict
+    FAIL PUB-09#r2 [plain] conversation: no verdict
+    FAIL PUB-03#r3 [plain] conversation: no verdict
+    FAIL PUB-10#r3 [plain] conversation: - One promise (pr1) was created after a retry caused by a service unavailable error (500). - The agent said 'Your promise is recorded' in Message 12, violating the criterion 'agent does not say recorded bef
+r7-b-plain             agent b10b1109 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 9 / fail 0 / verdict missing 0, run passes 9/9, cases passing every rep 3/3
+r7-b-styled            agent b10b1109 styles=asks_back,talkative now=case: runs 18, ledger correct 17/18, conversation pass 17 / fail 1 / verdict missing 0, run passes 17/18, cases passing every rep 2/3
+    FAIL PUB-13#r4 [talkative] promises [('p2', 300.0, '2026-10-23')], expected [('p1', 300.0, '2026-10-30'), ('p2', 900.0, '2026-10-23')]
+    FAIL PUB-13#r4 [talkative] conversation: The agent failed to meet the success criteria because it did not perform a final read-back naming both dates after recording the second promise. While the credit card promise was recorded for October 30th a
+r7-a-styled            agent 1b3adbd5 styles=asks_back,talkative,in_words now=case: runs 30, ledger correct 27/30, conversation pass 26 / fail 4 / verdict missing 0, run passes 26/30, cases passing every rep 6/10
+    FAIL PUB-02#r1 [asks_back] outcome ('not_reached', 'unclear'), expected ('not_reached', 'callback')
+    FAIL PUB-02#r1 [asks_back] callbacks [], expected [{'date': '2026-10-15', 'time': '11:00'}]
+    FAIL PUB-02#r1 [asks_back] conversation: - The assistant did not schedule a callback for the next business day at 11:00; it only asked for availability before the call was closed. - All other criteria were met: the assistant did not disclose the r
+    FAIL PUB-03#r2 [talkative] outcome ('not_verified', 'declined'), expected ('not_verified', 'failed')
+    FAIL PUB-03#r2 [talkative] conversation: The assistant failed to meet the success criteria and the call did not end properly. 1. The check did not end after a third wrong answer; the turn limit for the 'verify' node was reached first (30 turns) be
+    FAIL PUB-05#r2 [talkative] outcome ('no_promise', 'refused'), expected ('no_promise', 'hardship')
+    FAIL PUB-05#r2 [talkative] conversation: The conversation failed to meet two of the success criteria: the assistant did not offer a sentence of sympathy in response to the user's multiple mentions of their mood and workload, and it never offered t
+    FAIL PUB-06#r2 [talkative] conversation: The agent failed to meet the success criterion that the minimum payment be offered only once. The agent first offered the minimum payment of 637.50 in [Message 18], correctly including the note that the res
+r7-a-cal               agent 1b3adbd5 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 9 / fail 0 / verdict missing 0, run passes 9/9, cases passing every rep 3/3
+r7-b-cal               agent b10b1109 styles=plain,pieces,corrects now=case: runs 3, ledger correct 3/3, conversation pass 3 / fail 0 / verdict missing 0, run passes 3/3, cases passing every rep 1/1
+TOTAL                  runs 99, ledger correct 95, conversation pass 85 / fail 7 / verdict missing 7, run passes 85, cases passing every rep 18/30
