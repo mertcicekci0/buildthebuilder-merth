@@ -203,3 +203,49 @@ def test_review_fixes_tool_map_is_checked():
     s2["paths"]["/legacy/get_account"] = copy.deepcopy(s2["paths"]["/accounts/lookup"])   # an automatically named twin
     api = ot.load(s2, tool_map={"verify_identity": "verifyCustomer", "get_account": "POST /accounts/lookup"})
     assert api["tools"]["get_account"]["url"].endswith("/accounts/lookup")
+
+
+def _secured_contract():
+    s = json.loads(KIT_API.read_text())
+    s.setdefault("components", {})["securitySchemes"] = {"bankKey": {"type": "apiKey", "in": "header", "name": "X-Bank-Key"}}
+    s["security"] = [{"bankKey": []}]
+    return s
+
+
+def test_declared_auth_is_detected_and_static_headers_reach_every_tool():
+    from builder import compile_workflow as cw, validate as v
+    api = ot.load(_secured_contract())
+    assert api["auth"] == {"bankKey": {"type": "apiKey", "in": "header", "name": "X-Bank-Key"}}
+    api["static_headers"] = {"X-Bank-Key": "demo-key-from-case"}
+    roles, _ = ot.infer_roles(api)
+    ir = {k: x for k, x in json.loads((ROOT / "tests/fixtures/ir_public_ab.json").read_text()).items() if not k.startswith("_")}
+    wf = cw.compile_workflow(ir, api, roles, warnings=[])
+    assert v.lint(wf, api) == []
+    hdrs = [t["function"]["parameters"]["properties"]["headers"]["properties"] for n in wf["nodes"].values() for t in n.get("tools", [])
+            if t.get("function", {}).get("handler") == "__function__:api_call"]
+    hdrs += [t["function"]["parameters"]["properties"]["headers"]["properties"] for t in wf.get("tools", [])
+             if t.get("function", {}).get("handler") == "__function__:api_call"]
+    assert hdrs and all(h.get("X-Bank-Key", {}).get("default") == "demo-key-from-case" for h in hdrs)
+    assert ot.load(json.loads(KIT_API.read_text()))["auth"] == {}
+
+
+def test_missing_auth_headers_are_a_loud_trace_warning(tmp_path):
+    c = tmp_path / "secured.json"
+    c.write_text(json.dumps(_secured_contract()))
+    r, out = _build([str(A), str(c), "--slot", "auth-test"], {}, tmp_path)
+    assert r.returncode == 0, out[-1500:]
+    assert "requires auth" in out
+    h = tmp_path / "h.json"
+    h.write_text(json.dumps({"X-Bank-Key": "demo"}))
+    r, out = _build([str(A), str(c), "--slot", "auth-test2", "--tool-headers", str(h)], {}, tmp_path)
+    assert r.returncode == 0 and "requires auth" not in out
+    rows = [json.loads(x) for x in (tmp_path / "traces/auth-test2.jsonl").read_text().splitlines()]
+    assert rows[0]["tool_headers"] == ["X-Bank-Key"] and "demo" not in json.dumps(rows[0])   # names traced, values not
+
+
+def test_path_parameters_become_engine_variables():
+    s = json.loads(KIT_API.read_text())
+    s["paths"]["/customers/{customer_id}/account"] = s["paths"].pop("/get_account")
+    api = ot.load(s, tool_map={"get_account": "POST /customers/{customer_id}/account"})
+    assert api["tools"]["get_account"]["url"].endswith("/customers/{{customer_id}}/account")
+    assert api["tools"]["get_account"]["path_params"] == ["customer_id"]

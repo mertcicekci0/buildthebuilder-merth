@@ -206,12 +206,16 @@ def main():
     ap.add_argument("--slot", help="Freya slot name (default: brief file name without extension)")
     ap.add_argument("--ir", help="use this policy IR instead of extracting one (no model call)")
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--tool-headers", help="JSON file {header: value} sent with every tool call (e.g. auth the contract requires; values come from the case or the organisers)")
     ap.add_argument("--tool-map", help="JSON file {canonical tool: operationId or 'METHOD /path'} for a contract with other operation names")
     a = ap.parse_args()
     try:
         tool_map = json.load(open(a.tool_map)) if a.tool_map else None
+        tool_headers = json.load(open(a.tool_headers)) if a.tool_headers else {}
     except (OSError, ValueError) as e:
-        raise SystemExit(f"cannot read the tool map {a.tool_map}: {e}")
+        raise SystemExit(f"cannot read the tool map / headers file: {e}")
+    if not isinstance(tool_headers, dict) or not all(isinstance(v, str) for v in tool_headers.values()):
+        raise SystemExit("--tool-headers must be a JSON object of string values")
     mock_base = os.environ.get("BUILDER_BASE_URL_OVERRIDE", "").strip()   # test builds against our own mock: never a submission
     arm_watchdog()
     if not a.ir and os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk") == "agent_sdk":
@@ -226,7 +230,7 @@ def main():
     trace = Trace(trace_dir / f"{slot}.jsonl", t0=T0)
     deadline = T0 + DEADLINE_MIN * 60
     trace.start(brief=a.brief_path, brief_sha=bi.sha_path(a.brief_path), tool_api=a.tool_api_path, api_sha=bi.sha_path(a.tool_api_path), slot=slot,
-                tool_map=tool_map, base_url_override=mock_base or None,
+                tool_map=tool_map, tool_headers=sorted(tool_headers), base_url_override=mock_base or None,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
                 python=sys.version.split()[0], agent_sdk=_sdk_version(), commit=_git_commit(), started_before_s=round(time.time() - T0, 1))
     # the phone-agent model is the event's (kit/freya.py AGENT_LLM); organisers may override it by env, so it is traced, never changed
@@ -244,6 +248,14 @@ def main():
         api = ot.load(str(contract), tool_map=tool_map, base_url=mock_base or None)
         if api["unknown_operations"]:
             trace.warn("contract operations not used by the builder: " + ", ".join(api["unknown_operations"]))
+        api["static_headers"] = tool_headers
+        missing_auth = [n for n, s in api["auth"].items() if not (s.get("type") == "apiKey" and s.get("in") == "header" and s.get("name") in tool_headers)
+                        and not (s.get("type") in ("http", "oauth2", "openIdConnect") and "Authorization" in tool_headers)]
+        if missing_auth:
+            trace.warn(f"the contract requires auth {api['auth']} but --tool-headers does not provide it: every tool call may be rejected")
+        params = sorted({p for c in api["tools"].values() for p in c.get("path_params", [])})
+        if params:
+            trace.warn(f"path parameters {params} are filled from call variables of the same name ({{{{name}}}}); confirm they exist")
         if api["absent_optional"]:
             trace.warn("optional tools absent from the contract (their paths are dropped): " + ", ".join(api["absent_optional"]))
         roles, role_problems = ot.infer_roles(api)

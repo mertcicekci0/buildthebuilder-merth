@@ -165,7 +165,9 @@ def load(path_or_dict, tool_map=None, base_url=None):
             req = body.get("required", [])
             fields = [_field(k, v, req) for k, v in (body.get("properties") or {}).items()]
             resp = _response_schema(op)
-            c = {"name": name, "url": base + path, "method": method.upper(), "path": path,
+            c = {"name": name, "url": base + re.sub(r"\{([^/{}]+)\}", r"{{\1}}", path), "method": method.upper(), "path": path,
+                 "path_params": re.findall(r"\{([^/{}]+)\}", path),
+                 "security": op.get("security", spec.get("security")),
                  "summary": op.get("summary", ""), "description": op.get("description", ""),
                  "fields": fields, "required": list(req), "response": resp.get("properties", {}),
                  "response_description": " ".join(str(r.get("description", "")) for r in (op.get("responses") or {}).values())}
@@ -178,7 +180,11 @@ def load(path_or_dict, tool_map=None, base_url=None):
         raise OpenAPIError(f"tool map entries match no operation in the contract: {unmatched}")
     missing = [t for t in REQUIRED_TOOLS if t not in contracts]
     info = spec.get("info") or {}
-    return {"base_url": base, "title": info.get("title", ""), "api_description": info.get("description", ""),
+    schemes = ((spec.get("components") or {}).get("securitySchemes") or spec.get("securityDefinitions") or {})
+    auth = {n: {k: s.get(k) for k in ("type", "in", "name", "scheme", "bearerFormat") if s.get(k)} for n, s in schemes.items()
+            if any(((c.get("security") or []) and any(n in req for req in c["security"])) for c in contracts.values())
+            or any(n in req for req in (spec.get("security") or []))}
+    return {"base_url": base, "title": info.get("title", ""), "api_description": info.get("description", ""), "auth": auth,
             "tools": contracts, "missing_tools": missing, "absent_optional": [t for t in OPTIONAL_TOOLS if t not in contracts],
             "unknown_operations": unknown}
 

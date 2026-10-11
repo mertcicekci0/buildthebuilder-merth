@@ -1,6 +1,6 @@
 #!/bin/sh
 # Final run of the official procedure (docs/SUBMISSION.md) for one or more briefs, from the repository root.
-#   sh devtools/final_run.sh [--commit] [--tool-map map.json] <brief> <contract> [<brief2> <contract2> ...]
+#   sh devtools/final_run.sh [--commit] [--tool-map map.json] [--tool-headers headers.json] <brief> <contract> [<brief2> <contract2> ...]
 #   (brief: a text file, or a folder/zip of documents; contract: OpenAPI JSON, or the same folder/zip holding exactly one)
 # 1. Refuses to start unless execution-relevant files (builder/, kit/, pyproject.toml, uv.lock, requirements*, .python-version) are
 #    committed and clean and the offline tests pass; records that code commit C.
@@ -14,11 +14,14 @@
 set -u
 COMMIT=0
 TOOLMAP=""
+TOOLHEADERS=""
 while :; do   # options before the input pairs
   case "${1:-}" in
     --commit) COMMIT=1; shift;;
     --tool-map) [ -f "${2:-}" ] || { echo "ABORT: tool map not found: ${2:-}"; exit 2; }
                 TOOLMAP="$(cd "$(dirname "$2")" && pwd -P)/$(basename "$2")"; shift 2;;   # absolute: resolved before the cd below
+    --tool-headers) [ -f "${2:-}" ] || { echo "ABORT: tool headers file not found: ${2:-}"; exit 2; }
+                TOOLHEADERS="$(cd "$(dirname "$2")" && pwd -P)/$(basename "$2")"; shift 2;;   # not committed (may hold a credential)
     *) break;;
   esac
 done
@@ -79,7 +82,7 @@ while [ $# -ge 2 ]; do
   S=$(date +%s)
   rm -f "out/$N.tool-map.json"   # never reuse an earlier attempt's map (it was archived above)
   if [ -n "$TOOLMAP" ]; then mkdir -p out && cp "$TOOLMAP" "out/$N.tool-map.json" || { echo "ABORT: cannot copy the tool map"; exit 1; }; fi
-  ( python3 builder/build.py "$BRIEF" "$API" ${TOOLMAP:+--tool-map "out/$N.tool-map.json"} 2>&1; echo "__exit=$?" > "archive/final-runs/.$N.exit" ) | tee "traces/$N.log"
+  ( python3 builder/build.py "$BRIEF" "$API" ${TOOLMAP:+--tool-map "out/$N.tool-map.json"} ${TOOLHEADERS:+--tool-headers "$TOOLHEADERS"} 2>&1; echo "__exit=$?" > "archive/final-runs/.$N.exit" ) | tee "traces/$N.log"
   RC=$(sed -n 's/^__exit=//p' "archive/final-runs/.$N.exit"); rm -f "archive/final-runs/.$N.exit"
   echo "[final] $N: exit $RC, wall $(( $(date +%s) - S )) s"
   if [ "$RC" != "0" ] || ! grep -q "status=ok" "traces/$N.log" || [ ! -s "submission/$N.workflow.json" ] || [ ! -s "traces/$N.jsonl" ]; then

@@ -142,6 +142,15 @@ def _extra_required(c, f, engine, model_fields, warnings):
     return None
 
 
+def _headers(api):
+    """Content-Type plus the explicit static headers given for this build (--tool-headers): the engine sends `default` values and
+    hides them from the model (kit docs/tools-and-code.md, 'Use default for fixed backend config ... auth headers')."""
+    hdr = {"Content-Type": {"type": "string", "default": "application/json"}}
+    for k, v in (api.get("static_headers") or {}).items():
+        hdr[str(k)] = {"type": "string", "default": str(v)}
+    return {"type": "object", "properties": hdr}
+
+
 def _api_tool(api, tool, body_defaults, description="", max_retries=0, pre=None, post=None, model_fields=(), warnings=None):
     """A Freya api_call tool generated from the contract. body_defaults: field -> default; model_fields are left to the model.
     A tool without model_fields is run by the engine; required fields with no role are filled by _extra_required."""
@@ -175,7 +184,7 @@ def _api_tool(api, tool, body_defaults, description="", max_retries=0, pre=None,
                       "parameters": {"type": "object", "properties": {
                           "url": {"type": "string", "default": c["url"]},
                           "method": {"type": "string", "default": c["method"]},
-                          "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
+                          "headers": _headers(api),
                           "body": {"type": "object", "properties": props, "required": required}}}}}
     if pre:
         t["pre_process_code"] = pre
@@ -1177,7 +1186,7 @@ def _compile(ir, api, roles, warnings=None):
                               "description": "CALL it once, right after the customer clearly confirmed the read-back of ALL agreed promises. The system then records them.",
                               "parameters": {"type": "object", "properties": {
                                   "url": {"type": "string", "default": cp["url"]}, "method": {"type": "string", "default": cp["method"]},
-                                  "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
+                                  "headers": _headers(api),
                                   "body": {"type": "object", "properties": {
                                       "plan": {"type": "string", "description": "Every confirmed promise as 'product_id amount YYYY-MM-DD', separated by ';'. Example: p1 120 2026-01-09; p2 75.5 2026-01-12",
                                                "default": "{{plan}}"}}, "required": ["plan"]}}}},
@@ -1204,7 +1213,7 @@ def _compile(ir, api, roles, warnings=None):
                                "description": "CALL it every time the customer names or changes a payment day, even vaguely, before you answer about that day. It answers immediately with DATE CHECK RESULT.",
                                "parameters": {"type": "object", "properties": {
                                    "url": {"type": "string", "default": acct["url"]}, "method": {"type": "string", "default": acct["method"]},
-                                   "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
+                                   "headers": _headers(api),
                                    "body": {"type": "object", "properties": {
                                        "product_id": {"type": "string", "description": "product id, or all", "default": "{{product_id}}"},
                                        "customer_words": {"type": "string", "description": "the customer's exact words for the day", "default": "{{customer_words}}"},
@@ -1216,7 +1225,7 @@ def _compile(ir, api, roles, warnings=None):
                                  "description": "CALL it every time the customer flatly refuses or gives a complete non-answer for a product (including 'no' to paying today, or refusing an offer); never for a cut-off message or small talk. It tells you the next offer, or that the attempts are used up.",
                                  "parameters": {"type": "object", "properties": {
                                      "url": {"type": "string", "default": acct["url"]}, "method": {"type": "string", "default": acct["method"]},
-                                     "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
+                                     "headers": _headers(api),
                                      "body": {"type": "object", "properties": {
                                          "product_id": {"type": "string", "description": "the product the customer refused", "default": "{{product_id}}"},
                                          "refused": {"type": "string", "enum": ["today", "offer"], "description": "today = the first question about paying today; offer = an offer you proposed",
@@ -1228,7 +1237,7 @@ def _compile(ir, api, roles, warnings=None):
                                 "description": "CALL it on its own when every product has a recorded promise or an outcome and nothing is left to discuss. The system then says goodbye and ends the call.",
                                 "parameters": {"type": "object", "properties": {
                                     "url": {"type": "string", "default": acct["url"]}, "method": {"type": "string", "default": acct["method"]},
-                                    "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
+                                    "headers": _headers(api),
                                     "body": {"type": "object", "properties": {
                                         "summary": {"type": "string", "description": "one short line: how each product ended", "default": "{{summary}}"}},
                                         "required": ["summary"]}}}},
