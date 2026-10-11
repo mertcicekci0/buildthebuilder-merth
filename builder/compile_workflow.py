@@ -616,7 +616,7 @@ if kind != 'today' and made == 0:
 nxt = made + 1 if (kind != 'today' or made > 0) else 1
 if nxt <= len(steps):
     vars['att__' + pid] = str(nxt)
-    raise Exception('REFUSAL RESULT: ' + offer_text(p, steps[nxt - 1], nxt, len(steps)) + '. Propose it now in one short sentence. Never ask about today again.')
+    raise Exception('REFUSAL RESULT: ' + offer_text(p, steps[nxt - 1], nxt, len(steps)) + '. Say it now in one short sentence. If you already said exactly this offer in your last message, ask instead whether that works for them. Never ask about today again.')
 vars['att__' + pid] = str(len(steps) + 1)   # exhausted
 order = st.get('order', [])
 later = [prods[x] for x in order[order.index(pid) + 1:]] if pid in order else []
@@ -947,7 +947,7 @@ def _compile(ir, api, roles, warnings=None):
     outcomes_enum = ["refused", "hardship", "dispute", "paid", "service_error"]
     set_outcome_tool = {"type": "function", "function": {
         "name": "set_product_outcome", "handler": "__function__:code_exec",
-        "description": "CALL it when a product ends WITHOUT a promise: refused (attempts used up or flat refusal at the end), hardship (declined support), dispute, paid (already paid), service_error (recording failed).",
+        "description": "CALL it when a product ends WITHOUT a promise: refused (attempts used up or flat refusal at the end), hardship (declined support), dispute, paid (already paid), service_error (recording failed). It returns nothing: in the same turn, say what comes next (the next product, the read-back, or a short closing remark).",
         "parameters": {"type": "object", "properties": {
             "code": {"type": "string", "default": _code(cfg, TOOL_SET_OUTCOME)},
             "product_id": {"type": "string", "description": "product id, for example p1"},
@@ -1008,10 +1008,10 @@ def _compile(ir, api, roles, warnings=None):
             "A non-answer is a complete turn with no yes, no no, no date and no amount.\n"
             "Make every offer only once (a persuasion step, the support team, the floor). Propose only offers that a REFUSAL RESULT or the PRODUCTS list gives you.\n\n"
             "TOOLS:\n"
-            "- record_refusal: every flat refusal or non-answer for a product: refused=today for the first question about paying today, refused=offer for an offer you proposed. Propose exactly what its REFUSAL RESULT says; never count attempts yourself. When you move on to the next product, propose its attempt 1 directly and never ask about today again.\n"
+            "- record_refusal: every flat refusal or non-answer for a product: refused=today for the first question about paying today, refused=offer for an offer you proposed. Call it FIRST, before you say anything, then speak: propose exactly what its REFUSAL RESULT says; never count attempts yourself. When you move on to the next product, propose its attempt 1 directly and never ask about today again.\n"
             "- check_date: every time a day is named or changed (product id or all, the customer's exact words, your YYYY-MM-DD reading).\n"
             "- save_promises: once, after a clear yes to the read-back of all agreed promises. If it returns BLOCKED, follow the instruction. ACCEPTED means the system records them now.\n"
-            "- set_product_outcome: for every product that ends without a promise.\n"
+            "- set_product_outcome: for every product that ends without a promise. It returns nothing, so keep talking in the same turn.\n"
             "- transfer_to_agent: restructuring, accepted support, or insisted human; then the system says goodbye.\n"
             "- finish_call: when every product has a recorded promise or an outcome, and you have nothing left to say except goodbye. Call it on its own, after the other tools have returned. Do not say goodbye yourself; the system does."),
         "tools": [check_tool, refusal_tool, save_tool, set_outcome_tool, transfer_tool, finish_tool], "max_node_turns": 60, "max_turn_transition": "wrap_up",
