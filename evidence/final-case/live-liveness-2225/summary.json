@@ -1,0 +1,21 @@
+{
+ "slot": "final",
+ "agent_id": "899fee87-2b60-4475-9792-0d51e2f61f8b",
+ "simulation_id": "a207c8af-5cc7-41dd-8beb-1f3b3d5e0271",
+ "iteration_id": "a05636d0-2257-4fb6-b0a6-1b608710e977",
+ "status": "completed",
+ "seconds": 24,
+ "agent_version": null,
+ "runs": [
+  {
+   "key": "EX1#r1",
+   "verdict": null,
+   "analysis": "All criteria met. The assistant used Turkish throughout the conversation and correctly identified the card as Yıldız Premium with last digits 2000. It accurately reported the Turkish Lira debt details (12,000 statement debt, 4,800 minimum, 9,500 remaining total, 2,000 remaining minimum) and Euro debt details (85.20 debt, 34.10 minimum). It also correctly stated there was no Dollar or British Pound debt and provided the correct due date of 15 October 2026. Finally, it directed the user to the main menu and ended the call properly.",
+   "call_id": "532fa42e-515f-4674-bd05-7fa93ef44d07",
+   "variables": {
+    "customerNumber": "95004361",
+    "now": "2026-10-12T10:30:00+03:00"
+   }
+  }
+ ]
+}
