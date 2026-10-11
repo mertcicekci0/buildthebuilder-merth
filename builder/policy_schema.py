@@ -26,6 +26,9 @@ STAGES = ["always", "opening", "third_party", "identity", "negotiation", "multi_
 REASON_KEYS = ["restructuring", "human", "support", "refused", "hardship", "dispute", "service_error", "failed", "declined",
                "callback", "no_callback", "wrong_number", "deceased", "unclear", "paid"]
 NOTE_KEYS = ["refused", "hardship", "dispute", "paid", "service_error"]
+# sentences the system itself speaks verbatim (English defaults in compile_workflow.PHRASE_DEFAULTS)
+PHRASE_KEYS = ["verified", "promise_recorded", "promises_recorded", "promise_item", "record_failed_for", "and", "record_failed",
+               "connecting", "goodbye"]
 
 
 def schema():
@@ -56,6 +59,9 @@ def schema():
                         "by_reason": _o({k: S for k in REASON_KEYS})}),
         "recording": _o({"retries_after_failure": I, "after_promise_sentence": S, "read_back_question": S}),
         "fixed_sentences": _o({k: S for k in ("deceased", "robot", "scam", "paid", "farewell")}),
+        "phrases": _o({k: S for k in PHRASE_KEYS}),
+        "locale": _o({"month_names": SL, "weekday_names": SL, "date_pattern": S, "decimal_separator": S, "thousands_separator": S,
+                      "today_words": SL, "tomorrow_words": SL, "day_after_tomorrow_words": SL, "next_words": SL, "this_words": SL}),
         "stage_rules": _o({k: SL for k in STAGES}),
         "evidence": {"type": "array", "items": _o({"path": S, "quote": S})},
         "precedence": {"type": "array", "items": _o({"topic": S, "superseded_quote": S, "governing_quote": S, "why": S})},
@@ -142,6 +148,10 @@ def check(ir, api, roles, brief_text="", warnings=None):
     for d in ir["callback"]["days"]:
         if d not in ("today", "next_business_day") and not re.fullmatch(r"within_business_days:\d+", d):
             p.append(f"callback.days value {d!r} must be today, next_business_day or within_business_days:N")
+    loc = ir.get("locale") or {}
+    for k, n in (("month_names", 12), ("weekday_names", 7)):
+        if loc.get(k) and len(loc[k]) != n:
+            p.append(f"locale.{k} must have {n} names (or be empty), not {len(loc[k])}")
     if brief_text:
         nb = _norm(brief_text)
         for i, e in enumerate(ir.get("evidence", [])):
