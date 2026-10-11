@@ -115,7 +115,9 @@ def _json_body_schema(op):
 
 def _response_schema(op):
     resps = op.get("responses") or {}
-    for code in ("200", "201", 200, 201, "default"):
+    codes = [c for c in ("200", "201", 200, 201) if c in resps] + sorted(str(c) for c in resps if str(c)[:1] == "2" and str(c) not in ("200", "201")) \
+        + [c for c in ("2XX", "2xx", "default") if c in resps]
+    for code in codes:
         r = resps.get(code)
         if r:
             for ctype, c in (r.get("content") or {}).items():
@@ -167,6 +169,8 @@ def load(path_or_dict, tool_map=None, base_url=None):
             resp = _response_schema(op)
             c = {"name": name, "url": base + re.sub(r"\{([^/{}]+)\}", r"{{\1}}", path), "method": method.upper(), "path": path,
                  "path_params": re.findall(r"\{([^/{}]+)\}", path),
+                 "query_params": [x.get("name") for x in (op.get("parameters") or []) + (item.get("parameters") or [])
+                                  if isinstance(x, dict) and x.get("in") == "query"],
                  "security": op.get("security", spec.get("security")),
                  "summary": op.get("summary", ""), "description": op.get("description", ""),
                  "fields": fields, "required": list(req), "response": resp.get("properties", {}),

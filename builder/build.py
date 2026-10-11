@@ -281,6 +281,12 @@ def main():
         if problems:
             trace.warn("continuing with unresolved policy problems: " + "; ".join(problems[:10]))
 
+        from builder.contract_checks import contract_warnings
+        cwarn = contract_warnings(api, roles, ir)
+        for x in cwarn:
+            trace.warn("contract: " + x)
+        for x in (ir.get("unmapped_rules") or []):
+            trace.warn("policy rule not expressible in the IR (prompt text only): " + str(x)[:300])
         compile_warnings = []
         wf = cw.compile_workflow(ir, api, roles, warnings=compile_warnings)
         for w in compile_warnings:
@@ -313,7 +319,7 @@ def main():
         out = ROOT / ("out" if mock_base else "submission") / f"{slot}.workflow.json"   # a mock-URL build is never a submission
         freya.export_workflow(res["workflow_id"], str(out))
         trace.created(f"exported to {out.relative_to(ROOT)} sha={sha(out)}")
-        status = "ok" if not (fails or missing or lost_tools) else "ok with warnings"
+        status = "ok" if not (fails or missing or lost_tools or cwarn) else "ok with warnings"
         return 0
     except BuilderTimeout as e:
         trace.warn(f"timeout: {e}")

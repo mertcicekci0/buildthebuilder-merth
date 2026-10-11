@@ -263,7 +263,8 @@ def runtime_config(ir, api, roles):
         "ladder": ir.get("ladder", []),
         "outcomes": {"promise": o["promise"], "paid": o["paid"], "transferred": o["transferred"], "no_promise": o["no_promise"],
                      "not_verified": o["not_verified"], "not_reached": o["not_reached"], "paid_note": "paid",
-                     "reasons": reasons, "note_reasons": o.get("note_reasons", {})},
+                     "reasons": reasons, "note_reasons": o.get("note_reasons", {}),
+                     **({"by_reason": {k: v for k, v in o["by_reason"].items() if v}} if any((o.get("by_reason") or {}).values()) else {})},
         "transfer_queues": ir.get("transfer_queues", {}),
         "identity": ir["identity"],
         "notes": notes,
@@ -791,12 +792,13 @@ except Exception:
 """
 
 
-def hook_close_pre(roles):
-    return _join("""
+def hook_close_pre(roles, by_reason=False):
+    override = "    out = (CFG['outcomes'].get('by_reason') or {}).get(reason, out)\n" if by_reason else ""
+    tmpl = ("""
 try:
     st = get_state(vars)
     out, reason = outcome_fold(st, CFG)
-    reason = (CFG['outcomes'].get('reasons') or {}).get(reason, reason)
+@@OVERRIDE@@    reason = (CFG['outcomes'].get('reasons') or {}).get(reason, reason)
     b = config.get('body') if isinstance(config.get('body'), dict) else {}
     b[R_OUT] = out
     if reason:
@@ -810,12 +812,13 @@ except Exception:
 try:
     st = get_state(vars)
     out, reason = outcome_fold(st, CFG)
-    b = config.get('body') if isinstance(config.get('body'), dict) else {}
+@@OVERRIDE@@    b = config.get('body') if isinstance(config.get('body'), dict) else {}
     b[R_OUT] = out
     config['body'] = b
 except Exception:
     pass
-""", R_OUT=roles["close_outcome"], R_REASON=roles.get("close_reason") or "")
+""")
+    return _join(tmpl.replace("@@OVERRIDE@@", override), R_OUT=roles["close_outcome"], R_REASON=roles.get("close_reason") or "")
 
 
 def _join(template, **consts):
@@ -1342,7 +1345,7 @@ def _compile(ir, api, roles, warnings=None):
     close_body = {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}"}
     if roles.get("close_reason"):
         close_body[roles["close_reason"]] = "{{close_reason}}"
-    close = api_tool(api, "close_call", close_body, pre=_hook(cfg, hook_close_pre(roles)))
+    close = api_tool(api, "close_call", close_body, pre=_hook(cfg, hook_close_pre(roles, bool(cfg["outcomes"].get("by_reason")))))
     close["config"]["alwaysRunsAt"] = ["end_of_call"]
     vn = var_names(ir)
 

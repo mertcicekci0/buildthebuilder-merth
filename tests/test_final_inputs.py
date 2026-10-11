@@ -286,3 +286,56 @@ def test_pdf_documents_are_read_with_pdfkit(tmp_path):
     single = tmp_path / "brief.pdf"
     single.write_bytes(TINY_PDF)
     assert "Floor is 50 EUR" in bi.read_brief(single, tmp_path / "o2")[0]
+
+
+def _close_hook_run(api_path, ir, state):
+    from builder import compile_workflow as cw, validate as v, runtime_src as rs
+    api = ot.load(str(api_path))
+    roles, _ = ot.infer_roles(api)
+    wf = cw.compile_workflow(ir, api, roles, warnings=[])
+    assert v.lint(wf, api) == []
+    close = next(t for t in wf["tools"] if t["function"]["name"] == "close_call")
+    vars_ = {}
+    rs.put_state(vars_, state)
+    config = {"body": {}}
+    exec(close["pre_process_code"], {"vars": vars_, "config": config})
+    return config["body"], roles
+
+
+def test_outcome_by_reason_overrides_the_group_outcome_only_when_set():
+    ir = {k: x for k, x in json.loads((ROOT / "tests/variants/ir-r5.ref.json").read_text()).items() if not k.startswith("_")}
+    api = ROOT / "tests/variants/api-r5.json"
+    body, roles = _close_hook_run(api, json.loads(json.dumps(ir)), {"contact": "callback"})
+    assert body[roles["close_outcome"]] == ir["outcomes"]["not_reached"]
+    ir2 = json.loads(json.dumps(ir))
+    ir2["outcomes"]["by_reason"] = {"callback": "CBK"}
+    body, roles = _close_hook_run(api, ir2, {"contact": "callback"})
+    assert body[roles["close_outcome"]] == "CBK"
+    body, _ = _close_hook_run(api, ir2, {"contact": "wrong_number"})
+    assert body[roles["close_outcome"]] == ir["outcomes"]["not_reached"]   # other not-reached endings keep the group outcome
+    from builder import policy_schema as ps
+    a = ot.load(str(api)); r, _ = ot.infer_roles(a)
+    ir3 = json.loads(json.dumps(ir)); ir3["outcomes"]["by_reason"] = {"callback": "NOPE"}
+    assert any("by_reason.callback" in p for p in ps.check(ir3, a, r))
+
+
+def test_contract_warnings_flag_silent_runtime_failures_and_stay_quiet_on_known_contracts():
+    from builder.contract_checks import contract_warnings
+    from builder import policy_schema as ps
+    ir = {k: x for k, x in json.loads((ROOT / "tests/fixtures/ir_public_ab.json").read_text()).items() if not k.startswith("_")}
+    api = ot.load(str(KIT_API)); roles, _ = ot.infer_roles(api)
+    assert contract_warnings(api, roles, ir) == []
+    s = json.loads(KIT_API.read_text())   # verify response wrapped in an envelope: correct answers would look wrong
+    resp = s["paths"]["/verify_identity"]["post"]["responses"]["200"]["content"]["application/json"]
+    resp["schema"] = {"type": "object", "properties": {"data": resp["schema"]}}
+    a2 = ot.load(s); r2, _ = ot.infer_roles(a2)
+    assert any("verify_identity response" in w for w in contract_warnings(a2, r2, ir))
+    s = json.loads(KIT_API.read_text())   # close reason enum: the policy's reasons must be allowed values
+    s["paths"]["/close_call"]["post"]["requestBody"]["content"]["application/json"]["schema"]["properties"]["reason"]["enum"] = ["REF", "HRD"]
+    a3 = ot.load(s); r3, _ = ot.infer_roles(a3)
+    assert any("outcomes.reasons." in p and "close_call reason" in p for p in ps.check(ir, a3, r3))
+    r5 = ot.load(str(ROOT / "tests/variants/api-r5.json")); rr5, _ = ot.infer_roles(r5)
+    ir5 = json.loads((ROOT / "tests/variants/ir-r5.ref.json").read_text())
+    assert any("'CBK'" in w for w in contract_warnings(r5, rr5, ir5))
+    ir5["outcomes"]["by_reason"] = {"callback": "CBK"}
+    assert not any("'CBK'" in w for w in contract_warnings(r5, rr5, ir5))

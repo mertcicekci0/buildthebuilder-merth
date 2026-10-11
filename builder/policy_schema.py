@@ -52,7 +52,8 @@ def schema():
         "notes": _o({"enabled": B, "skip_on_any_transfer": B, "default_reason": {"type": "string", "enum": NOTE_KEYS}}),
         "transfer_queues": _o({"restructuring": S, "human": S, "support": S}),
         "outcomes": _o({"promise": S, "paid": S, "transferred": S, "no_promise": S, "not_verified": S, "not_reached": S,
-                        "reasons": _o({k: S for k in REASON_KEYS}), "note_reasons": _o({k: S for k in NOTE_KEYS})}),
+                        "reasons": _o({k: S for k in REASON_KEYS}), "note_reasons": _o({k: S for k in NOTE_KEYS}),
+                        "by_reason": _o({k: S for k in REASON_KEYS})}),
         "recording": _o({"retries_after_failure": I, "after_promise_sentence": S, "read_back_question": S}),
         "fixed_sentences": _o({k: S for k in ("deceased", "robot", "scam", "paid", "farewell")}),
         "stage_rules": _o({k: SL for k in STAGES}),
@@ -73,6 +74,13 @@ def check(ir, api, roles, brief_text="", warnings=None):
     for k in ("promise", "paid", "transferred", "no_promise", "not_verified", "not_reached"):
         if close_enum and o[k] not in close_enum:
             p.append(f"outcomes.{k} = {o[k]!r} is not an allowed close_call outcome {close_enum}")
+    for k, v in (o.get("by_reason") or {}).items():
+        if close_enum and v and v not in close_enum:
+            p.append(f"outcomes.by_reason.{k} = {v!r} is not an allowed close_call outcome {close_enum}")
+    reason_enum = ot.enum_of(api, "close_call", roles.get("close_reason"))
+    for k, v in (o.get("reasons") or {}).items():
+        if reason_enum and v and v not in reason_enum:
+            p.append(f"outcomes.reasons.{k} = {v!r} is not an allowed close_call reason {reason_enum}")
     note_enum = ot.enum_of(api, "add_note", roles.get("note_reason"))
     if ir["notes"]["enabled"]:
         for k, v in o["note_reasons"].items():
