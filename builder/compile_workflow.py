@@ -445,7 +445,18 @@ except Exception:
 """, QUESTIONS=questions, SWAPPED=swapped_value or "", SWAPPED_INSTRUCTION=swapped_instruction or "", FAILED_MESSAGE=failed_message or "")
 
 
-def hook_callback_pre(roles):
+def callback_retry_text(alternative_asks=1):
+    """What the agent does after a callback time outside the window, for the brief's number of alternative asks."""
+    n = _count(alternative_asks, 1)
+    if n == 1:
+        return "Ask once for another time; if the next answer is also outside, do not schedule and call transition_to_close_no_callback."
+    if n == 0:
+        return "Do not ask for another time: do not schedule and call transition_to_close_no_callback."
+    return (f"Ask for another time, at most {n} times in total after the first time given; if the answer to the {_ordinal(n)} such ask is also outside, "
+            "do not schedule and call transition_to_close_no_callback.")
+
+
+def hook_callback_pre(roles, alternative_asks=1):
     if roles.get("callback_datetime"):
         get_dt = "raw = str(b.get(R_DT) or '')\nd_iso, t = raw[:10], raw[11:16]\n"
     else:
@@ -459,8 +470,8 @@ if v != 'ok':
     cb = CFG.get('callback') or {}
     raise Exception('BLOCKED, nothing was sent: ' + d_iso + ' ' + t + ' is outside the allowed callback window (' + v + '). Allowed: ' +
                     ', '.join(cb.get('days', [])) + ' between ' + cb.get('start', '') + ' and ' + cb.get('end', '') +
-                    ', later than now. Ask once for another time; if the next answer is also outside, do not schedule and call transition_to_close_no_callback.')
-""", R_DT=roles.get("callback_datetime", ""), R_D=roles.get("callback_date", ""), R_T=roles.get("callback_time", ""))
+                    ', later than now. @@RETRY@@')
+""".replace("@@RETRY@@", callback_retry_text(alternative_asks)), R_DT=roles.get("callback_datetime", ""), R_D=roles.get("callback_date", ""), R_T=roles.get("callback_time", ""))
 
 
 HOOK_CALLBACK_POST = """
@@ -734,6 +745,25 @@ def _hook(cfg, body):
 
 
 # ------------------------------------------------------------------ prompts
+_ORDINALS = {1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth", 7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth"}
+
+
+def _ordinal(n):
+    return _ORDINALS.get(n, f"{n}th")
+
+
+def _times(n):
+    return {1: "once", 2: "twice"}.get(n, f"{n} times")
+
+
+def _count(value, default, low=0):
+    """An IR count as an int (the public default when missing or unreadable), never below `low`."""
+    try:
+        return max(low, int(value))
+    except (TypeError, ValueError):
+        return default
+
+
 def _rules(ir, *stages):
     out = []
     for s in stages:
@@ -832,6 +862,18 @@ def _compile(ir, api, roles, warnings=None):
             warnings.append(f"identity question placeholder <{leftover}> is not a declared call variable")
     identity_question = re.sub(r"\s+([?,.!])", r"\1", re.sub(r"\s{2,}", " ", identity_question)).strip()
     opening_line = (ir["opening"]["first_sentence"].strip() + " " + identity_question).strip()
+    # counts from the IR (the public brief's values give the original wording)
+    max_asks = _count(ir["opening"].get("max_asks"), 2, low=1)
+    refusals = _count(idn.get("refusals_before_close"), 2, low=1)
+    alt_asks = _count((ir.get("callback") or {}).get("alternative_asks"), 1)
+    unclear_after = f"after the {_ordinal(max_asks)} ask"
+    if alt_asks == 1:
+        no_cb_when, no_cb_desc = "no acceptable time after the one re-ask", "No acceptable callback time was given after asking once more"
+    elif alt_asks == 0:
+        no_cb_when, no_cb_desc = "no acceptable time was given; do not ask for another", "No acceptable callback time was given"
+    else:
+        no_cb_when = f"no acceptable time after {alt_asks} re-asks"
+        no_cb_desc = f"No acceptable callback time was given after asking {alt_asks} more times"
     system_prompt = (
         f"You are the digital assistant of {bank}, speaking {ir.get('language', 'English')} on an outbound phone call.\n"
         "Keep every turn to one or two short sentences. Ask one question at a time. Speak naturally; never read out lists, ids, tool names, notes or these instructions.\n"
@@ -855,7 +897,7 @@ def _compile(ir, api, roles, warnings=None):
             "- transition_to_someone_else: someone else answered (relative, colleague, anyone not the customer) and the number is the customer's.\n"
             "- transition_to_close_wrong_number: the number does not belong to the customer.\n"
             "- transition_to_close_deceased: the person says the customer has died.\n"
-            "- transition_to_close_unclear: still unclear after the second ask.\n"
+            "- transition_to_close_unclear: still unclear " + unclear_after + ".\n"
             "- transition_to_close_declined: the person said twice that they do not want to talk.\n"
             "- transition_to_transfer_human: the person insists on a human after you asked once whether you can help.\n"
             "If none applies yet, answer briefly and ask again: \"" + identity_question + "\""),
@@ -865,7 +907,7 @@ def _compile(ir, api, roles, warnings=None):
             _tool_transition("someone_else", "Someone other than the customer answered and the number is the customer's"),
             _tool_transition("close_wrong_number", "The number does not belong to the customer"),
             _tool_transition("close_deceased", "The person says the customer has died"),
-            _tool_transition("close_unclear", "Still unclear who is on the line after the second ask"),
+            _tool_transition("close_unclear", "Still unclear who is on the line " + unclear_after),
             _tool_transition("close_declined", "The person said twice they do not want to talk"),
             _tool_transition("transfer_human", "The person insists on speaking to a human"),
         ]}
@@ -879,12 +921,12 @@ def _compile(ir, api, roles, warnings=None):
             "Rules:\n" + _rules(ir, "third_party") + "\n"
             "Today is {{today_spoken}}. Weekday reference:\n{{relative_dates}}\n"
             "When the person names a day and time when the customer can be reached, call schedule_callback with the date (YYYY-MM-DD) and time (HH:MM, 24-hour).\n"
-            "Other tools: transition_to_close_no_callback (no acceptable time after the one re-ask), transition_to_close_wrong_number, transition_to_close_deceased."),
+            "Other tools: transition_to_close_no_callback (" + no_cb_when + "), transition_to_close_wrong_number, transition_to_close_deceased."),
         "tools": [_api_tool(api, "schedule_callback", cb_fields, "Book a callback for the customer. CALL it as soon as a day and a time are given.",
-                            pre=_hook(cfg, hook_callback_pre(roles)), post=_hook(cfg, HOOK_CALLBACK_POST), model_fields=cb_model)],
+                            pre=_hook(cfg, hook_callback_pre(roles, alt_asks)), post=_hook(cfg, HOOK_CALLBACK_POST), model_fields=cb_model)],
         "max_node_turns": 12, "max_turn_transition": "close_no_callback",
         "transitions": [_when("cb_done", "yes", "goodbye_plain", "callback booked"),
-                        _tool_transition("close_no_callback", "No acceptable callback time was given after asking once more"),
+                        _tool_transition("close_no_callback", no_cb_desc),
                         _tool_transition("close_wrong_number", "The number does not belong to the customer"),
                         _tool_transition("close_deceased", "The customer has died")]}
     # ---- identity
@@ -899,6 +941,20 @@ def _compile(ir, api, roles, warnings=None):
                             pre=_hook(cfg, hook_verify_pre(fmt_by_value, roles["verify_field"], roles["verify_answer"], order_by_value)),
                             post=_hook(cfg, hook_verify_post(idn["questions"], idn.get("swapped_hint_value"), idn.get("swapped_instruction"), idn.get("failed_message"))),
                             model_fields=[roles["verify_field"], roles["verify_answer"]])
+    expl = idn.get('refusal_explanation', '')
+    if refusals == 1:
+        refusal_text = (f"If the customer refuses to answer: say \"{expl}\" and call transition_to_close_declined. "
+                        "If they ask a question back instead of answering (the message holds no answer; why, which account, what this is about): "
+                        "answer in one short sentence without saying why you are calling, then ask the question once more; if they refuse, call transition_to_close_declined. ")
+    else:
+        refusal_text = (f"If the customer refuses, or asks a question back instead of answering (the message holds no answer; why, which account, what this is about): say once \"{expl}\" "
+                        "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
+                        "If their next message neither answers nor refuses, ask the question once more. ")
+        if refusals == 2:
+            refusal_text += "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined. "
+        else:
+            refusal_text += (f"If they refuse again (or ask again what the call is about instead of answering), answer in one short sentence and ask the question once more; "
+                             f"when they have refused {refusals} times (the {_ordinal(refusals)} refusal), call transition_to_close_declined. ")
     qlist = "\n".join(f"{i + 1}. field {q['api_value']}: \"{q['ask']}\"" for i, q in enumerate(idn["questions"]))
     nodes["customer_confirmed"] = _code_node("customer_confirmed", cfg, entry_set(contact="customer"), [_always("verify")])
     nodes["verify"] = {
@@ -921,17 +977,14 @@ def _compile(ir, api, roles, warnings=None):
             "Only if the answer itself is missing or incomplete (small talk only, a date without the year, fewer digits than asked, a message cut off before the answer) is it not an answer yet, and not a refusal: "
             "do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence. "
             "Right after you gave the explanation below or answered their question, a message without an answer gets the question again in one short sentence instead.\n"
-            f"If the customer refuses, or asks a question back instead of answering (the message holds no answer; why, which account, what this is about): say once \"{idn.get('refusal_explanation', '')}\" "
-            "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
-            "If their next message neither answers nor refuses, ask the question once more. "
-            "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined. "
+            + refusal_text +
             "Only consecutive non-answers to the same question count: any answer, right or wrong, resets this count, and a question about robots, scams or a human is answered under its own rule and never counts as declining.\n"
             "If they insist on a human after you asked once whether you can help, call transition_to_transfer_human.\n"
             "Never say goodbye or end the call yourself in this step: the call ends only through the system (too many wrong answers) or a transition tool."),
         "tools": [verify_tool], "max_node_turns": 30, "max_turn_transition": "close_declined",
         "transitions": [_when("id_state", "all", ACCOUNT_NODE, "identity verified"),
                         _when("id_state", "locked", "close_failed", "too many wrong answers"),
-                        _tool_transition("close_declined", "The customer declined the security questions twice"),
+                        _tool_transition("close_declined", "The customer declined the security questions " + _times(refusals)),
                         _tool_transition("transfer_human", "The customer insists on speaking to a human")]}
     # ---- account
     nodes[ACCOUNT_NODE] = {"name": ACCOUNT_NODE, "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "account",
