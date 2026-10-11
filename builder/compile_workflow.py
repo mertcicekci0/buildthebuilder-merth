@@ -544,6 +544,11 @@ def offer_text(p, step, n, total):
 p = prods[pid]
 steps = steps_for(p)
 made = int(str(vars.get('att__' + pid) or '0'))
+if kind == 'today' and 0 < made <= len(steps):
+    # a no to "today" never uses an attempt, and it is recorded once per product
+    raise Exception('REFUSAL RESULT: the no to paying today is already recorded for ' + pid + '; nothing changed. If you have NOT yet proposed ' +
+                    offer_text(p, steps[made - 1], made, len(steps)) + ', propose it now in one short sentence. '
+                    'If the customer just refused that proposal, call record_refusal again for ' + pid + ' with refused=offer.')
 if kind != 'today' and made == 0:
     made = 1
 nxt = made + 1 if (kind != 'today' or made > 0) else 1

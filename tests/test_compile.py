@@ -55,3 +55,29 @@ def test_public_close_sends_no_reason_for_paid_and_maps_transfers():
     assert close({"notes": {"p1": "paid", "p2": "refused"}}) == {"customer_id": "c1", "outcome": "no_promise", "reason": "refused"}
     assert close({"promises": {"p1": {}}, "transfer": "human"}) == {"customer_id": "c1", "outcome": "transferred", "reason": "human"}
     assert close({"verified": "declined"}) == {"customer_id": "c1", "outcome": "not_verified", "reason": "declined"}
+
+
+def test_refusal_ladder_today_is_idempotent_and_offers_count():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    vars = {**wf["test_variables"], "now": "2026-10-14T11:00"}
+    le.run_code_node(wf, "init", vars)
+    prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "9015", "past_due": 510, "days_late": 16, "minimum_payment": 153},
+             {"product_id": "p2", "type": "personal_loan", "past_due": 1320, "days_late": 16, "instalment_amount": 440},
+             {"product_id": "p3", "type": "car_loan", "past_due": 140, "days_late": 7, "instalment_amount": 46}]
+    vars.update(le.flatten_products("load_account_response.data.products", prods))
+    le.run_code_node(wf, "account", vars)
+    tool = le._tool(wf, "negotiate", "record_refusal")
+
+    def refuse(pid, kind):
+        try:
+            le.run_pre(tool, vars, {"product_id": pid, "refused": kind})
+        except le.Blocked as b:
+            return str(b)
+        raise AssertionError("oracle must always raise")
+    assert "attempt 1 of 1 for p3" in refuse("p3", "today")
+    again = refuse("p3", "today")      # PUB-12 c1 failure: a second 'today' used up the car loan's only attempt
+    assert "already recorded" in again and "attempt 1 of 1 for p3" in again and vars["att__p3"] == "1"
+    assert "no persuasion attempt left for p3" in refuse("p3", "offer")
+    assert "attempt 1 of 2 for p2" in refuse("p2", "today")
+    assert "attempt 2 of 2 for p2" in refuse("p2", "offer")
+    assert "no persuasion attempt left for p2" in refuse("p2", "offer")
