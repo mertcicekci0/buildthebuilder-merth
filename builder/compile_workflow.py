@@ -897,7 +897,7 @@ def _compile(ir, api, roles, warnings=None):
             "Rules:\n" + _rules(ir, "identity") + "\n"
             "FIRST, every turn: if the customer's message contains an answer to the security question (a whole date, all the digits asked for), call verify_identity with it at once, "
             "before anything else, even if the same message also contains a question, a complaint, small talk or cut-off words. "
-            "Example: \"21 July 1990. Why do you need this?\" -> call verify_identity with that date first; the rules below apply only to messages with no answer. "
+            "Example: \"3 May 1985. Why do you need this?\" -> call verify_identity with that date first; the rules below apply only to messages with no answer. "
             "Follow the what_to_do_next in its result.\n"
             "Only if the answer itself is missing or incomplete (small talk only, a date without the year, fewer digits than asked, a message cut off before the answer) is it not an answer yet, and not a refusal: "
             "do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence.\n"
