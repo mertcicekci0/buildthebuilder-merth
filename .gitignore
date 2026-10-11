@@ -21,7 +21,12 @@ exports/*
 !exports/.gitkeep
 traces/*
 !traces/.gitkeep
+# final per-brief traces must be committable: the runner tees stdout to traces/<brief>.log, the builder writes traces/<brief>.jsonl
+!traces/*.log
+!traces/*.jsonl
+traces/dev/
 *.log
+!traces/*.log
 .DS_Store
 # local checkpoints of raw results (large)
 archive/
