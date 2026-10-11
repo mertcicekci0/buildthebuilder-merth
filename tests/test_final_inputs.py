@@ -351,3 +351,15 @@ def test_a_product_type_without_floor_accepts_only_the_full_amount():
     assert all(t["floor_field"] == roles["product_fields"]["past_due"] for t in cfg["product_types"].values())
     wf = json.dumps(cw.compile_workflow(ir, api, roles, warnings=[]))
     assert "Floor None" not in wf and "floor None" not in wf
+
+
+def test_a_required_close_reason_is_sent_empty_not_dropped(tmp_path):
+    s = json.loads(KIT_API.read_text())
+    s["paths"]["/close_call"]["post"]["requestBody"]["content"]["application/json"]["schema"]["required"].append("reason")
+    c = tmp_path / "c.json"
+    c.write_text(json.dumps(s))
+    ir = {k: x for k, x in json.loads((ROOT / "tests/fixtures/ir_public_ab.json").read_text()).items() if not k.startswith("_")}
+    body, roles = _close_hook_run(c, ir, {"contact": "customer", "verified": "yes", "notes": {"p1": "paid"}, "order": ["p1"]})
+    assert body[roles["close_outcome"]] == ir["outcomes"]["paid"] and body.get(roles["close_reason"]) == ""
+    body, roles = _close_hook_run(KIT_API, ir, {"contact": "customer", "verified": "yes", "notes": {"p1": "paid"}, "order": ["p1"]})
+    assert roles["close_reason"] not in body   # not required: still left out, as before

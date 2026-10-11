@@ -796,7 +796,9 @@ except Exception:
 """
 
 
-def hook_close_pre(roles, by_reason=False):
+def hook_close_pre(roles, by_reason=False, reason_required=False):
+    # a reason the contract requires is sent empty rather than left out (left out = the whole close is rejected)
+    no_reason = "        b[R_REASON] = ''\n" if reason_required else "        b.pop(R_REASON, None)\n"
     override = "    out = (CFG['outcomes'].get('by_reason') or {}).get(reason, out)\n" if by_reason else ""
     tmpl = ("""
 try:
@@ -808,8 +810,7 @@ try:
     if reason:
         b[R_REASON] = reason
     else:
-        b.pop(R_REASON, None)
-    config['body'] = b
+@@NOREASON@@    config['body'] = b
 except Exception:
     pass
 """ if roles.get("close_reason") else """
@@ -822,7 +823,7 @@ try:
 except Exception:
     pass
 """)
-    return _join(tmpl.replace("@@OVERRIDE@@", override), R_OUT=roles["close_outcome"], R_REASON=roles.get("close_reason") or "")
+    return _join(tmpl.replace("@@OVERRIDE@@", override).replace("@@NOREASON@@", no_reason), R_OUT=roles["close_outcome"], R_REASON=roles.get("close_reason") or "")
 
 
 def _join(template, **consts):
@@ -1349,7 +1350,8 @@ def _compile(ir, api, roles, warnings=None):
     close_body = {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}"}
     if roles.get("close_reason"):
         close_body[roles["close_reason"]] = "{{close_reason}}"
-    close = api_tool(api, "close_call", close_body, pre=_hook(cfg, hook_close_pre(roles, bool(cfg["outcomes"].get("by_reason")))))
+    close = api_tool(api, "close_call", close_body, pre=_hook(cfg, hook_close_pre(roles, bool(cfg["outcomes"].get("by_reason")),
+                                                                                  roles.get("close_reason") in api["tools"]["close_call"].get("required", []))))
     close["config"]["alwaysRunsAt"] = ["end_of_call"]
     vn = var_names(ir)
 
