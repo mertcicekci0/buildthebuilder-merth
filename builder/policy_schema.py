@@ -37,7 +37,7 @@ def schema():
                         "max_wrong_total": I, "swapped_hint_value": NS, "swapped_instruction": S, "failed_message": S,
                         "refusal_explanation": S, "refusals_before_close": I}),
         "product_types": {"type": "array", "items": _o({"api_type": S, "spoken": S, "floor_field": NS})},
-        "debt_intro": S, "product_sentence": S,
+        "debt_intro": S, "product_sentence": S, "after_verification_sentence": S,
         "calendar": _o({"business_weekdays": IL, "holidays": SL, "week_start": I}),
         "bands": {"type": "array", "items": _o({"name": S, "min": I, "max": I, "deadline_business_days": I,
                                                 "deadline_unit": {"type": "string", "enum": ["business_days", "calendar_days"]}, "attempts": I})},

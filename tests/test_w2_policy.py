@@ -49,3 +49,18 @@ def test_one_refusal_and_no_alternative_ask():
     se = wf["nodes"]["someone_else"]
     assert "Do not ask for another time" in se["tools"][0]["pre_process_code"]
     assert "do not ask for another" in se["task_message"]
+
+
+def test_after_verification_sentence_slot():
+    from builder import policy_schema as ps
+    s = ps.schema()
+    assert "after_verification_sentence" in s["required"] and s["properties"]["after_verification_sentence"] == {"type": "string"}
+    _, _, wf = build(IR)
+    assert wf["nodes"]["negotiate"]["on_enter"]["text"] == "Thank you, you are verified. {{debt_statement}} {{first_ask}}"
+    ir = copy.deepcopy(IR)
+    ir["after_verification_sentence"] = " This is an attempt to collect a debt, <first_name>. "
+    _, _, wf = build(ir)
+    assert wf["nodes"]["negotiate"]["on_enter"]["text"] == \
+        "Thank you, you are verified. This is an attempt to collect a debt, {{first_name}}. {{debt_statement}} {{first_ask}}"
+    legacy = {k: x for k, x in IR.items() if k != "after_verification_sentence"}   # an older IR without the field still compiles
+    assert build(legacy)[2]["nodes"]["negotiate"]["on_enter"]["text"].startswith("Thank you, you are verified. {{debt_statement}}")

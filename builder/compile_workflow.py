@@ -1053,10 +1053,12 @@ def _compile(ir, api, roles, warnings=None):
                                         "summary": {"type": "string", "description": "one short line: how each product ended", "default": "{{summary}}"}},
                                         "required": ["summary"]}}}},
                    "pre_process_code": _hook(cfg, FINISH_PRE)}
+    after_verified = str(ir.get("after_verification_sentence") or "").strip()
+    after_verified = after_verified + " " if after_verified else ""   # a sentence the brief requires between verification and the debt
     neg_rules = _rules(ir, "negotiation") + ("\n" + _rules(ir, "multi_product") if multi else "") + "\n" + _rules(ir, "confirmation") + "\n" + _rules(ir, "recording")
     nodes["negotiate"] = {
         "name": "negotiate", "node_type": "conversation",
-        "on_enter": {"type": "tts", "text": "Thank you, you are verified. {{debt_statement}} {{first_ask}}"}, "on_enter_first_entry_only": True,
+        "on_enter": {"type": "tts", "text": "Thank you, you are verified. " + after_verified + "{{debt_statement}} {{first_ask}}"}, "on_enter_first_entry_only": True,
         "task_message": (
             "The customer is verified. You have stated the debt and asked the first question.\n"
             "PRODUCTS (amounts, floors, deadlines and persuasion steps are computed; use them exactly):\n{{facts_text}}\n\n"

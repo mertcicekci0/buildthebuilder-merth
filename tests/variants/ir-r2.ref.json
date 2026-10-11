@@ -77,6 +77,7 @@
  ],
  "debt_intro": "I'm calling about arrears on <company_name>'s account.",
  "product_sentence": "The <spoken> has <past_due> in arrears and is <days_late> days in arrears.",
+ "after_verification_sentence": "",
  "calendar": {
   "business_weekdays": [
    0,

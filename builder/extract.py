@@ -29,6 +29,7 @@ Field meanings:
 - identity.swapped_hint_value: the API hint value meaning day/month swapped, or null if none.
 - product_types: one entry per product type in the API enum. spoken: how to name it, with <field> placeholders for get_account product fields (e.g. a card's last digits). floor_field: the get_account field that is the minimum acceptable amount for that type, or null.
 - debt_intro / product_sentence: how the debt is stated after verification. product_sentence placeholders: <spoken> <past_due> <days_late> <floor>.
+- after_verification_sentence: a sentence the brief requires right after identity is verified and before the debt is stated (e.g. a disclosure or notice), exactly as quoted; "" if none. Do not repeat debt_intro here.
 - calendar: business_weekdays as numbers 0=Monday..6=Sunday; holidays as YYYY-MM-DD (resolve the year from the brief); week_start 0=Monday.
 - bands: lateness bands from days late: min/max days (inclusive), deadline_business_days = the N in "the N-th business day after today" (deadline_unit "business_days"); if the brief counts plain days ("within 10 days of today", "10 calendar days"), put that N and deadline_unit "calendar_days". attempts = persuasion attempts allowed.
 - first_ask_single / first_ask_multi: the first question about paying (one product / several products).
