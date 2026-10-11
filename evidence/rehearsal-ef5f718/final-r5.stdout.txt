@@ -1,0 +1,29 @@
+[runtime] /opt/homebrew/opt/python@3.14/bin/python3.14 has claude-agent-sdk not installed (pinned 0.2.165)
+[runtime] re-running with .venv/bin/python (claude-agent-sdk 0.2.165)
+[2026-10-11T15:37:27+00:00 +   0.8s] START    builder run started brief=../inputs/final-r5.zip brief_sha=27eacdd583cf3131 tool_api=../inputs/final-r5.contract.zip api_sha=27eacdd583cf3131 slot=final-r5 tool_map=None tool_headers=[] base_url_override=None builder_model=claude-opus-5-5 llm_backend=agent_sdk python=3.12.6 agent_sdk=0.2.165 commit=ef5f7183029a8bc4d957e18eb5d6f45d5110fbe0 started_before_s=0.8
+[2026-10-11T15:37:27+00:00 +   0.8s] STEP     phone-agent model
+[2026-10-11T15:37:27+00:00 +   0.8s] STEP     inputs read: 2 file(s), brief text 17163 chars, contract services.json
+[2026-10-11T15:37:27+00:00 +   0.8s] STEP     tool API parsed: 7 tools at https://dialler.tidewell.example.test/v4
+[2026-10-11T15:38:55+00:00 +  88.2s] MODEL    model=claude-opus-5-5 purpose="extract the policy IR from the brief and the tool API" status=success input_tokens=2 output_tokens=11074 backend=agent_sdk seconds=87.4 aux_model=claude-haiku-5-5(in=8622,out=22) rate_limit=status:allowed_warning,window:five_hour,utilization:0.96,resets_at:1791743400
+[2026-10-11T15:38:55+00:00 +  88.2s] STEP     extraction pass returned
+[2026-10-11T15:40:21+00:00 + 174.0s] MODEL    model=claude-opus-5-5 purpose="audit the IR against the brief for omissions, wrong values and precedence" status=success input_tokens=2 output_tokens=11307 backend=agent_sdk seconds=85.8 aux_model=claude-haiku-5-5(in=17479,out=26) rate_limit=status:allowed_warning,window:five_hour,utilization:0.97,resets_at:1791743400
+[2026-10-11T15:40:21+00:00 + 174.0s] STEP     audit pass: 1 change(s)
+[2026-10-11T15:40:21+00:00 + 174.0s] TEST     policy checks (round 1): pass
+[2026-10-11T15:40:21+00:00 + 174.0s] WARN     contract: close_call outcome 'CBK' is allowed by the contract but never produced by the policy
+[2026-10-11T15:40:21+00:00 + 174.0s] WARN     contract: close_call reason 'WEL' is allowed by the contract but never produced by the policy
+[2026-10-11T15:40:21+00:00 + 174.0s] WARN     contract: close_call reason 'SYS' is allowed by the contract but never produced by the policy
+[2026-10-11T15:40:21+00:00 + 174.0s] WARN     policy rule not expressible in the IR (prompt text only): S1 latest promise date: the 14th calendar day after today; if that day is not a business day, the last business day before it (not the next).
+[2026-10-11T15:40:21+00:00 + 174.0s] WARN     policy rule not expressible in the IR (prompt text only): CRD floor: if the card's overdue amount is £30.00 or less, the floor is the full overdue amount.
+[2026-10-11T15:40:21+00:00 + 174.0s] WARN     policy rule not expressible in the IR (prompt text only): Callbacks on 24 December and 31 December must be at 14:00 or earlier.
+[2026-10-11T15:40:21+00:00 + 174.1s] TEST     workflow lint: pass
+[2026-10-11T15:40:21+00:00 + 174.1s] STEP     workflow compiled: 26 steps, 28 tools, 271268 bytes
+[2026-10-11T15:40:21+00:00 + 174.1s] TEST     local: init + account facts on synthetic products: pass
+[2026-10-11T15:40:21+00:00 + 174.1s] TEST     local: guarded promise on the deadline is sent; close outcome = promise: pass
+[2026-10-11T15:40:21+00:00 + 174.1s] TEST     local: promise after the deadline is blocked before sending: pass
+[2026-10-11T15:40:22+00:00 + 174.9s] TEST     platform dry run: {"valid": true, "dryRun": true}
+[2026-10-11T15:40:23+00:00 + 176.2s] FREYA    save returned workflow_id=436b526f-3c5e-4f2f-9248-e7ca7aebfb2e agent_id=ddd5f914-49c9-4af6-8b04-034fef67423d version=None
+[2026-10-11T15:40:25+00:00 + 178.4s] FREYA    saved workflow_id=436b526f-3c5e-4f2f-9248-e7ca7aebfb2e agent_id=ddd5f914-49c9-4af6-8b04-034fef67423d version=1 steps=26 tools=28
+[2026-10-11T15:40:26+00:00 + 179.0s] TEST     read-back: every node and tool stored: pass
+[2026-10-11T15:40:26+00:00 + 179.5s] TEST     published version is the newest: pass
+[2026-10-11T15:40:27+00:00 + 180.1s] FREYA    exported to submission/final-r5.workflow.json sha=875a6b6492f38dce
+[2026-10-11T15:40:27+00:00 + 180.1s] END      builder run ended status=ok with warnings duration_s=180 model_calls=2

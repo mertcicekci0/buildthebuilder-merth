@@ -1,0 +1,498 @@
+{
+ "bank_name": "Tidewell Mutual Bank",
+ "language": "English",
+ "currency_word": "pounds",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "forename",
+  "last_name": "surname",
+  "title": "honorific",
+  "now": "dial_time"
+ },
+ "other_call_variables": [],
+ "opening": {
+  "first_sentence": "Hello, this is the automated assistant of Tidewell Mutual Bank. This call is recorded.",
+  "identity_question": "Could I speak with <honorific> <surname>, please?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "that's me",
+   "<forename> <surname>",
+   "<surname>",
+   "<honorific> <surname>"
+  ],
+  "not_confirmations": [
+   "hello",
+   "who's calling?",
+   "what is it about?"
+  ],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "arrears",
+   "overdue amount",
+   "payment",
+   "collections",
+   "the account",
+   "the product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "dob",
+    "ask": "Could you tell me your date of birth, please?",
+    "format": "date",
+    "numeric_order": "DMY"
+   },
+   {
+    "api_value": "postcode",
+    "ask": "Could you tell me the postcode of your home address, please?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "member_no_last3",
+    "ask": "Could you tell me the last three digits of your membership number, please?",
+    "format": "digits3",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": "dmy_swapped",
+  "swapped_instruction": "Could you say the month as a word, please?",
+  "failed_message": "I'm sorry, I can't go any further on this call. Please ring the number on your statement or visit a branch.",
+  "refusal_explanation": "These questions are there to protect your account.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "CRD",
+   "spoken": "credit card ending <card_ending>",
+   "floor_field": "min_pay"
+  },
+  {
+   "api_type": "UPL",
+   "spoken": "personal loan",
+   "floor_field": "instalment_due"
+  },
+  {
+   "api_type": "ODR",
+   "spoken": "overdraft on your current account ending <acct_ending>",
+   "floor_field": "min_pay"
+  },
+  {
+   "api_type": "MTR",
+   "spoken": "car finance agreement ending <agreement_ending>",
+   "floor_field": "amount_overdue"
+  }
+ ],
+ "debt_intro": "I'm calling from Tidewell's arrears team about overdue payments.",
+ "product_sentence": "Your <spoken> is <days_late> days overdue, with <past_due> outstanding.",
+ "after_verification_sentence": "",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-01-01",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-04",
+   "2026-05-25",
+   "2026-08-31",
+   "2026-11-27",
+   "2026-12-25",
+   "2026-12-28",
+   "2027-01-01",
+   "2027-03-26",
+   "2027-03-29"
+  ],
+  "week_start": 0,
+  "next_weekday": "following_week"
+ },
+ "bands": [
+  {
+   "name": "S1",
+   "min": 1,
+   "max": 14,
+   "deadline_business_days": 14,
+   "deadline_unit": "calendar_days",
+   "attempts": 1
+  },
+  {
+   "name": "S2",
+   "min": 15,
+   "max": 35,
+   "deadline_business_days": 7,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  },
+  {
+   "name": "S3",
+   "min": 36,
+   "max": 89,
+   "deadline_business_days": 5,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Are you able to pay the overdue amount today?",
+ "first_ask_multi": "Are you able to pay all of these today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": [
+    "S1",
+    "S2"
+   ]
+  },
+  {
+   "attempt": 1,
+   "amount": "floor",
+   "date": "end_of_week",
+   "bands": [
+    "S3"
+   ]
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "S2",
+    "S3"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "09:30",
+  "end": "18:00",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "the order get_account lists the accounts",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "borrower_solutions",
+  "human": "contact_centre",
+  "support": "financial_support"
+ },
+ "outcomes": {
+  "promise": "PTP",
+  "paid": "PIF",
+  "transferred": "XFR",
+  "no_promise": "NPTP",
+  "not_verified": "NOID",
+  "not_reached": "NOCON",
+  "reasons": {
+   "restructuring": "RST",
+   "human": "HUM",
+   "support": "FSU",
+   "refused": "REF",
+   "hardship": "HRD",
+   "dispute": "DSP",
+   "service_error": "TEC",
+   "failed": "IDF",
+   "declined": "IDR",
+   "callback": "CB",
+   "no_callback": "NCB",
+   "wrong_number": "WN",
+   "deceased": "DEC",
+   "unclear": "UNC",
+   "paid": ""
+  },
+  "note_reasons": {
+   "refused": "NPR",
+   "hardship": "FHD",
+   "dispute": "DSP",
+   "paid": "APD",
+   "service_error": "TEC"
+  },
+  "by_reason": {
+   "restructuring": "",
+   "human": "",
+   "support": "",
+   "refused": "",
+   "hardship": "",
+   "dispute": "",
+   "service_error": "",
+   "failed": "",
+   "declined": "",
+   "callback": "",
+   "no_callback": "",
+   "wrong_number": "",
+   "deceased": "",
+   "unclear": "",
+   "paid": ""
+  }
+ },
+ "recording": {
+  "retries_after_failure": 1,
+  "after_promise_sentence": "You'll receive a text message and an email confirming this arrangement.",
+  "read_back_question": "Shall I set that up for you?"
+ },
+ "fixed_sentences": {
+  "deceased": "I'm very sorry to hear that.",
+  "robot": "I'm Tidewell Mutual Bank's automated assistant.",
+  "scam": "You can check this call by ringing the number on the back of your card or on your statement.",
+  "paid": "Payments can take up to two business days to show on your account.",
+  "farewell": "Thank you for your time. Goodbye."
+ },
+ "stage_rules": {
+  "always": [
+   "Use dial_time as today and now for every date and time rule, never the real clock.",
+   "Saturday and Sunday are never business days, even though some branches open on Saturday mornings. Bank holidays are not business days: 27 November 2026, 25 December 2026, 28 December 2026 and 1 January 2027 (4 January 2027 is a business day).",
+   "If asked whether this is a robot, say \"I'm Tidewell Mutual Bank's automated assistant.\" and continue.",
+   "If asked whether this is a scam, say \"You can check this call by ringing the number on the back of your card or on your statement.\" and continue.",
+   "For a question the tools cannot answer, say you do not have that information.",
+   "Never offer a discount, a waiver, a payment holiday, a plan or any term not listed here.",
+   "Say every amount in pounds and pence exactly as the system gives it (for example \u00a31,284.37); never round."
+  ],
+  "opening": [
+   "First sentence, word for word: \"Hello, this is the automated assistant of Tidewell Mutual Bank. This call is recorded.\" Then ask: \"Could I speak with <honorific> <surname>, please?\"",
+   "Before security is passed, do not mention arrears, an overdue amount, a payment, collections, the account or the product, to anyone, family members included.",
+   "Only \"yes\", \"speaking\", \"that's me\" or the customer saying their own name confirms. \"Hello\", \"who's calling?\" and \"what is it about?\" do not: ask once more.",
+   "If it is still unclear after the second ask, end the call as NOCON / UNC.",
+   "If the person asks a question first, answer it; the ask after that is the second ask.",
+   "If someone other than the customer answers, follow the third-party rules."
+  ],
+  "third_party": [
+   "Give no reason for the call. Ask when the customer can be reached.",
+   "A callback can be booked for today or the next business day only, from 09:30 to 18:00, both included, and later than dial_time. On 24 December and 31 December the callback must be at 14:00 or earlier.",
+   "Book the callback and end the call as NOCON / CB.",
+   "If the time offered is outside this, ask once for another; if that is outside too, book nothing and end the call as NOCON / NCB.",
+   "Not the customer's number: end the call as NOCON / WN.",
+   "The customer has died: say \"I'm very sorry to hear that.\", ask nothing more, end the call as NOCON / DEC.",
+   "A third party may never answer security questions or hear anything about the account, even if they offer to pay."
+  ],
+  "identity": [
+   "Ask one question at a time, in this order: the date of birth, then the postcode of the home address, then the last three digits of the membership number (asked last so the customer has time to find their membership card). Check each answer before asking the next.",
+   "Send the date of birth as YYYY-MM-DD; a date said only in numbers is day, then month, then year. Send the postcode in capitals with no spaces. Send the membership number as three digits.",
+   "Never use the mother's maiden name question.",
+   "If the check reports that day and month look swapped, ask the customer to say the month as a word. That retry is not a wrong answer. An unreadable answer is not a wrong answer.",
+   "A wrong answer may be asked again. Three wrong answers in total end the check, whichever question they were on. Then do not discuss the account: say \"I'm sorry, I can't go any further on this call. Please ring the number on your statement or visit a branch.\" and end the call as NOID / IDF.",
+   "If the customer will not answer, explain once: \"These questions are there to protect your account.\" If they refuse again, end the call as NOID / IDR. Asking what the call is about instead of answering counts as refusing.",
+   "If the customer says twice they do not want to talk before security is passed, end the call as NOID / IDR."
+  ],
+  "negotiation": [
+   "After security, say: \"I'm calling from Tidewell's arrears team about overdue payments.\" Then one sentence per account: \"Your <product> is <days> days overdue, with <amount> outstanding.\"",
+   "Stages by days past due: S1 1 to 14 (latest promise date: the 14th calendar day after today; if that day is not a business day, the last business day before it; 1 persuasion attempt); S2 15 to 35 (latest: 7th business day after today; 2 attempts); S3 36 to 89 (latest: 5th business day after today; 2 attempts).",
+   "With one account first ask: \"Are you able to pay the overdue amount today?\"",
+   "A date or an amount the customer proposes is never a refusal. A flat refusal or a non-answer uses one persuasion attempt; a no to today with no date and no amount is a flat refusal.",
+   "Always ask for the full overdue amount first. Never ask what the customer can afford: you propose every amount.",
+   "Floor: credit card and overdraft: the minimum payment (min_pay); personal loan: the monthly instalment (instalment_due); car finance: the full overdue amount (no part payment). For a credit card whose overdue amount is \u00a330.00 or less there is no part payment: the floor is the full overdue amount.",
+   "If the customer says the full amount is too much, offer the floor once and say the rest stays overdue. On car finance there is no lower amount to offer: treat it as a flat refusal (it uses an attempt).",
+   "Any amount from the floor up to the full overdue amount, both included, is accepted. Below the floor: say it cannot be recorded and offer the floor once; if it is not accepted, that is a flat refusal.",
+   "A promise date must be today or later, a business day, and not after the stage's latest promise date. A weekend day or holiday that is not after the latest date: offer the next business day. A date after it: say the latest date that can be recorded and offer it; refusing that is a flat refusal.",
+   "\"Next Wednesday\" means the Wednesday of the following calendar week, \"this Wednesday\" the one in the current week; weeks start on Monday.",
+   "A vague period (\"after payday\", \"end of the month\"): ask once for the exact day; if none comes, propose the latest promise date.",
+   "Attempt 1, S1 and S2: the full overdue amount (or the floor, if the customer already said the full amount is too much) on the last business day of the current week; if today is that day, the last business day of next week.",
+   "Attempt 1, S3: the floor on the last business day of the current week, with the same rule if today is that day.",
+   "Attempt 2, S2 and S3 only: the floor on the latest promise date.",
+   "When the attempts are used up, stop and do not repeat an offer the customer refused. With one account: end the call as NPTP / REF. With several accounts: mark this account as refused and continue with the next account.",
+   "Hardship (illness, a bereavement or the loss of a job): one short sentence of sympathy and no persuasion. Offer the Financial Support Unit. Accepted: transfer to the financial support desk and end the call as XFR / FSU. Declined: with one account, mark it as hardship and end the call as NPTP / HRD; with several accounts, mark this account as hardship and continue with the next account. If the customer still names a date or an amount, record the promise. Hardship comes before persuasion and before restructuring.",
+   "\"I've already paid\": say \"Payments can take up to two business days to show on your account.\" and take no promise. With one account: end the call as PIF. With several accounts: mark this account as already paid and continue with the next account. A claim that the account was paid off or closed in the past is a dispute.",
+   "\"This isn't my debt\": do not argue, take no promise. With one account: end the call as NPTP / DSP. With several accounts: mark this account as dispute and continue with the next account.",
+   "A payment plan or lower instalments: describe nothing, transfer to the borrower solutions desk and end the call as XFR / RST. Promises already recorded stay; promises agreed but not yet recorded are not recorded.",
+   "A request for a person: ask once whether you can help. If they insist, transfer to the contact centre and end the call as XFR / HUM.",
+   "The customer says twice they do not want to talk: end the call as NPTP / REF.",
+   "On any transfer, file no notes at all, before or after it."
+  ],
+  "multi_product": [
+   "State every overdue account, one sentence each, before asking for anything. Then ask: \"Are you able to pay all of these today?\"",
+   "If the customer cannot pay all of them today, go through the accounts one at a time in the order the system lists them. Do not ask about today again.",
+   "Each account starts at attempt 1 and attempts are counted per account.",
+   "If the customer names one date for everything and it is after one account's latest promise date, record that account on its own latest date and say so in the read-back; the others keep the named date.",
+   "A dispute or an \"already paid\" claim on one account does not end the call.",
+   "For each account left without a promise, mark it with its reason: refused, hardship, dispute, already paid or system failure. On any transfer, mark nothing."
+  ],
+  "confirmation": [
+   "Read back the account, the amount and the date and ask \"Shall I set that up for you?\". With several accounts, read all promises back together and ask for one confirmation.",
+   "Record only after a clear yes. If the customer changes something at that point, check it again and read it back again."
+  ],
+  "recording": [
+   "Record one promise per account. A recorded promise cannot be changed on this call (the customer can use online banking).",
+   "Say a promise is recorded only after recording succeeds.",
+   "If recording fails, try once more. If it fails again, say it could not be recorded. With one account: end the call as NPTP / TEC. With several accounts: keep the recorded ones and mark the failed account as system failure.",
+   "After a recorded promise say: \"You'll receive a text message and an email confirming this arrangement.\""
+  ],
+  "closing": [
+   "Thank the customer and say goodbye, then end the call exactly once, as the very last action.",
+   "At least one promise recorded: end as PTP, unless a transfer followed it, in which case use that transfer's outcome.",
+   "No promise, several accounts: if every account is marked already paid, end as PIF; otherwise use the outcome that goes with the mark of the first account, in the system's order, that is not already paid (refused NPTP / REF, hardship NPTP / HRD, dispute NPTP / DSP, system failure NPTP / TEC).",
+   "Never send a retired code."
+  ]
+ },
+ "evidence": [
+  {
+   "path": "opening.first_sentence",
+   "quote": "\"Hello, this is the automated assistant of Tidewell Mutual Bank. This call is recorded.\""
+  },
+  {
+   "path": "opening.identity_question",
+   "quote": "\"Could I speak with {honorific} {surname}, please?\""
+  },
+  {
+   "path": "callback",
+   "quote": "The 08:30 to 20:00 hours are withdrawn: callback times go back to CP-7 2.3. The shorter booking horizon (today or the next business day) stays."
+  },
+  {
+   "path": "callback.start",
+   "quote": "from 09:30 to 18:00, both included,\u00b9 and later than `dial_time`"
+  },
+  {
+   "path": "identity.questions",
+   "quote": "The membership number question stays, but it is now asked last, after the postcode"
+  },
+  {
+   "path": "identity.max_wrong_total",
+   "quote": "The limit is three wrong answers in total, as in CP-7 2.4."
+  },
+  {
+   "path": "bands",
+   "quote": "S1 is now 1 to 14 days past due and S2 is 15 to 35. S1's latest promise date is now the 14th calendar day after today"
+  },
+  {
+   "path": "bands.S3.attempts",
+   "quote": "S3 keeps the attempts of CP-7 3.4."
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "Friday 27 November 2026 (Founders' Day) is a bank holiday."
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "take it off the list: it is a business day for the pilot."
+  },
+  {
+   "path": "product_types.MTR.floor_field",
+   "quote": "There is no part payment. The floor is the full overdue amount."
+  },
+  {
+   "path": "transfer_queues.support",
+   "quote": "the desk is `financial_support`"
+  },
+  {
+   "path": "recording.after_promise_sentence",
+   "quote": "\"You'll receive a text message and an email confirming this arrangement.\""
+  },
+  {
+   "path": "outcomes.reasons.support",
+   "quote": "| 209 | XFR | WEL | hardship, accepted Welfare Team | retired 30 Sep 2026, use 203 |"
+  },
+  {
+   "path": "outcomes.reasons.service_error",
+   "quote": "| 304 | NPTP | SYS | system failure | retired 30 Sep 2026, use 305 |"
+  },
+  {
+   "path": "outcomes.reasons.callback",
+   "quote": "| 601 | CBK | \u2013 | callback booked | retired 30 Sep 2026, use 501 |"
+  },
+  {
+   "path": "outcomes.note_reasons.service_error",
+   "quote": "SER system failure (retired 30 Sep 2026, use TEC)"
+  },
+  {
+   "path": "fixed_sentences.paid",
+   "quote": "\"Payments can take up to two business days to show on your account.\""
+  }
+ ],
+ "precedence": [
+  {
+   "topic": "callback hours",
+   "superseded_quote": "between 08:30 and 20:00, both included",
+   "governing_quote": "The 08:30 to 20:00 hours are withdrawn: callback times go back to CP-7 2.3.",
+   "why": "HC-26-19 (20 Oct) is later than HC-26-14; restoring CP-7 2.3 restores its 24/31 December footnote."
+  },
+  {
+   "topic": "callback horizon",
+   "superseded_quote": "today or one of the next two business days",
+   "governing_quote": "The shorter booking horizon (today or the next business day) stays.",
+   "why": "HC-26-14 and HC-26-19 are later than CP-7."
+  },
+  {
+   "topic": "security order",
+   "superseded_quote": "asked first, before the date of birth",
+   "governing_quote": "it is now asked last, after the postcode",
+   "why": "HC-26-19 is later than HC-26-14."
+  },
+  {
+   "topic": "wrong answer limit",
+   "superseded_quote": "Two wrong answers in total now end the check.",
+   "governing_quote": "The limit is three wrong answers in total, as in CP-7 2.4.",
+   "why": "HC-26-19 is later."
+  },
+  {
+   "topic": "stages",
+   "superseded_quote": "| 1 to 10 | S1 | 10th business day after today | 1 |",
+   "governing_quote": "S1 is now 1 to 14 days past due and S2 is 15 to 35.",
+   "why": "HC-26-14 point 3 effective 1 Oct 2026 and confirmed to stand by HC-26-19."
+  },
+  {
+   "topic": "S3 attempts",
+   "superseded_quote": "S3 gets a third persuasion attempt: the floor amount, today.",
+   "governing_quote": "Point 6 (third attempt in S3)** is withdrawn.",
+   "why": "HC-26-19 is later."
+  },
+  {
+   "topic": "confirmation sentence",
+   "superseded_quote": "\"You'll receive a letter confirming this arrangement.\"",
+   "governing_quote": "\"You'll receive a text message and an email confirming this arrangement.\"",
+   "why": "HC-26-19 is later than CP-7 and HC-26-14; PG-26-31's sentence is effective 1 March 2027, after the pilot."
+  },
+  {
+   "topic": "hardship desk",
+   "superseded_quote": "transfer to desk `welfare_team` and close as 209",
+   "governing_quote": "the desk is `financial_support`. Annex D has the close code.",
+   "why": "HC-26-14 point 4 effective 1 Oct; 209 retired, use 203 (XFR/FSU)."
+  },
+  {
+   "topic": "holidays",
+   "superseded_quote": "4 January (Scotland)",
+   "governing_quote": "Monday 4 January 2027 is a Scottish holiday only. ... take it off the list",
+   "why": "HC-26-19 is later; 27 Nov 2026 added by HC-26-14 point 7."
+  },
+  {
+   "topic": "MTR floor",
+   "superseded_quote": "The floor on every loan, UPL and MTR alike, is its `instalment_due`",
+   "governing_quote": "There is no part payment. The floor is the full overdue amount.",
+   "why": "A memo limited to one product wins for that product over any general document, whatever the dates."
+  },
+  {
+   "topic": "ODR floor / Saturday callbacks",
+   "superseded_quote": "The floor on an overdraft becomes the full overdue amount.",
+   "governing_quote": "The floor is `min_pay` for CRD\u00b2 and ODR",
+   "why": "PG-26-31 is effective 1 March 2027, after the pilot ends on 26 February 2027, so it never applies."
+  },
+  {
+   "topic": "retired codes",
+   "superseded_quote": "close as 304",
+   "governing_quote": "| 305 | NPTP | TEC | promise could not be recorded | active |",
+   "why": "Annex D: use the replacement wherever a code has been retired (also 601\u2192501, 209\u2192203, SER\u2192TEC)."
+  }
+ ],
+ "unmapped_rules": [
+  "S1 latest promise date: the 14th calendar day after today; if that day is not a business day, the last business day before it (not the next).",
+  "CRD floor: if the card's overdue amount is \u00a330.00 or less, the floor is the full overdue amount.",
+  "Callbacks on 24 December and 31 December must be at 14:00 or earlier."
+ ]
+}

@@ -20,7 +20,13 @@ are still required, trace content rules ("Remove API keys"), "nothing from the f
 whether manual input conversion (e.g. PDF to text) is allowed, and whether the mock itself is submitted or graded.
 
 ## 2. Selected preparation candidate and its limits
-- **Prepare on `prep/final` at bf732d7** (or later). Builder = C14 (dev/c10 8cb1932, tree f956041a) + final-shape changes
+- **FROZEN FINAL CANDIDATE: `prep/final` at ef5f718** (tag `cand/C14-final`). Since bf732d7 (18:20-18:40): contract auth headers
+  (`--tool-headers`), path parameters, YAML contracts, PDF text (PDFKit), contract warnings ('ok with warnings' + trace) for shapes that
+  would fail silently, close reasons checked against the contract enum, any 2xx response, `outcomes.by_reason` (a situation with its own
+  close outcome), ISO date-time callbacks, no-floor products accept only the full amount, required close reason never dropped.
+  143 tests. Rehearsals of ef5f718 (evidence/rehearsal-ef5f718): kit zip 174 s, 0 exact IR diffs; independent R5 case 181 s, 0 exact IR
+  diffs, warnings correctly flag retired codes and 3 rules the IR cannot express.
+- Earlier: `prep/final` at bf732d7. Builder = C14 (dev/c10 8cb1932, tree f956041a) + final-shape changes
   (072e517: bundle inputs, explicit --tool-map, test-only base URL, URL checks). Compiled output for a single text brief is unchanged:
   the kit golden test passes. 127 offline tests pass.
 - Why C14 and not C5: for an unknown contract, the review measured 5 contract variants. C14 compiled all 5; C5 got KeyErrors on 3 (a
@@ -115,6 +121,14 @@ Hosting (Freya calls tools from its cloud, so it needs a public HTTPS URL; nothi
    Output: submission/final.workflow.json, traces/final.log + .jsonl, out/final.policy.json, committed as the artefact commit;
    verify_submission prints 0 problems. Never edit the export by hand: the trace records its sha. Package it as the mail requires.
 7. Any builder fix after the release: a separate commit that says what failed and why it contains nothing from the case; then rebuild.
+
+## 5b. Reading the build warnings (decide before submitting)
+- `contract: ... never produced by the policy` - check the case's code list: retired/unused codes are fine; an ACTIVE code means the
+  policy misses a situation (fix the extraction, e.g. `outcomes.by_reason`, or rebuild).
+- `contract: verify_identity response ...`, `unfilled path parameter`, `query parameters`, `minor units`, `date-time` - the agent would
+  fail at runtime: needs a builder fix (separate commit, nothing from the case written into the builder) before submitting.
+- `the contract requires auth ...` - provide `--tool-headers` from the official instructions only.
+- `policy rule not expressible in the IR` - reaches the agent as rule text only; judge its scoring impact.
 
 ## 6. Resources and actions for Mert
 - Freya credits: 394.07 (verified 17:47); day start 449.29, so 55.2 credits (~$27.6) used. Measured cost: a 99-run suite about 6

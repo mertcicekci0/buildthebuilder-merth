@@ -1,0 +1,10 @@
+TEXT   opening.first_sentence
+   got: Hello, I am a digital assistant calling from Freya Bank, and we record this call.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I could not verify your identity. Please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 3 text difference(s)

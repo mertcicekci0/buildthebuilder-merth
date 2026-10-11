@@ -1,0 +1,7 @@
+TEXT   opening.identity_question
+   got: Could I speak with <honorific> <surname>, please?
+   ref: Could I speak with <title> <last_name>, please?
+TEXT   fixed_sentences.farewell
+   got: Thank you for your time. Goodbye.
+   ref: 
+0 exact difference(s), 2 text difference(s)
