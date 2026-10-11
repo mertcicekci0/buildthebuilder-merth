@@ -30,6 +30,55 @@ from builder import validate as v  # noqa: E402
 from builder.trace import Trace  # noqa: E402
 
 DEADLINE_MIN = float(os.environ.get("BUILDER_DEADLINE_MIN", "27"))   # hard stop below the 30-minute limit
+T0 = float(os.environ.get("BUILDER_T0") or time.time())             # kept across a runtime re-exec
+
+
+def ensure_model_runtime():
+    """The model boundary needs claude-agent-sdk. Use this interpreter if it has it; otherwise the repo's .venv;
+    otherwise create .venv from the locked, hash-pinned requirements (uv.lock via `uv sync --frozen`, else
+    requirements.hashes.txt via pip --require-hashes) and re-run this command with it. Every step is printed."""
+    try:
+        import claude_agent_sdk  # noqa: F401
+        return
+    except ImportError:
+        pass
+    venv_py = ROOT / ".venv" / "bin" / "python"
+    if os.environ.get("BUILDER_REEXEC") == "1":
+        raise SystemExit("claude-agent-sdk is not importable even in .venv; run `uv sync --frozen` "
+                         "(or pip install -r requirements.hashes.txt --require-hashes) and retry")
+    if not venv_py.exists():
+        import shutil
+        import subprocess
+        print(f"[runtime] {sys.executable} lacks claude-agent-sdk and there is no .venv: creating it from the lock files", flush=True)
+        if shutil.which("uv"):
+            cmd = ["uv", "sync", "--frozen", "--no-dev"]
+            ok = subprocess.run(cmd, cwd=ROOT).returncode == 0
+        else:
+            ok = subprocess.run([sys.executable, "-m", "venv", str(ROOT / ".venv")]).returncode == 0 and \
+                subprocess.run([str(venv_py), "-m", "pip", "install", "-q", "--require-hashes", "-r", str(ROOT / "requirements.hashes.txt")]).returncode == 0
+        if not ok or not venv_py.exists():
+            raise SystemExit("could not create .venv; run `uv sync --frozen` (or pip install -r requirements.hashes.txt --require-hashes)")
+    print(f"[runtime] re-running with {venv_py.relative_to(ROOT)} (has the pinned claude-agent-sdk)", flush=True)
+    env = dict(os.environ, BUILDER_REEXEC="1", BUILDER_T0=str(T0))
+    os.execve(str(venv_py), [str(venv_py), str(pathlib.Path(__file__).resolve())] + sys.argv[1:], env)
+
+
+def _sdk_version():
+    try:
+        import claude_agent_sdk
+        return getattr(claude_agent_sdk, "__version__", "unknown")
+    except ImportError:
+        return "not installed"
+
+
+def _git_commit():
+    try:
+        import subprocess
+        out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=5)
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True, text=True, timeout=5).stdout.strip()
+        return (out.stdout.strip() or "unknown") + ("+dirty" if dirty else "")
+    except Exception:  # noqa: BLE001
+        return "unknown"
 
 
 def sha(path):
@@ -91,13 +140,16 @@ def main():
     ap.add_argument("--ir", help="use this policy IR instead of extracting one (no model call)")
     ap.add_argument("--no-save", action="store_true")
     a = ap.parse_args()
+    if not a.ir and os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk") == "agent_sdk":
+        ensure_model_runtime()
     slot = a.slot or pathlib.Path(a.brief_path).stem
     for d in ("out", "submission", "traces"):
         (ROOT / d).mkdir(exist_ok=True)
     trace = Trace(ROOT / "traces" / f"{slot}.jsonl")
-    deadline = time.time() + DEADLINE_MIN * 60
+    deadline = T0 + DEADLINE_MIN * 60
     trace.start(brief=a.brief_path, brief_sha=sha(a.brief_path), tool_api=a.tool_api_path, api_sha=sha(a.tool_api_path), slot=slot,
-                builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"))
+                builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
+                python=sys.version.split()[0], agent_sdk=_sdk_version(), commit=_git_commit(), started_before_s=round(time.time() - T0, 1))
     status = "failed"
     try:
         brief = pathlib.Path(a.brief_path).read_text(encoding="utf-8", errors="replace")
