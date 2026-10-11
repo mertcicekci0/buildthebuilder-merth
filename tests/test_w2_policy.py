@@ -64,3 +64,30 @@ def test_after_verification_sentence_slot():
         "Thank you, you are verified. This is an attempt to collect a debt, {{first_name}}. {{debt_statement}} {{first_ask}}"
     legacy = {k: x for k, x in IR.items() if k != "after_verification_sentence"}   # an older IR without the field still compiles
     assert build(legacy)[2]["nodes"]["negotiate"]["on_enter"]["text"].startswith("Thank you, you are verified. {{debt_statement}}")
+
+
+def test_bands_out_of_range_still_get_a_deadline():
+    import datetime as dt
+    from builder import runtime_src as rt
+    cfg = json.load(open(ROOT / "tests/fixtures/runtime_cfg_public_ab.json"))   # early 1-7, late 8-45
+    today = dt.date(2026, 10, 14)
+    assert rt.band_for(0, cfg)["name"] == "early" and rt.band_for(-3, cfg)["name"] == "early"
+    assert rt.band_for(46, cfg)["name"] == "late" and rt.band_for(400, cfg)["name"] == "late"
+    assert rt.band_for(7, cfg)["name"] == "early" and rt.band_for(8, cfg)["name"] == "late"
+    assert rt.band_for("x", cfg) is None and rt.band_for(5, {"bands": []}) is None
+    assert rt.deadline_for(today, 400, cfg) == rt.deadline_for(today, 14, cfg)
+    assert rt.deadline_for(today, 0, cfg) == rt.deadline_for(today, 5, cfg)
+    gap = {"bands": [{"name": "a", "min": 1, "max": 5}, {"name": "b", "min": 10, "max": 20}]}
+    assert rt.band_for(7, gap)["name"] == "a"   # in a gap: the band below
+
+
+def test_band_checks_flag_inverted_gaps_and_overlaps():
+    from builder import policy_schema as ps
+    api = ot.load(KIT); roles, _ = ot.infer_roles(api)
+    assert not [p for p in ps.check(IR, api, roles) if "band" in p]
+    for bands, word in [([("a", 1, 7), ("b", 8, 3)], "below min"), ([("a", 1, 7), ("b", 9, 45)], "gap or overlap"),
+                        ([("a", 1, 7), ("b", 6, 45)], "gap or overlap")]:
+        ir = copy.deepcopy(IR)
+        ir["bands"] = [dict(IR["bands"][0], name=n, min=lo, max=hi) for n, lo, hi in bands]
+        ir["ladder"] = []
+        assert any(word in p for p in ps.check(ir, api, roles)), (bands, ps.check(ir, api, roles))

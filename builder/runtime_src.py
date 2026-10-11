@@ -93,14 +93,21 @@ def weekday_in_week(today, wd, weeks_ahead, cfg):
 
 
 def band_for(days_late, cfg):
+    """The band containing days_late. Outside every band a product still gets a band, so it always has a deadline:
+    below the lowest band -> the lowest band; above the highest band (or in a gap between bands) -> the highest band
+    that starts at or below days_late."""
     try:
         n = int(float(days_late))
     except (TypeError, ValueError):
         return None
-    for b in cfg["bands"]:
+    bands = sorted(cfg["bands"], key=lambda b: b["min"])
+    for b in bands:
         if b["min"] <= n <= b["max"]:
             return b
-    return None
+    if not bands:
+        return None
+    below = [b for b in bands if b["min"] <= n]
+    return below[-1] if below else bands[0]
 
 
 def deadline_for(today, days_late, cfg):

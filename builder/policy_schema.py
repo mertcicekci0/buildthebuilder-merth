@@ -111,6 +111,9 @@ def check(ir, api, roles, brief_text=""):
     bands = sorted(ir["bands"], key=lambda b: b["min"])
     if not bands:
         p.append("bands is empty")
+    for b in bands:
+        if b["max"] < b["min"]:
+            p.append(f"band {b['name']} has max {b['max']} below min {b['min']}")
     for a, b in zip(bands, bands[1:]):
         if b["min"] != a["max"] + 1:
             p.append(f"bands {a['name']} ({a['min']}-{a['max']}) and {b['name']} ({b['min']}-{b['max']}) leave a gap or overlap")
