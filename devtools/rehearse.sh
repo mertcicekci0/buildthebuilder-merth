@@ -11,16 +11,17 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 rm -rf "$W" && mkdir -p "$W/inputs" || exit 1
 git clone -q "$SRC" "$W/repo" && (cd "$W/repo" && git checkout -q "$C") || exit 1
 NAMES=""
-while [ $# -ge 3 ]; do
-  cp "$2" "$W/inputs/$1.md" && cp "$3" "$W/inputs/$1.openapi.json" || exit 1
-  NAMES="$NAMES $1"; shift 3
+ARGS=""
+while [ $# -ge 3 ]; do   # inputs keep their extension: a .md brief, or a .zip / folder bundle (the contract may be the same bundle)
+  case "$2" in *.*) EB=".${2##*.}";; *) EB="";; esac
+  case "$3" in *.*) EA=".${3##*.}";; *) EA="";; esac
+  cp -R "$2" "$W/inputs/$1$EB" && cp -R "$3" "$W/inputs/$1.contract$EA" || exit 1
+  NAMES="$NAMES $1"; ARGS="$ARGS ../inputs/$1$EB ../inputs/$1.contract$EA"; shift 3
 done
 cd "$W/repo" || exit 1
 mkdir -p traces submission
 if [ -f devtools/final_run.sh ]; then   # rehearse the exact final procedure (commit inside the throwaway clone only)
   git config user.name rehearsal && git config user.email rehearsal@localhost
-  ARGS=""
-  for n in $NAMES; do ARGS="$ARGS ../inputs/$n.md ../inputs/$n.openapi.json"; done
   sh devtools/final_run.sh --commit $ARGS 2>&1 | tee ../final_run.txt | grep "^\[final\]\|problem(s)" | tee ../timings.txt
   grep "problem(s)" ../final_run.txt > ../verify.txt
   exit 0
