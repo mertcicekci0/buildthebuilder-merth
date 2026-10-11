@@ -1,7 +1,7 @@
 {
  "workflow_id": "36b5d9fb-062d-4e56-957d-20c3bcc2e3d9",
  "agent_id": "899fee87-2b60-4475-9792-0d51e2f61f8b",
- "updated_at": "2026-10-11T19:03:15.890Z",
+ "updated_at": "2026-10-11T19:31:43.050Z",
  "workflow": {
   "nodes": {
    "main": {
@@ -514,9 +514,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "The caller is done or agreed to go to the main menu"
+       "description": "The caller is done or agreed to go to the main menu. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "Hand the caller back to the main menu (the sentence \u00abSizi ana men\u00fcye y\u00f6nlendiriyorum.\u00bb is played). Call it when the caller wants nothing else (thanks, goodbye, no), declines the e-mail or the week change, after a successful send or change, or clearly says yes to being transferred to the main menu.",
+      "description": "Hand the caller back to the main menu (the sentence \u00abSizi ana men\u00fcye y\u00f6nlendiriyorum.\u00bb is played). Call it when the caller wants nothing else (thanks, goodbye, no), declines the e-mail or the week change, after a successful send or change, or clearly says yes to being transferred to the main menu. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_menu",
       "is_tool_call": true
      },
@@ -524,9 +524,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "E-mail lookup failed at the offer"
+       "description": "E-mail lookup failed at the offer. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "The registered e-mail lookup failed (e-mail state error) and the offer or e-mail step has been reached. Transfers to an agent.",
+      "description": "The registered e-mail lookup failed (e-mail state error) and the offer or e-mail step has been reached. Transfers to an agent. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_email_error",
       "is_tool_call": true
      },
@@ -534,9 +534,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "Three tries used up"
+       "description": "Three tries used up. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "Three tries on the same question are used up. The failure sentence is played and the caller goes to the main menu.",
+      "description": "Three tries on the same question are used up. The failure sentence is played and the caller goes to the main menu. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_menu_fail",
       "is_tool_call": true
      },
@@ -544,9 +544,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "Third silence in a row"
+       "description": "Third silence in a row. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "Third silence in a row from the caller. The closing sentence is played and the call ends.",
+      "description": "Third silence in a row from the caller. The closing sentence is played and the call ends. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_silence",
       "is_tool_call": true
      },
@@ -554,9 +554,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "Still complaining after three calming replies"
+       "description": "Still complaining after three calming replies. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "The caller is still complaining or insulting after three calming replies. Transfers to an agent.",
+      "description": "The caller is still complaining or insulting after three calming replies. Transfers to an agent. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_agent_complaint",
       "is_tool_call": true
      }
@@ -1274,9 +1274,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "The caller wants nothing else or agreed to go to the main menu"
+       "description": "The caller wants nothing else or agreed to go to the main menu. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "Hand the caller back to the main menu (the sentence \u00abSizi ana men\u00fcye y\u00f6nlendiriyorum.\u00bb is played). Call it when the caller wants nothing else or clearly says yes to being transferred to the main menu.",
+      "description": "Hand the caller back to the main menu (the sentence \u00abSizi ana men\u00fcye y\u00f6nlendiriyorum.\u00bb is played). Call it when the caller wants nothing else or clearly says yes to being transferred to the main menu. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_menu",
       "is_tool_call": true
      },
@@ -1284,9 +1284,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "Three tries used up"
+       "description": "Three tries used up. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "Three tries on the same question are used up. The failure sentence is played and the caller goes to the main menu.",
+      "description": "Three tries on the same question are used up. The failure sentence is played and the caller goes to the main menu. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_menu_fail",
       "is_tool_call": true
      },
@@ -1294,9 +1294,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "Third silence in a row"
+       "description": "Third silence in a row. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "Third silence in a row from the caller. The closing sentence is played and the call ends.",
+      "description": "Third silence in a row from the caller. The closing sentence is played and the call ends. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_silence",
       "is_tool_call": true
      },
@@ -1304,9 +1304,9 @@
       "condition": {
        "mode": "exact",
        "operator": "matches_intent",
-       "description": "Still complaining after three calming replies"
+       "description": "Still complaining after three calming replies. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition."
       },
-      "description": "The caller is still complaining or insulting after three calming replies. Transfers to an agent.",
+      "description": "The caller is still complaining or insulting after three calming replies. Transfers to an agent. Use this only after every action the caller has confirmed in this call has been carried out with its tool and its result has been told to the caller. If the caller confirms an action and in the same message says they are done or need nothing else, first call that action's tool, tell the caller the result, and only then use this transition.",
       "target_node": "end_agent_complaint",
       "is_tool_call": true
      }
