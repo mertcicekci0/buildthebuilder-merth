@@ -157,6 +157,18 @@ def clean_var(name, default):
     return n if re.fullmatch(r"[A-Za-z_]\w*", n) else default
 
 
+def var_names(ir):
+    """Placeholder -> call-variable name, for roles (<title>), actual names (<salutation>) and other_call_variables."""
+    cv = {k: clean_var(v, "") for k, v in (ir.get("call_variables") or {}).items()}
+    out = {v: v for v in cv.values() if v}
+    out.update({k: v for k, v in cv.items() if v})
+    for x in ir.get("other_call_variables", []):
+        x = clean_var(x, "")
+        if x:
+            out[x] = x
+    return out
+
+
 def semantic_note_reason(value, outcomes):
     """Notes are stored as semantic keys; accept an API/brief value from the IR and map it back."""
     v = str(value or "").strip()
@@ -190,6 +202,7 @@ def runtime_config(ir, api, roles):
     notes["default_reason"] = semantic_note_reason(notes.get("default_reason"), o)
     return {
         "now_var": clean_var((ir.get("call_variables") or {}).get("now"), "now"),
+        "var_names": var_names(ir),
         "calendar": ir["calendar"], "bands": ir["bands"], "table_days": 45,
         "products_prefix": f"{ACCOUNT_NODE}_response.data.{roles['products_key']}",
         "fields": {"product_id": pf["product_id"], "product_type": pf.get("product_type", "type"), "past_due": pf["past_due"], "days_late": pf["days_late"]},
@@ -282,10 +295,15 @@ try:
         lines.append('- ' + p['product_id'] + ': ' + p['spoken'] + '. Full past-due amount ' + money(p['full']) + '. Floor ' + money(p['floor']) +
                      '. ' + str(p['days_late']) + ' days late, ' + (p['band'] or 'no') + ' band, ' + str(p['attempts']) + ' persuasion attempt(s). Latest allowed date (deadline): ' + dl +
                      '. Persuasion: ' + _ladder_text(p, today) + '.')
+    def fill_vars(t):
+        for k, name in (CFG.get('var_names') or {}).items():
+            if vars.get(name):
+                t = t.replace('<' + k + '>', str(vars.get(name)))
+        return t
     intro = CFG['texts'].get('debt_intro') or ''
-    vars['debt_statement'] = (intro + ' ' + ' '.join(sentences)).strip()
+    vars['debt_statement'] = fill_vars((intro + ' ' + ' '.join(sentences)).strip())
     ask = CFG['texts'].get('first_ask_multi') if len(prods) > 1 else CFG['texts'].get('first_ask_single')
-    vars['first_ask'] = ask or ''
+    vars['first_ask'] = fill_vars(ask or '')
     vars['facts_text'] = '\\n'.join(lines) if lines else 'No product data could be read.'
     vars['date_table'] = date_table(today, prods, CFG)
     vars['n_products'] = str(len(prods))
@@ -521,7 +539,11 @@ try:
                 bad.append(p.get('spoken', pid))
         text = ''
         if ok:
-            text += 'Your promise' + ('s are' if len(ok) > 1 else ' is') + ' recorded: ' + '; '.join(ok) + '. ' + (CFG['texts'].get('after_promise') or '')
+            after = CFG['texts'].get('after_promise') or ''
+            for k, name in (CFG.get('var_names') or {}).items():
+                if vars.get(name):
+                    after = after.replace('<' + k + '>', str(vars.get(name)))
+            text += 'Your promise' + ('s are' if len(ok) > 1 else ' is') + ' recorded: ' + '; '.join(ok) + '. ' + after
         if bad:
             text += ' I am sorry, I could not record the promise for your ' + ' and '.join(bad) + '.'
         vars['record_summary'] = text.strip() or 'I could not record the promise.'
@@ -959,6 +981,18 @@ def compile_workflow(ir, api, roles, warnings=None):
     close = _api_tool(api, "close_call", {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}", roles["close_reason"]: "{{close_reason}}"},
                       pre=_hook(cfg, hook_close_pre(roles)))
     close["config"]["alwaysRunsAt"] = ["end_of_call"]
+    vn = var_names(ir)
+
+    def fill_prompt(t):
+        for k, name in vn.items():
+            t = t.replace("<" + k + ">", "{{" + name + "}}")
+        return t
+    system_prompt = fill_prompt(system_prompt)
+    for n in nodes.values():
+        if isinstance(n.get("task_message"), str):
+            n["task_message"] = fill_prompt(n["task_message"])
+        if isinstance((n.get("on_enter") or {}).get("text"), str):
+            n["on_enter"]["text"] = fill_prompt(n["on_enter"]["text"])
     test_vars = {cv[k]: v for k, v in {"customer_id": "c_test", "first_name": "Daniel", "last_name": "Reyes", "title": "Mr", "now": "2026-10-14T11:00"}.items() if k in cv}
     test_vars.update({x: "Example " + x.replace("_", " ") for x in others if x not in test_vars})   # declared variables only
     return {"initial_node": "init", "system_prompt": system_prompt, "nodes": nodes, "global_nodes": {}, "tools": [close], "test_variables": test_vars}

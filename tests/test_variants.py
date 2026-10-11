@@ -136,3 +136,26 @@ def test_paid_reason_only_when_paid_closes_under_no_promise():
     ir["outcomes"]["paid"] = "NOPTP"                         # brief: "already paid" closes as no_promise / payment_claimed
     ir["outcomes"]["reasons"]["paid"] = "payment_claimed"
     assert close_for(st, compiled(ir)) == {"customer_id": "c1", "outcome": "NOPTP", "reason": "payment_claimed"}
+
+
+def test_r2_sme_brief_compiles_and_fills_company_name():
+    """R2 (written independently): extra call variable, Saturday business days, a band with 0 attempts, retries 0."""
+    api2 = ot.load(str(ROOT / "tests/variants/api-r2.json"))
+    roles2, problems = ot.infer_roles(api2)
+    assert problems == []
+    ir2 = {k: x for k, x in json.load(open(ROOT / "tests/variants/ir-r2.ref.json")).items() if not k.startswith("_")}
+    assert ps.check(ir2, api2, roles2, (ROOT / "tests/variants/brief-r2.md").read_text()) == []
+    wf = cw.compile_workflow(ir2, api2, roles2)
+    assert v.lint(wf, api2) == []
+    pf = roles2["product_fields"]
+    prods = [{pf["product_id"]: "p1", pf["product_type"]: "overdraft", "account_last4": "5521", pf["past_due"]: 1200.0, pf["days_late"]: 5,
+              "minimum_due": 300.0}]
+    r = le.smoke(wf, roles2, prods, now="2026-10-14T11:00")
+    assert r["init_ok"] == "yes" and r["account_ok"] == "yes", r
+    assert "Example company name" in r["debt_statement"] and "<company_name>" not in r["debt_statement"]
+    assert "account ending 5521" in r["debt_statement"]
+    assert "{{company_name}}" in wf["nodes"]["opening"]["on_enter"]["text"]
+    st = r["state"]["products"]["p1"]
+    assert st["attempts"] == 0
+    # band 1 (1-10 days): 10th business day after Wed 14 Oct with Saturdays working and 31 Oct a holiday
+    assert st["deadline"] == "2026-10-26"
