@@ -48,3 +48,15 @@ Stop early if these are met, included usage runs out, or progress needs unavaila
 - 04:30 code-review subagent findings fixed (fc352c5); R2 SME brief (independent author) extraction: 1 harmless exact difference; placeholder bug fixed (3060a20). 39 offline tests. Extraction evidence round 2 committed.
 - 05:00 r2 (C2 = builder 82c7498, cand-a v1 / cand-ab v2) complete: 99 runs, ledger 93, conversation 85, run passes 84, case-groups passing all reps 20/30. A plain 26/30 (ledger 29), B plain 9/9, B styled 15/18, A styled 24/30 (ledger 30/30), A calendar 7/9 (CAL-XMAS ambiguous script -> fixed), B calendar 3/3. Evidence: evidence/regression/r2-C2/.
 - 05:00 C3 = 603b2a8 (+ case fix): finish_call oracle, verify without all_verified, negotiation fragment rule, vague dates, offers once, fold fallbacks, opening wording, complete-answer identity rule, optional tools, placeholders, review fixes. 44 offline tests. Building cand-a v2 / cand-ab v3 for r3.
+
+## Checkpoints (commit hashes; status)
+| Commit | What | Status |
+|---|---|---|
+| a0e7f68 (tag baseline-v4, master) | v4 template, hand-written IR, devtools, baseline exports | baseline, preserved |
+| 16c2fb8 | first genuine model extraction evidence (A, A+B, R1) + generality fixes | verified offline: 0 exact IR differences |
+| e774ccd | identity fixes (C1, cand-ab v1) | measured live: B styled 16/18 (identity 18/18) |
+| 82c7498 (tag cand/C2) | C2: ladder 'today' idempotent | measured live r2: ledger 93/99, conv 85/99, runs 84/99, groups 20/30 |
+| a571793, 166c64d | runtime bootstrap; README; preliminary rehearsal (135 s) | verified (clean clone) |
+| fc352c5, 3060a20, 7b8f74a | code-review fixes, placeholders, optional tools, R2 variant | verified offline (44 tests) |
+| 603b2a8 + 3f0b05c | C3 template changes + calendar case fix | experimental until r3 completes |
+| 93fa477 | submission doc, trace ignore rules | done |

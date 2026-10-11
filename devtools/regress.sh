@@ -6,6 +6,7 @@ set -u
 P=$1; SA=$2; SB=$3
 cd "$(dirname "$0")/.." || exit 1
 . ./env.sh
+export BUILDER_TRACE_DIR=traces/dev
 R=".venv/bin/python devtools/run_cases_ext.py --deadline-min 25"
 $R --slot "$SA" --brief A --reps 3 --styles plain --label "$P-a-plain" > "results/$P-a-plain.log" 2>&1
 $R --slot "$SB" --brief B --reps 3 --styles plain --label "$P-b-plain" > "results/$P-b-plain.log" 2>&1

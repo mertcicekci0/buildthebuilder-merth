@@ -178,7 +178,9 @@ def main():
     slot = a.slot or pathlib.Path(a.brief_path).stem
     for d in ("out", "submission", "traces"):
         (ROOT / d).mkdir(exist_ok=True)
-    trace = Trace(ROOT / "traces" / f"{slot}.jsonl")
+    trace_dir = ROOT / os.environ.get("BUILDER_TRACE_DIR", "traces")   # development runs use traces/dev (ignored)
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    trace = Trace(trace_dir / f"{slot}.jsonl")
     deadline = T0 + DEADLINE_MIN * 60
     trace.start(brief=a.brief_path, brief_sha=sha(a.brief_path), tool_api=a.tool_api_path, api_sha=sha(a.tool_api_path), slot=slot,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
