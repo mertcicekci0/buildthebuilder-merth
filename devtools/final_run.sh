@@ -8,6 +8,7 @@
 #    the export submission/N.workflow.json and traces/N.jsonl.
 # 3. Secret scan of submission/ and traces/.
 # 4. With --commit: commits ONLY the artefact files (commit S = C + artefacts) and runs devtools/verify_submission.py on S.
+# A rerun of only one brief makes the briefs' traces name different commits (C and S1): rerun ALL briefs together from one commit.
 # Never pushes, never edits the builder, never contacts anyone. Needs FREYA_API_KEY and the runner's Claude Code login.
 set -u
 COMMIT=0
@@ -18,6 +19,25 @@ ROOT=$(pwd -P)
 PY=python3
 [ -x .venv/bin/python ] && PY=.venv/bin/python
 
+# Pre-flight (nothing is built if any check fails):
+# - every brief/api file exists; brief file names (without extension) are distinct, because N names the Freya slot, the trace and the export
+# - nothing is staged in the index (the artefact commit must contain only the artefact files)
+# - the phone-agent model is not overridden in this shell: kit/freya.py:83-84 says "Do not change it"; the two variables are for the
+#   organisers' own tests, not for our submission build
+STEMS=""
+i=1
+for f in "$@"; do
+  [ -f "$f" ] || { echo "ABORT: input file not found: $f"; exit 2; }
+  if [ $(( i % 2 )) -eq 1 ]; then b=$(basename "$f"); b=${b%.*}
+    case " $STEMS " in *" $b "*) echo "ABORT: two briefs share the name '$b'; copy them to distinct names (e.g. briefs/hidden-1.md, briefs/hidden-2.md)"; exit 2;; esac
+    STEMS="$STEMS $b"
+  fi
+  i=$((i + 1))
+done
+git diff --cached --quiet || { echo "ABORT: files are staged in the index; unstage them (git restore --staged <paths>) so the artefact commit stays clean"; exit 1; }
+if [ -n "${FREYA_AGENT_PROVIDER:-}${FREYA_AGENT_MODEL:-}" ]; then
+  echo "ABORT: FREYA_AGENT_PROVIDER/FREYA_AGENT_MODEL are set in this shell; unset them (the submission must use the event's model)"; exit 1
+fi
 DIRTY=$(git status --porcelain -- builder kit pyproject.toml uv.lock requirements.hashes.txt requirements.lock.txt .python-version)
 if [ -n "$DIRTY" ]; then echo "ABORT: execution-relevant files differ from the last commit:"; echo "$DIRTY"; exit 1; fi
 C=$(git rev-parse HEAD) || exit 1
@@ -44,6 +64,11 @@ while [ $# -ge 2 ]; do
   echo "[final] $N: exit $RC, wall $(( $(date +%s) - S )) s"
   if [ "$RC" != "0" ] || ! grep -q "status=ok" "traces/$N.log" || [ ! -s "submission/$N.workflow.json" ] || [ ! -s "traces/$N.jsonl" ]; then
     echo "[final] $N: NOT OK (exit/status/export/trace) - inspect traces/$N.log before submitting"; FAIL=1
+    if git cat-file -e "HEAD:traces/$N.log" 2>/dev/null; then
+      echo "[final] $N: the committed artefacts of the earlier run were moved to archive/final-runs; to restore them: git checkout -- traces/$N.log traces/$N.jsonl submission/$N.workflow.json"
+    fi
+  elif grep -q "status=ok with warnings" "traces/$N.log"; then
+    echo "[final] WARNING $N: build ended 'ok with warnings' (a self-test or read-back check failed) - read traces/$N.log and decide before submitting"
   fi
   grep -q "commit=$C" "traces/$N.log" || { echo "[final] $N: trace does not name the clean code commit $C"; FAIL=1; }
 done
@@ -52,11 +77,11 @@ if [ "$FAIL" != "0" ]; then echo "[final] problems found; nothing committed"; ex
 FILES=""
 for n in $NAMES; do FILES="$FILES submission/$n.workflow.json traces/$n.log traces/$n.jsonl"; done
 if [ "$COMMIT" = "1" ]; then
-  git add $FILES && git commit -q -m "Final-run artefacts for$NAMES (code commit $C)" || exit 1
+  git add $FILES && git commit -q -m "Final-run artefacts for$NAMES (code commit $C)" -- $FILES || exit 1
   echo "[final] artefact commit S=$(git rev-parse HEAD)"
   $PY devtools/verify_submission.py $NAMES || exit 1
 else
   echo "[final] OK. To commit only the artefacts:"
-  echo "  git add$FILES && git commit -m \"Final-run artefacts for$NAMES (code commit $C)\""
+  echo "  git add$FILES && git commit -m \"Final-run artefacts for$NAMES (code commit $C)\" --$FILES"
   echo "  $PY devtools/verify_submission.py$NAMES"
 fi
