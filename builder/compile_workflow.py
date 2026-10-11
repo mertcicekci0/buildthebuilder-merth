@@ -813,15 +813,51 @@ def _strip_absent_tools(wf, absent):
     return wf
 
 
+def _usable_queues(ir, api, roles, warnings):
+    """Transfer queues the API accepts. An empty or unknown queue drops that transfer path (with a warning) instead of
+    failing the build; returns the IR with those queues set to "" and whether any queue is left."""
+    if "transfer_to_agent" not in api["tools"]:
+        return ir, True   # the whole transfer path is left out as an absent optional tool
+    queues = dict(ir.get("transfer_queues") or {})
+    queue_enum = ot.enum_of(api, "transfer_to_agent", roles.get("transfer_queue"))
+    changed = False
+    for sem, q in list(queues.items()):
+        q = str(q or "").strip()
+        if not q or (queue_enum and q not in queue_enum):
+            if warnings is not None:
+                warnings.append(f"transfer queue {sem} = {q!r} is " + ("empty" if not q else f"not in the API queues {queue_enum}") +
+                                ": that transfer path is left out")
+            changed = changed or queues[sem] != ""
+            queues[sem] = ""
+    if changed:
+        ir = dict(ir, transfer_queues=queues)
+    return ir, any(queues.values())
+
+
+def _drop_human_transfer(wf):
+    """No queue for a person: remove the transfer_human step and every instruction that leads to it."""
+    wf["nodes"].pop("transfer_human", None)
+    for n in wf["nodes"].values():
+        n["transitions"] = [tr for tr in n.get("transitions", []) if tr.get("target_node") in wf["nodes"]]
+        if isinstance(n.get("task_message"), str):
+            n["task_message"] = "\n".join(ln for ln in n["task_message"].split("\n") if "transition_to_transfer_human" not in ln)
+    return wf
+
+
 def compile_workflow(ir, api, roles, warnings=None):
     if api["missing_tools"]:
         raise CompileError(f"tool API lacks {api['missing_tools']}")
     absent = [t for t in ot.OPTIONAL_TOOLS if t not in api["tools"]]
+    ir, any_queue = _usable_queues(ir, api, roles, warnings)
     if absent:
         ir, api, roles = _stub_absent_tools(ir, api, roles, absent)
         if warnings is not None:
             warnings.append(f"tool API has no {', '.join(absent)}: those paths are left out")
     wf = _compile(ir, api, roles, warnings)
+    if not any_queue and "transfer_to_agent" not in absent:
+        absent = absent + ["transfer_to_agent"]   # no usable queue at all: no transfer tool anywhere
+    if not (ir.get("transfer_queues") or {}).get("human"):
+        wf = _drop_human_transfer(wf)
     return _strip_absent_tools(wf, absent) if absent else wf
 
 
@@ -842,7 +878,7 @@ def _compile(ir, api, roles, warnings=None):
             raise CompileError(f"identity question {q['api_value']} not allowed by verify_identity ({verify_values})")
     queue_enum = ot.enum_of(api, "transfer_to_agent", roles["transfer_queue"])
     for sem, q in ir.get("transfer_queues", {}).items():
-        if queue_enum and q not in queue_enum:
+        if queue_enum and q and q not in queue_enum:
             raise CompileError(f"transfer queue {sem} -> {q} not in API enum {queue_enum}")
 
     others = [clean_var(x, "") for x in ir.get("other_call_variables", [])]
@@ -1013,10 +1049,12 @@ def _compile(ir, api, roles, warnings=None):
             "product_id": {"type": "string", "description": "product id, for example p1"},
             "outcome": {"type": "string", "enum": outcomes_enum, "description": "One of: " + ", ".join(outcomes_enum)}},
             "required": ["product_id", "outcome"]}}}
+    tq = ir.get("transfer_queues") or {}
+    transfer_uses = [(what + " (queue " + tq[sem] + ")") for sem, what in (("restructuring", "restructuring request"),
+                                                                           ("support", "customer accepted the support team after hardship"),
+                                                                           ("human", "customer insists on a human")) if tq.get(sem)]
     transfer_tool = _api_tool(api, "transfer_to_agent", {roles["customer_id"]: cust},
-                              "Hand the call to a person. CALL it for: restructuring request (queue " + ir["transfer_queues"].get("restructuring", "") +
-                              "), customer accepted the support team after hardship (queue " + ir["transfer_queues"].get("support", "") +
-                              "), customer insists on a human (queue " + ir["transfer_queues"].get("human", "") + ").",
+                              "Hand the call to a person. CALL it for: " + ", ".join(transfer_uses) + ".",
                               pre=_hook(cfg, hook_transfer_pre(roles)), post=_hook(cfg, HOOK_TRANSFER_POST), model_fields=[roles["transfer_queue"]])
     acct = api["tools"]["get_account"]
     check_tool = {"type": "function", "config": {"timeoutMs": 8000, "maxRetries": 0},

@@ -91,3 +91,32 @@ def test_band_checks_flag_inverted_gaps_and_overlaps():
         ir["bands"] = [dict(IR["bands"][0], name=n, min=lo, max=hi) for n, lo, hi in bands]
         ir["ladder"] = []
         assert any(word in p for p in ps.check(ir, api, roles)), (bands, ps.check(ir, api, roles))
+
+
+def test_empty_or_unknown_transfer_queue_drops_only_that_path():
+    ir = copy.deepcopy(IR)
+    ir["transfer_queues"]["human"] = ""
+    w = []
+    _, _, wf = build(ir, warnings=w)
+    assert any("transfer queue human" in x for x in w), w
+    assert "transfer_human" not in wf["nodes"]
+    assert "transition_to_transfer_human" not in _texts(wf)
+    for n in wf["nodes"].values():
+        assert all(t["target_node"] in wf["nodes"] for t in n.get("transitions", []))
+    desc = [t for t in wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "transfer_to_agent"][0]["function"]["description"]
+    assert desc == "Hand the call to a person. CALL it for: restructuring request (queue restructuring), customer accepted the support team after hardship (queue support)."
+
+    ir = copy.deepcopy(IR)
+    ir["transfer_queues"]["support"] = "no_such_queue"
+    w = []
+    _, _, wf = build(ir, warnings=w)
+    assert any("transfer queue support" in x and "not in the API queues" in x for x in w), w
+    assert "transfer_human" in wf["nodes"] and "no_such_queue" not in _texts(wf)
+
+    ir = copy.deepcopy(IR)
+    ir["transfer_queues"] = {"restructuring": "", "human": "", "support": "x"}
+    w = []
+    _, _, wf = build(ir, warnings=w)
+    assert len([x for x in w if x.startswith("transfer queue")]) == 3
+    assert not any(t["function"]["name"] == "transfer_to_agent" for n in wf["nodes"].values() for t in n.get("tools") or [])
+    assert "transfer_human" not in wf["nodes"]
