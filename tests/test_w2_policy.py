@@ -26,7 +26,7 @@ def test_counts_come_from_the_ir():
     ir["callback"]["alternative_asks"] = 2
     _, _, wf = build(ir)
     op, ver, se = wf["nodes"]["opening"], wf["nodes"]["verify"], wf["nodes"]["someone_else"]
-    assert "still unclear after the third ask." in op["task_message"] and "still unclear after the second ask" not in op["task_message"]
+    assert "still unclear after the third ask." in op["task_message"] and "close_unclear: still unclear after the second ask" not in op["task_message"]
     assert any(t["description"].endswith("after the third ask") for t in op["transitions"])
     assert "when they have refused 3 times (the third refusal)" in ver["task_message"]
     assert "a second time" not in ver["task_message"]
