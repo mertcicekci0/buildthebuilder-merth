@@ -217,6 +217,11 @@ TEXT_EDITS = {
          "A message with no answer yet (only small talk, or cut off mid-sentence before the answer) is not a refusal and not a non-answer: reply at once in one "
          "short sentence asking them to say it again (e.g. \"Sorry, I missed that, could you say that again?\"); never restate an offer you already made, call no tool "
          "and make no new offer. "),
+        # C13: numbers given in two parts are joined before judging
+        ("A day or an amount at the very end of a message that stops mid-word may be cut off",
+         "A number may come in two parts over consecutive messages (\"twelve\" then \"fifty\" = 1250; \"the twenty\" then \"third\" = the 23rd): "
+         "join the parts before you check or judge it, never judge one part alone; if you are not sure the parts belong together, read the joined value back and ask. "
+         "A day or an amount at the very end of a message that stops mid-word may be cut off"),
         # C12: a question about an offer is answered without asking for it again; other questions do not repeat an offer
         ("\"That is the amount I mentioned, <amount>, <and every condition you said with it>. Would that work for you?\" That is an answer, not a new attempt: no tool.\n",
          "\"That is the amount I mentioned, <amount>, <and every condition you said with it>.\" Then stop: do not ask for it again in that turn. That is an answer, "

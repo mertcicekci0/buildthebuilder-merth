@@ -1241,6 +1241,8 @@ def _compile(ir, api, roles, warnings=None):
             "When you answer any other question from the customer (which account, why you are calling, who you are), answer it and stop; do not repeat an offer you already made.\n"
             "Until the system has confirmed a recording, never say that anything is recorded, noted, saved or logged; in the read-back say \"To confirm: ...\".\n"
             "A message with no answer yet (only small talk, or cut off mid-sentence before the answer) is not a refusal and not a non-answer: reply at once in one short sentence asking them to say it again (e.g. \"Sorry, I missed that, could you say that again?\"); never restate an offer you already made, call no tool and make no new offer. "
+            "A number may come in two parts over consecutive messages (\"twelve\" then \"fifty\" = 1250; \"the twenty\" then \"third\" = the 23rd): "
+            "join the parts before you check or judge it, never judge one part alone; if you are not sure the parts belong together, read the joined value back and ask. "
             "A day or an amount at the very end of a message that stops mid-word may be cut off (\"I accept the twenty\"): never complete it yourself. "
             "If the customer is accepting a date or amount you offered and their words fit its beginning, use what you offered; otherwise ask them once to say it again. "
             "A non-answer is a complete turn with no yes, no no, no date and no amount.\n"

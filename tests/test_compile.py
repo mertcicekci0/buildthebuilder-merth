@@ -246,3 +246,8 @@ def test_partial_plan_blocked_once_while_other_products_are_open():
     vars2 = _negotiation_vars(wf, prods)
     vars2["oc__p2"] = "refused"; vars2["oc__p3"] = "refused"
     assert _oracle(wf, "negotiate", "save_promises", vars2, {"plan": "p1 300 2026-10-16"}).startswith("ACCEPTED")
+
+
+def test_numbers_in_two_parts_are_joined_before_judging():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    assert "join the parts before you check or judge it" in wf["nodes"]["negotiate"]["task_message"]
