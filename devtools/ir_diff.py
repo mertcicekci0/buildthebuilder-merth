@@ -79,10 +79,10 @@ def diff(got, ref):
             text.append((f"product_types[{t['api_type']}].spoken", sa.get(t["api_type"]), t["spoken"]))
     if sorted(got["calendar"]["holidays"]) != sorted(ref["calendar"]["holidays"]):
         exact.append(("calendar.holidays", sorted(got["calendar"]["holidays"]), sorted(ref["calendar"]["holidays"])))
-    ba = sorted((band_key(b), b["deadline_business_days"], b["attempts"]) for b in got["bands"])
-    bb = sorted((band_key(b), b["deadline_business_days"], b["attempts"]) for b in ref["bands"])
+    ba = sorted((band_key(b), b["deadline_business_days"], b.get("deadline_unit", "business_days"), b["attempts"]) for b in got["bands"])
+    bb = sorted((band_key(b), b["deadline_business_days"], b.get("deadline_unit", "business_days"), b["attempts"]) for b in ref["bands"])
     if ba != bb:
-        exact.append(("bands[(min,max), deadline_bd, attempts]", ba, bb))
+        exact.append(("bands[(min,max), deadline_n, unit, attempts]", ba, bb))
     la, lb = ladder_view(got), ladder_view(ref)
     if la != lb:
         exact.append(("ladder[(attempt, amount, date, bands)]", la, lb))

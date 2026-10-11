@@ -110,3 +110,14 @@ def test_parallel_safe_state_overlay():
     vars = {"st_json": '{"order": ["p1", "p2"], "notes": {"p1": "refused"}}', "pr__p1": "[220, \"2026-10-16\"]", "oc__p2": "dispute", "tr__": ""}
     st = rt.get_state(vars)
     assert st["promises"] == {"p1": [220, "2026-10-16"]} and st["notes"] == {"p2": "dispute"} and st["transfer"] == ""
+
+
+def test_calendar_day_deadline_falls_back_to_a_business_day():
+    import copy as _c
+    cfg = _c.deepcopy(CFG)
+    for b in cfg["bands"]:
+        b["deadline_unit"] = "calendar_days"; b["deadline_business_days"] = 10
+    # Wed 14 Oct + 10 days = Sat 24 Oct -> Fri 23 Oct
+    assert rt.deadline_for(TODAY, 5, cfg) == D("2026-10-23")
+    # Fri 16 Oct + 10 days = Mon 26 Oct (holiday) -> Fri 23 Oct
+    assert rt.deadline_for(D("2026-10-16"), 5, cfg) == D("2026-10-23")

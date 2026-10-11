@@ -107,9 +107,13 @@ def deadline_for(today, days_late, cfg):
     b = band_for(days_late, cfg)
     if not b:
         return None
-    if b.get("deadline_rule", "nth_business_day_after_today") == "nth_business_day_after_today":
-        return add_business_days(today, int(b["deadline_business_days"]), cfg)
-    return add_business_days(today, int(b.get("deadline_business_days") or 0), cfg)
+    n = int(b.get("deadline_business_days") or 0)
+    if b.get("deadline_unit") == "calendar_days":
+        d = today + datetime.timedelta(days=n)          # latest promise date = last business day on or before that day
+        while d > today and not is_business_day(d, cfg):
+            d = d - datetime.timedelta(days=1)
+        return d
+    return add_business_days(today, n, cfg)
 
 
 # ---------------------------------------------------------------- products
