@@ -233,3 +233,16 @@ def test_lint_flags_control_characters_in_generated_code():
     tool = le._tool(wf, "negotiate", "check_date")
     tool["pre_process_code"] = tool["pre_process_code"].replace("import re", "import re\nx = '\b'", 1)
     assert any("control character" in p for p in v.lint(wf, api))
+
+
+def test_partial_plan_blocked_once_while_other_products_are_open():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    prods = TWO + [{"product_id": "p3", "type": "car_loan", "past_due": 140, "days_late": 7, "instalment_amount": 46}]
+    vars = _negotiation_vars(wf, prods)
+    first = _oracle(wf, "negotiate", "save_promises", vars, {"plan": "p1 300 2026-10-16"})
+    assert first.startswith("BLOCKED, nothing was recorded yet") and "p2, p3" in first and vars.get("plan_ready") != "yes"
+    again = _oracle(wf, "negotiate", "save_promises", vars, {"plan": "p1 300 2026-10-16"})
+    assert again.startswith("ACCEPTED") and vars["plan_ready"] == "yes"
+    vars2 = _negotiation_vars(wf, prods)
+    vars2["oc__p2"] = "refused"; vars2["oc__p3"] = "refused"
+    assert _oracle(wf, "negotiate", "save_promises", vars2, {"plan": "p1 300 2026-10-16"}).startswith("ACCEPTED")

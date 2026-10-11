@@ -79,7 +79,12 @@ def smoke(wf, roles, products, now="2026-10-14T11:00", promise=None, now_var="no
         tool = _tool(wf, "negotiate", "save_promises")
         plan = "; ".join(f"{pid} {amt} {d}" for pid, amt, d in (promise if isinstance(promise, list) else [promise]))
         try:
-            run_pre(tool, vars, {"plan": plan})
+            try:
+                run_pre(tool, vars, {"plan": plan})
+            except Blocked as first:
+                if not str(first).startswith("BLOCKED, nothing was recorded yet"):
+                    raise
+                run_pre(tool, vars, {"plan": plan})   # partial plan while other products are open: confirmed by repeating the call
             report["promise_blocked"] = "pre-hook did not raise"
         except Blocked as b:
             msg = str(b)

@@ -580,6 +580,21 @@ for part in [x.strip() for x in re.split(r'[;\\n]+', raw) if x.strip()]:
     items.append([pid, num(amt), iso(d)])
 if errors or not items:
     raise Exception('BLOCKED, nothing was recorded: ' + ('; '.join(errors) or 'no promise in the plan') + '. Correct it with the customer, read back again, confirm, then call save_promises again.')
+planned = [x[0] for x in items]
+open_ = []
+for pid in st.get('order', []):
+    if pid in planned or pid in st.get('promises', {}) or str(vars.get('oc__' + pid) or '') or st.get('notes', {}).get(pid):
+        continue
+    steps = [x for x in CFG.get('ladder', []) if (not x.get('bands') or prods[pid]['band'] in x['bands'])][:max(0, prods[pid]['attempts'])]
+    if int(str(vars.get('att__' + pid) or '0')) > len(steps):
+        continue   # persuasion used up
+    open_.append(pid)
+sig = raw.strip()
+if open_ and str(vars.get('partial_plan_warned') or '') != sig:
+    vars['partial_plan_warned'] = sig
+    raise Exception('BLOCKED, nothing was recorded yet: ' + ', '.join(open_) + ' still open (no promise, no outcome, persuasion not finished). '
+                    'Finish them first (their next offer, or set_product_outcome), then read back ALL agreed promises together, get one confirmation '
+                    'and call save_promises once. If the customer insists on recording only these now, call save_promises again with the same plan.')
 vars['plan_json'] = json.dumps(items)
 vars['plan_ready'] = 'yes'
 raise Exception('ACCEPTED: the system records these promises now and tells the customer the result. Do not say anything about recording yourself.')

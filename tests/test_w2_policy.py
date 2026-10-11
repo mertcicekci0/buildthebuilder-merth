@@ -245,10 +245,17 @@ def _without_bare_tens_guard(code):
     return code
 
 
+def _without_partial_plan_guard(code):
+    start = code.find("planned = [x[0] for x in items]")
+    end = code.find("vars['plan_json'] = json.dumps(items)")
+    return code[:start] + code[end:] if 0 <= start < end else code
+
+
 def _same_code(old, new, where):
     od, ocfg, oentry = _split_code(old)
     nd, ncfg, nentry = _split_code(new)
     nentry = _without_bare_tens_guard(nentry)   # documented C10 change: check_date refuses cut-off "twenty"/"thirty" day words
+    nentry = _without_partial_plan_guard(nentry)   # documented C11 change: save_promises blocks a partial plan once while products are open
     assert nentry == oentry, f"{where}: entry code changed"
     ocfg["calendar"]["next_weekday"] = "following_week"
     assert ncfg == ocfg, f"{where}: CFG changed beyond calendar.next_weekday"
