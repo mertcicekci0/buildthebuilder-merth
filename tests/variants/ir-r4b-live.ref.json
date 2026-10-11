@@ -1,0 +1,213 @@
+{
+ "_note": "Reference IR for tests/variants/brief-r4b-live.md: like R4 but the code list maps internal codes to the kit API / practice-bank values.",
+ "bank_name": "Freya Bank",
+ "language": "English",
+ "currency_word": "",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "title",
+  "now": "now"
+ },
+ "other_call_variables": [],
+ "opening": {
+  "first_sentence": "Hello, this is Freya Bank's virtual assistant, and we record this call.",
+  "identity_question": "Am I speaking with <title> <last_name>?",
+  "accepted_confirmations": [
+   "yes",
+   "that's me",
+   "speaking",
+   "the customer's own name"
+  ],
+  "not_confirmations": [
+   "hello",
+   "go ahead",
+   "who is this"
+  ],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "collections",
+   "debt",
+   "payment",
+   "the product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "date_of_birth",
+    "ask": "Could you please tell me your date of birth?",
+    "format": "date",
+    "numeric_order": "DMY"
+   },
+   {
+    "api_value": "phone_last4",
+    "ask": "Thank you. And what are the last four digits of the phone number we have on file?",
+    "format": "digits4",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": "day_month_swapped",
+  "swapped_instruction": "Ask the customer to say the month as a word. This retry does not count as a wrong answer.",
+  "failed_message": "I'm sorry, I can't continue. Please use the mobile app or visit a branch.",
+  "refusal_explanation": "These questions protect your account.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "credit_card",
+   "spoken": "credit card ending <card_last4>",
+   "floor_field": "minimum_payment"
+  },
+  {
+   "api_type": "personal_loan",
+   "spoken": "personal loan",
+   "floor_field": "instalment_amount"
+  },
+  {
+   "api_type": "car_loan",
+   "spoken": "car loan",
+   "floor_field": "instalment_amount"
+  }
+ ],
+ "debt_intro": "I'm calling from the collections team about a late payment.",
+ "product_sentence": "Your <spoken> has <past_due> past due and is <days_late> days late.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-29",
+   "2026-11-11",
+   "2026-12-25",
+   "2027-01-01"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "early",
+   "min": 1,
+   "max": 9,
+   "deadline_business_days": 12,
+   "deadline_unit": "business_days",
+   "attempts": 1
+  },
+  {
+   "name": "late",
+   "min": 10,
+   "max": 45,
+   "deadline_business_days": 5,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Can you make this payment today?",
+ "first_ask_multi": "Can you pay all of them today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": []
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "late"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "09:00",
+  "end": "17:00",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": false,
+  "per_product_order": "as returned",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": false,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "restructuring",
+  "human": "general",
+  "support": "support"
+ },
+ "outcomes": {
+  "promise": "promise",
+  "paid": "paid",
+  "transferred": "transferred",
+  "no_promise": "no_promise",
+  "not_verified": "not_verified",
+  "not_reached": "not_reached",
+  "reasons": {
+   "restructuring": "restructuring",
+   "human": "human",
+   "support": "support",
+   "refused": "refused",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "service_error": "service_error",
+   "failed": "failed",
+   "declined": "declined",
+   "callback": "callback",
+   "no_callback": "no_callback",
+   "wrong_number": "wrong_number",
+   "deceased": "deceased",
+   "unclear": "unclear",
+   "paid": ""
+  },
+  "note_reasons": {
+   "refused": "refused",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "paid": "paid",
+   "service_error": "service_error"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 1,
+  "after_promise_sentence": "You will get a text message confirming this promise.",
+  "read_back_question": "Do you confirm?"
+ },
+ "fixed_sentences": {
+  "deceased": "I am very sorry for your loss.",
+  "robot": "I am Freya Bank's virtual assistant.",
+  "scam": "You can verify this call by phoning the number on the back of your card.",
+  "paid": "Payments can take one business day to appear.",
+  "farewell": "Thank you for your time. Goodbye."
+ },
+ "stage_rules": {
+  "always": [],
+  "opening": [],
+  "third_party": [],
+  "identity": [],
+  "negotiation": [],
+  "multi_product": [],
+  "confirmation": [],
+  "recording": [],
+  "closing": []
+ },
+ "evidence": [],
+ "unmapped_rules": [],
+ "precedence": []
+}
