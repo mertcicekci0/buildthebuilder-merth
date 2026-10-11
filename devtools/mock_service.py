@@ -48,7 +48,7 @@ def _date(v):
 
 @FORMATS.checks("time", raises=ValueError)
 def _time(v):
-    return not isinstance(v, str) or bool(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?", v))
+    return not isinstance(v, str) or bool(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?(Z|[+-]([01]\d|2[0-3]):[0-5]\d)?", v))
 
 
 @FORMATS.checks("date-time", raises=ValueError)
@@ -58,19 +58,20 @@ def _datetime(v):
 METHODS = ("get", "post", "put", "patch", "delete")
 
 
-def _resolve(node, root, depth=0):
-    """Inline local $refs (#/components/...)."""
-    if depth > 30:
-        raise ValueError("$ref nesting too deep")
+def _resolve(node, root, stack=()):
+    """Inline local $refs (#/components/...). A recursive $ref (already being resolved) becomes {} (no constraint)."""
     if isinstance(node, dict):
-        if "$ref" in node and isinstance(node["$ref"], str) and node["$ref"].startswith("#/"):
+        ref = node.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/"):
+            if ref in stack or len(stack) > 50:
+                return {}
             target = root
-            for part in node["$ref"][2:].split("/"):
+            for part in ref[2:].split("/"):
                 target = target[part.replace("~1", "/").replace("~0", "~")]
-            return _resolve(target, root, depth + 1)
-        return {k: _resolve(v, root, depth + 1) for k, v in node.items()}
+            return _resolve(target, root, stack + (ref,))
+        return {k: _resolve(v, root, stack) for k, v in node.items()}
     if isinstance(node, list):
-        return [_resolve(v, root, depth + 1) for v in node]
+        return [_resolve(v, root, stack) for v in node]
     return node
 
 
@@ -82,15 +83,44 @@ def _json_schema(content):
 
 
 def _openapi_to_jsonschema(schema):
-    """OpenAPI 3.0 'nullable' -> JSON Schema type list; everything else passes through."""
-    if isinstance(schema, dict):
-        out = {k: _openapi_to_jsonschema(v) for k, v in schema.items() if k != "nullable"}
-        if schema.get("nullable") and isinstance(schema.get("type"), str):
-            out["type"] = [schema["type"], "null"]
-        return out
+    """OpenAPI 3.0 -> JSON Schema 2020-12: 'nullable', boolean exclusiveMinimum/Maximum. 'properties' maps are walked by name, so a
+    property that happens to be called 'nullable' is kept."""
     if isinstance(schema, list):
         return [_openapi_to_jsonschema(v) for v in schema]
-    return schema
+    if not isinstance(schema, dict):
+        return schema
+    out = {}
+    for k, v in schema.items():
+        if k == "nullable":
+            continue
+        if k in ("properties", "patternProperties", "$defs", "definitions") and isinstance(v, dict):
+            out[k] = {name: _openapi_to_jsonschema(sub) for name, sub in v.items()}
+        else:
+            out[k] = _openapi_to_jsonschema(v)
+    for ex, bound in (("exclusiveMinimum", "minimum"), ("exclusiveMaximum", "maximum")):
+        if isinstance(schema.get(ex), bool):
+            if schema[ex] and bound in schema:
+                out[ex] = schema[bound]
+                out.pop(bound, None)
+            else:
+                out.pop(ex, None)
+    if schema.get("nullable") is True:
+        if isinstance(schema.get("type"), str):
+            out["type"] = [schema["type"], "null"]
+        elif "type" not in schema:
+            out = {"anyOf": [out, {"type": "null"}]}
+    return out
+
+
+def _path_regex(path):
+    """/accounts/{id} -> ^/accounts/(?P<id>[^/]+)$ (parameter names made regex-safe)."""
+    parts = []
+    for part in re.split(r"(\{[^/}]+\})", path):
+        if part.startswith("{"):
+            parts.append("(?P<" + re.sub(r"\W", "_", part[1:-1]) + ">[^/]+)")
+        else:
+            parts.append(re.escape(part))
+    return re.compile("^" + "".join(parts) + "$")
 
 
 def load_contract(spec):
@@ -103,14 +133,14 @@ def load_contract(spec):
                 continue
             op = _resolve(op, spec)
             req = _json_schema(((op.get("requestBody") or {}).get("content")))
+            body_required = bool((op.get("requestBody") or {}).get("required"))
             responses = {}
             for code, r in (op.get("responses") or {}).items():
                 responses[str(code)] = _json_schema((r or {}).get("content"))
             o = {"method": method.upper(), "path": path, "operation_id": op.get("operationId"),
-                 "request_schema": _openapi_to_jsonschema(req) if req else None,
-                 "response_schemas": {c: _openapi_to_jsonschema(s) for c, s in responses.items() if s},
-                 "path_regex": re.compile("^" + "".join("[^/]+" if part.startswith("{") else re.escape(part)
-                                                         for part in re.split(r"(\{[^/}]+\})", path)) + "$")}
+                 "request_schema": _openapi_to_jsonschema(req) if req else None, "body_required": body_required,
+                 "response_schemas": {c: (_openapi_to_jsonschema(s) if s else None) for c, s in responses.items()},
+                 "path_regex": _path_regex(path)}
             ops[op.get("operationId") or f"{method.upper()} {path}"] = o
     return ops
 
@@ -133,7 +163,12 @@ def render(value, ctx):
         m = re.fullmatch(r"\{\{\s*([\w.$]+)\s*\}\}", value)
         if m:
             return copy.deepcopy(_lookup(m.group(1), ctx))
-        return re.sub(r"\{\{\s*([\w.$]+)\s*\}\}", lambda mm: str(_lookup(mm.group(1), ctx)), value)
+        def text(mm):
+            got = _lookup(mm.group(1), ctx)
+            if got is None:
+                raise MockConfigError(f"template key {mm.group(1)} is missing")
+            return str(got)
+        return re.sub(r"\{\{\s*([\w.$]+)\s*\}\}", text, value)
     if isinstance(value, dict):
         return {k: render(v, ctx) for k, v in value.items()}
     if isinstance(value, list):
@@ -141,15 +176,30 @@ def render(value, ctx):
     return value
 
 
+class MockConfigError(ValueError):
+    pass
+
+
 def _matches(when, ctx):
     for key, want in (when or {}).items():
-        got = _lookup(key[1:], ctx) if key.startswith("$") else _lookup("body." + key, ctx)   # "$state.x" reads state
+        got = _lookup(key[1:], ctx) if key.startswith("$") else _lookup("body." + key, ctx)   # "$state.x", "$query.x", "$path.x"
         if isinstance(want, dict) and "in" in want:
             if got not in want["in"]:
                 return False
         elif got != want:
             return False
     return True
+
+
+def _drop_templates(v):
+    if isinstance(v, str) and "{{" in v:
+        return None
+    if isinstance(v, dict):
+        out = {k: _drop_templates(x) for k, x in v.items()}
+        return {k: x for k, x in out.items() if x is not None}
+    if isinstance(v, list):
+        return [x for x in (_drop_templates(y) for y in v) if x is not None]
+    return v
 
 
 class Mock:
@@ -174,70 +224,96 @@ class Mock:
                 self.sessions.clear()
             else:
                 self.sessions.pop(sid, None)
+            self._persist({"reset": sid if sid is not None else "*"})   # readers of the ledger file split runs on these markers
 
-    def session_id(self, headers, body):
+    def session_id(self, headers, body, query=None, params=None):
         key = self.behaviour.get("session_key") or {}
         if "header" in key:
-            return headers.get(key["header"]) or "default"
+            return headers.get(key["header"].lower()) or "default"
+        if "query" in key:
+            return str((query or {}).get(key["query"]) or "default")
+        if "path" in key:
+            return str((params or {}).get(key["path"]) or "default")
         if "body" in key and isinstance(body, dict):
             return str(body.get(key["body"]) or "default")
         return "default"
 
     # --- dispatch ----------------------------------------------------------------------------------------------------------
     def find(self, method, path):
-        for key, op in self.ops.items():
-            if op["method"] == method and op["path_regex"].match(path):
-                return key, op
-        return None, None
+        """Concrete paths win over templated ones (/accounts/search before /accounts/{id}), as OpenAPI requires."""
+        for key, op in sorted(self.ops.items(), key=lambda kv: kv[1]["path"].count("{")):
+            m = op["path_regex"].match(path) if op["method"] == method else None
+            if m:
+                return key, op, m.groupdict()
+        return None, None, {}
 
-    def handle(self, method, path, headers, body):
+    def handle(self, method, path, headers, body, query=None):
         """Returns (status, response_body). Thread-safe; every call is written to the session ledger."""
-        key, op = self.find(method, path)
+        key, op, params = self.find(method, path)
         if not op:
             return 404, {"error": f"no operation {method} {path} in the contract"}
-        sid = self.session_id(headers, body)
+        sid = self.session_id(headers, body, query, params)
         with self.lock:
-            s = self._session(sid)
-            entry = {"op": key, "method": method, "path": path, "body": body, "session": sid}
-            if op["request_schema"] is not None:
-                errors = sorted(jsonschema.Draft202012Validator(op["request_schema"], format_checker=FORMATS)
-                                .iter_errors(body if body is not None else {}), key=lambda e: list(e.path))
-                if errors:
-                    msg = "; ".join(f"{'/'.join(map(str, e.path)) or '(body)'}: {e.message}" for e in errors[:5])
-                    entry.update(status=422, response={"error": msg}, rejected=True)
-                    s["ledger"].append(entry)
-                    self._persist(entry)
-                    return 422, {"error": msg}
-            ctx = {"body": body or {}, "state": s["state"], "session": sid}
-            rule = next((r for r in (self.behaviour.get("operations") or {}).get(key, []) if _matches(r.get("when"), ctx)), None)
-            if rule is None:
-                status, resp = 501, {"error": f"mock has no behaviour for {key} with this request"}
-            else:
-                rid = f"{key}#{(self.behaviour['operations'][key]).index(rule)}"
-                s["hits"][rid] = s["hits"].get(rid, 0) + 1
-                if s["hits"][rid] <= int(rule.get("fail_first", 0)):
-                    status, resp = 500, {"error": "injected failure"}
-                else:
-                    status, resp = int(rule.get("status", 200)), render(rule.get("body", {}), ctx)
-                    problem = self.response_problem(op, status, resp)
-                    if problem:
-                        status, resp = 500, {"error": "mock misconfigured: " + problem}
-                    else:
-                        for k, v in (rule.get("set") or {}).items():
-                            s["state"][k] = render(v, ctx)
-                        for k, v in (rule.get("append") or {}).items():
-                            s["state"].setdefault(k, []).append(render(v, ctx))
-                entry["recorded"] = bool(rule.get("record")) and status < 400
-            entry.update(status=status, response=resp)
+            try:
+                return self._handle(key, op, sid, method, path, body, query or {}, params)
+            except MockConfigError as e:
+                return 500, {"error": f"mock misconfigured: {e}"}
+
+    def _handle(self, key, op, sid, method, path, body, query, params):
+        s = self._session(sid)
+        entry = {"op": key, "method": method, "path": path, "body": body, "session": sid}
+        if body is None and op["body_required"]:
+            entry.update(status=422, response={"error": "request body required"}, rejected=True)
             s["ledger"].append(entry)
             self._persist(entry)
-            return status, resp
+            return 422, {"error": "request body required"}
+        if op["request_schema"] is not None and body is not None:
+            errors = sorted(jsonschema.Draft202012Validator(op["request_schema"], format_checker=FORMATS)
+                            .iter_errors(body if body is not None else {}), key=lambda e: list(e.path))
+            if errors:
+                msg = "; ".join(f"{'/'.join(map(str, e.path)) or '(body)'}: {e.message}" for e in errors[:5])
+                entry.update(status=422, response={"error": msg}, rejected=True)
+                s["ledger"].append(entry)
+                self._persist(entry)
+                return 422, {"error": msg}
+        ctx = {"body": body or {}, "state": s["state"], "session": sid, "query": query, "path": params}
+        rule = next((r for r in (self.behaviour.get("operations") or {}).get(key, []) if _matches(r.get("when"), ctx)), None)
+        if rule is None:
+            status, resp = 501, {"error": f"mock has no behaviour for {key} with this request"}
+        else:
+            rid = f"{key}#{(self.behaviour['operations'][key]).index(rule)}"
+            s["hits"][rid] = s["hits"].get(rid, 0) + 1
+            if s["hits"][rid] <= int(rule.get("fail_first", 0)):
+                status, resp = 500, {"error": "injected failure"}
+            else:
+                status, resp = int(rule.get("status", 200)), render(rule.get("body", {}), ctx)
+                problem = self.response_problem(op, status, resp)
+                if problem:
+                    status, resp = 500, {"error": "mock misconfigured: " + problem}
+                else:
+                    for k, v in (rule.get("set") or {}).items():
+                        s["state"][k] = render(v, ctx)
+                    for k, v in (rule.get("append") or {}).items():
+                        target = s["state"].setdefault(k, [])
+                        if not isinstance(target, list):
+                            raise MockConfigError(f"append target state.{k} is not a list")
+                        target.append(render(v, ctx))
+            entry["recorded"] = bool(rule.get("record")) and status < 400
+        entry.update(status=status, response=resp)
+        s["ledger"].append(entry)
+        self._persist(entry)
+        return status, resp
 
     def response_problem(self, op, status, resp):
-        schema = op["response_schemas"].get(str(status)) or op["response_schemas"].get(f"{str(status)[0]}XX") \
-            or op["response_schemas"].get("default")
+        rs = op["response_schemas"]
+        for code in (str(status), f"{str(status)[0]}XX", "default"):
+            if code in rs:
+                schema = rs[code]
+                break
+        else:
+            return f"status {status} is not declared by the contract" if rs else None
         if schema is None:
-            return None
+            return None   # declared without a JSON body: no body constraint
         err = next(iter(jsonschema.Draft202012Validator(schema).iter_errors(resp)), None)
         return f"{status} response does not match the contract: {err.message}" if err else None
 
@@ -261,8 +337,10 @@ class Mock:
             op = self.ops.get(key)
             for i, r in enumerate(rules if op else []):
                 body = r.get("body", {})
-                if "{{" in json.dumps(body):
-                    continue   # templated bodies are checked when served
+                if "{{" in json.dumps(body):   # check the static parts: templated values are left out of the copy
+                    body = _drop_templates(body)
+                    if body is None:
+                        continue
                 p = self.response_problem(op, int(r.get("status", 200)), body)
                 if p:
                     problems.append(f"{key} rule {i}: {p}")
@@ -299,7 +377,11 @@ def make_handler(mock):
             if url.path == "/__mock/reset" and method == "POST":
                 mock.reset((self._body() or {}).get("session"))
                 return self._send(200, {"ok": True})
-            status, resp = mock.handle(method, url.path, {k.lower(): v for k, v in self.headers.items()}, self._body())
+            try:
+                query = {k: v[0] for k, v in parse_qs(url.query).items()}
+                status, resp = mock.handle(method, url.path, {k.lower(): v for k, v in self.headers.items()}, self._body(), query)
+            except Exception as e:  # noqa: BLE001 - a mock bug must still answer JSON, never drop the connection
+                status, resp = 500, {"error": f"mock error: {type(e).__name__}: {e}"}
             self._send(status, resp)
 
         def do_GET(self):

@@ -118,3 +118,74 @@ def test_an_injected_failure_records_nothing_and_changes_no_state():
     req = {"customer_id": "c1", "product_id": "fail", "amount": 100, "date": "2026-10-20"}
     m.handle("POST", "/create_promise", {}, req)
     assert m.sessions["c1"]["state"]["promises"] == [] and not any(e.get("recorded") for e in m.ledger("c1"))
+
+
+def _contract(paths, components=None):
+    return {"openapi": "3.0.3", "info": {"title": "t", "version": "1"}, "servers": [{"url": "https://x.test"}], "paths": paths,
+            "components": components or {}}
+
+
+def _op(schema=None, responses=None, op_id=None, required=True):
+    op = {"responses": responses or {"200": {"description": "ok", "content": {"application/json": {"schema": {"type": "object"}}}}}}
+    if schema is not None:
+        op["requestBody"] = {"required": required, "content": {"application/json": {"schema": schema}}}
+    if op_id:
+        op["operationId"] = op_id
+    return op
+
+
+def test_review_fixes_openapi30_bounds_nullable_and_optional_body():
+    amount = {"type": "object", "properties": {"amount": {"type": "number", "minimum": 0, "maximum": 100, "exclusiveMaximum": True},
+                                               "addr": {"nullable": True, "allOf": [{"$ref": "#/components/schemas/A"}]},
+                                               "nullable": {"type": "boolean"}}, "required": ["nullable"]}
+    c = _contract({"/p": {"post": _op(amount, op_id="p")}, "/q": {"post": _op({"type": "object", "required": ["a"]}, op_id="q", required=False)}},
+                  {"schemas": {"A": {"type": "object"}}})
+    m = ms.Mock(c, {"operations": {"p": [{"body": {}}], "q": [{"body": {}}]}})
+    assert m.handle("POST", "/p", {}, {"amount": 50, "addr": None, "nullable": True})[0] == 200
+    assert m.handle("POST", "/p", {}, {"amount": 100, "nullable": True})[0] == 422          # exclusive maximum
+    assert m.handle("POST", "/p", {}, {"amount": 5, "nullable": "no"})[0] == 422           # property named 'nullable' still typed
+    assert m.handle("POST", "/q", {}, None)[0] == 200                                      # optional body may be absent
+
+
+def test_review_fixes_header_session_path_precedence_and_params():
+    c = _contract({"/accounts/{id}": {"get": _op(op_id="byId")}, "/accounts/search": {"get": _op(op_id="search")}})
+    b = {"session_key": {"header": "X-Customer"}, "fixtures": {"c1": {"x": 1}},
+         "operations": {"byId": [{"when": {"$path.id": "7"}, "body": {"id": "{{path.id}}", "x": "{{state.x}}"}}],
+                        "search": [{"body": {"q": "{{query.q}}"}}]}}
+    m = ms.Mock(c, b)
+    assert m.handle("GET", "/accounts/search", {"x-customer": "c1"}, None, {"q": "abc"}) == (200, {"q": "abc"})
+    assert m.handle("GET", "/accounts/7", {"x-customer": "c1"}, None) == (200, {"id": "7", "x": 1})
+    assert "c1" in m.sessions and "default" not in m.sessions
+
+
+def test_review_fixes_response_codes_templates_and_append_errors(tmp_path):
+    resp = {"204": {"description": "done"}, "default": {"description": "e", "content": {"application/json": {"schema": {"type": "object", "required": ["error"]}}}}}
+    okresp = {"200": {"description": "ok", "content": {"application/json": {"schema": {"type": "object", "properties": {"ok": {"type": "boolean"}}}}}}}
+    c = _contract({"/d": {"post": _op(op_id="d", responses=resp)}, "/o": {"post": _op(op_id="o", responses=okresp)}})
+    b = {"fixtures": {"*": {"log": None}}, "operations": {
+        "d": [{"status": 204, "body": {}}],
+        "o": [{"when": {"k": 1}, "body": {"ok": "yes", "echo": "{{body.k}}"}},
+              {"when": {"k": 2}, "body": {"ok": True, "ref": "R-{{body.missing}}"}},
+              {"when": {"k": 3}, "status": 201, "body": {"ok": True}},
+              {"when": {"k": 4}, "body": {"ok": True}, "append": {"log": "{{body}}"}}]}}
+    led = tmp_path / "ledger.jsonl"
+    m = ms.Mock(c, b, str(led))
+    assert m.handle("POST", "/d", {}, None)[0] == 204
+    problems = m.check()
+    assert any("rule 0" in p and "does not match" in p for p in problems)      # static part of a templated body is checked
+    assert any("rule 2" in p and "not declared" in p for p in problems)
+    st, body = m.handle("POST", "/o", {}, {"k": 2})
+    assert st == 500 and "body.missing" in body["error"]
+    st, body = m.handle("POST", "/o", {}, {"k": 4})
+    assert st == 500 and "not a list" in body["error"]
+    m.reset("default")
+    assert any('"reset"' in line for line in led.read_text().splitlines())
+
+
+def test_review_fixes_recursive_refs_and_rfc3339_time():
+    c = _contract({"/n": {"post": _op({"$ref": "#/components/schemas/N"}, op_id="n")}},
+                  {"schemas": {"N": {"type": "object", "properties": {"children": {"type": "array", "items": {"$ref": "#/components/schemas/N"}},
+                                                                     "t": {"type": "string", "format": "time"}}}}})
+    m = ms.Mock(c, {"operations": {"n": [{"body": {}}]}})
+    assert m.handle("POST", "/n", {}, {"children": [{"children": []}], "t": "14:30:00+02:00"})[0] == 200
+    assert m.handle("POST", "/n", {}, {"t": "24:00"})[0] == 422
