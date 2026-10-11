@@ -1,0 +1,22 @@
+[runtime] /opt/homebrew/opt/python@3.14/bin/python3.14 has claude-agent-sdk not installed (pinned 0.2.165)
+[runtime] re-running with .venv/bin/python (claude-agent-sdk 0.2.165)
+[2026-10-11T14:02:58+00:00 +   1.2s] START    builder run started brief=../inputs/brief-ab.md brief_sha=72b3508bf6271a2f tool_api=../inputs/brief-ab.openapi.json api_sha=9a8410b12e5c82b6 slot=brief-ab builder_model=claude-opus-5-5 llm_backend=agent_sdk python=3.12.6 agent_sdk=0.2.165 commit=b53a4c9d88f580237dd359458b0e9566df88d694 started_before_s=1.2
+[2026-10-11T14:02:58+00:00 +   1.2s] STEP     phone-agent model
+[2026-10-11T14:02:58+00:00 +   1.2s] STEP     tool API parsed: 7 tools at https://freya-bank-mock.freyavoice.workers.dev/v1
+[2026-10-11T14:03:55+00:00 +  57.9s] MODEL    model=claude-opus-5-5 purpose="extract the policy IR from the brief and the tool API" status=success input_tokens=2 output_tokens=7726 backend=agent_sdk seconds=56.7 aux_model=claude-haiku-5-5(in=6460,out=22) rate_limit=status:allowed,window:five_hour,resets_at:1791743400
+[2026-10-11T14:03:55+00:00 +  57.9s] STEP     extraction pass returned
+[2026-10-11T14:05:08+00:00 + 131.3s] MODEL    model=claude-opus-5-5 purpose="audit the IR against the brief for omissions, wrong values and precedence" status=success input_tokens=2 output_tokens=9403 backend=agent_sdk seconds=73.3 aux_model=claude-haiku-5-5(in=13440,out=21) rate_limit=status:allowed,window:five_hour,resets_at:1791743400
+[2026-10-11T14:05:08+00:00 + 131.3s] STEP     audit pass: 3 change(s)
+[2026-10-11T14:05:08+00:00 + 131.3s] TEST     policy checks (round 1): pass
+[2026-10-11T14:05:08+00:00 + 131.3s] TEST     workflow lint: pass
+[2026-10-11T14:05:08+00:00 + 131.3s] STEP     workflow compiled: 26 steps, 28 tools, 249150 bytes
+[2026-10-11T14:05:08+00:00 + 131.3s] TEST     local: init + account facts on synthetic products: pass
+[2026-10-11T14:05:08+00:00 + 131.3s] TEST     local: guarded promise on the deadline is sent; close outcome = promise: pass
+[2026-10-11T14:05:08+00:00 + 131.3s] TEST     local: promise after the deadline is blocked before sending: pass
+[2026-10-11T14:05:09+00:00 + 132.1s] TEST     platform dry run: {"valid": true, "dryRun": true}
+[2026-10-11T14:05:10+00:00 + 133.3s] FREYA    save returned workflow_id=f5d7f40b-ebec-440e-9884-0a609be28f53 agent_id=eec03267-ce79-446e-8ff9-f4fb7707054d version=None
+[2026-10-11T14:05:13+00:00 + 135.5s] FREYA    saved workflow_id=f5d7f40b-ebec-440e-9884-0a609be28f53 agent_id=eec03267-ce79-446e-8ff9-f4fb7707054d version=1 steps=26 tools=28
+[2026-10-11T14:05:13+00:00 + 136.1s] TEST     read-back: every node and tool stored: pass
+[2026-10-11T14:05:13+00:00 + 136.5s] TEST     published version is the newest: pass
+[2026-10-11T14:05:14+00:00 + 137.0s] FREYA    exported to submission/brief-ab.workflow.json sha=bb3859fbeea4afab
+[2026-10-11T14:05:14+00:00 + 137.0s] END      builder run ended status=ok duration_s=137 model_calls=2

@@ -1,0 +1,5 @@
+[final] code commit C=b53a4c9d88f580237dd359458b0e9566df88d694 (cand/c14-merge) at 2026-10-11T14:01:03Z
+[final] brief-a: exit 0, wall 114 s
+[final] brief-ab: exit 0, wall 137 s
+[final] artefact commit S=209820d763af7a22216c2e01f9c6192b9dcb1da0
+0 problem(s); code commit(s): ['b53a4c9d88f580237dd359458b0e9566df88d694']; checked commit: 209820d
