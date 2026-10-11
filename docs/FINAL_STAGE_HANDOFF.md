@@ -117,7 +117,8 @@ Hosting (Freya calls tools from its cloud, so it needs a public HTTPS URL; nothi
 5. Mock: write the behaviour file from the documents → `mock_service.py check` → L1 tests → L2 offline build with
    BUILDER_BASE_URL_OVERRIDE → (if hosting is resolved) L3 simulations.
 6. Final build, from the repo root on prep/final with a clean tree, and FREYA_AGENT_* and BUILDER_BASE_URL_OVERRIDE unset:
-   `set -a && . ./env.sh && set +a && sh devtools/final_run.sh --commit [--tool-map briefs/tool-map.json] [--tool-headers briefs/tool-headers.json] briefs/final.zip briefs/final.zip`
+   Run in the prep/final worktree (env.sh lives only in the main repo; .venv there is a symlink to the main repo's):
+   `cd ~/Documents/ChatGPT/fh-final-prep && git status --short && set -a && . ../freyahackathon/env.sh && set +a && sh devtools/final_run.sh --commit [--tool-map briefs/tool-map.json] [--tool-headers briefs/tool-headers.json] briefs/final.zip briefs/final.zip`
    Output: submission/final.workflow.json, traces/final.log + .jsonl, out/final.policy.json, committed as the artefact commit;
    verify_submission prints 0 problems. Never edit the export by hand: the trace records its sha. Package it as the mail requires.
 7. Any builder fix after the release: a separate commit that says what failed and why it contains nothing from the case; then rebuild.
