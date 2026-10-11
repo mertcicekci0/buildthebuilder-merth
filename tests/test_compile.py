@@ -89,3 +89,23 @@ def test_pinned_sdk_matches_pyproject():
     import build
     pin = _re.search(r'claude-agent-sdk==([0-9.]+)', (ROOT / "pyproject.toml").read_text()).group(1)
     assert build.PINNED_SDK == pin
+
+
+def test_optional_tools_may_be_absent():
+    spec = json.load(open(ROOT / "kit/tools/openapi.json"))
+    for t in ("add_note", "schedule_callback", "transfer_to_agent"):
+        spec["paths"].pop("/" + t)
+    api = ot.load(spec)
+    assert api["missing_tools"] == [] and sorted(api["absent_optional"]) == ["add_note", "schedule_callback", "transfer_to_agent"]
+    roles, problems = ot.infer_roles(api)
+    assert problems == [], problems
+    warns = []
+    wf = cw.compile_workflow(IR, api, roles, warnings=warns)
+    assert v.lint(wf, api) == [] and warns
+    blob = json.dumps(wf)
+    assert "__absent__" not in blob and "transfer_human" not in wf["nodes"] and "write_note" not in wf["nodes"]
+    names = {t["function"]["name"] for n in wf["nodes"].values() for t in (n.get("tools") or []) + (n.get("pre_actions") or [])}
+    assert not names & {"add_note", "schedule_callback", "transfer_to_agent"}
+    prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1111", "past_due": 300, "days_late": 4, "minimum_payment": 90}]
+    r = le.smoke(wf, roles, prods, promise=("p1", 300, "2026-10-16"))
+    assert r["close_body"]["outcome"] == "promise"

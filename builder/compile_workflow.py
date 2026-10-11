@@ -8,6 +8,7 @@ Writes the model triggers (create_promise, schedule_callback, transfer_to_agent,
 pre-hooks that normalise or BLOCK (raise) with an instruction; notes are staged in state and written only at a
 non-transfer wrap-up; close_call's outcome is computed from state by its pre-hook.
 """
+import copy
 import json
 import re
 import pathlib
@@ -710,9 +711,61 @@ def _rules(ir, *stages):
     return "\n".join("- " + r for r in out)
 
 
+_STUB_FIELDS = {"add_note": [("customer_id", "string"), ("product_id", "string"), ("reason", "string")],
+                "schedule_callback": [("customer_id", "string"), ("date", "string"), ("time", "string")],
+                "transfer_to_agent": [("customer_id", "string"), ("queue", "string")]}
+_STUB_ROLES = {"note_product": "product_id", "note_reason": "reason", "callback_date": "date", "callback_time": "time", "transfer_queue": "queue"}
+
+
+def _stub_absent_tools(ir, api, roles, absent):
+    """Build as if the optional tools existed, then strip every trace of them (see _strip_absent_tools).
+    The contract lint afterwards proves nothing calls an endpoint the API does not have."""
+    api = copy.deepcopy(api)
+    for t in absent:
+        api["tools"][t] = {"name": t, "url": api["base_url"] + "/__absent__/" + t, "method": "POST", "path": "/" + t, "summary": "", "description": "",
+                           "fields": [{"name": n, "type": ty, "required": True, "description": ""} for n, ty in _STUB_FIELDS[t]],
+                           "required": [n for n, _ in _STUB_FIELDS[t]], "response": {}, "response_description": ""}
+    per_tool = {"add_note": ("note_product", "note_reason"), "schedule_callback": ("callback_date", "callback_time"), "transfer_to_agent": ("transfer_queue",)}
+    roles = dict(roles)
+    for t in absent:
+        for r in per_tool[t]:
+            roles.setdefault(r, _STUB_ROLES[r])
+    ir = copy.deepcopy(ir)
+    if "add_note" in absent:
+        ir.setdefault("notes", {})["enabled"] = False
+    return ir, api, roles
+
+
+def _strip_absent_tools(wf, absent):
+    names = set(absent) | ({"transfer_human"} if "transfer_to_agent" in absent else set())
+    if "transfer_to_agent" in absent:
+        wf["nodes"].pop("transfer_human", None)
+    for n in wf["nodes"].values():
+        for key in ("tools", "pre_actions"):
+            if n.get(key):
+                n[key] = [t for t in n[key] if t.get("function", {}).get("name") not in names]
+        n["transitions"] = [tr for tr in n.get("transitions", []) if tr.get("target_node") in wf["nodes"]]
+        if isinstance(n.get("task_message"), str):
+            lines = [ln for ln in n["task_message"].split("\n") if not any(x in ln for x in names)]
+            if n["name"] == "someone_else" and "schedule_callback" in absent:
+                lines.append("No callback can be booked in this call. Once the person has answered (or will not say), call transition_to_close_no_callback.")
+            n["task_message"] = "\n".join(lines)
+    return wf
+
+
 def compile_workflow(ir, api, roles, warnings=None):
     if api["missing_tools"]:
         raise CompileError(f"tool API lacks {api['missing_tools']}")
+    absent = [t for t in ot.OPTIONAL_TOOLS if t not in api["tools"]]
+    if absent:
+        ir, api, roles = _stub_absent_tools(ir, api, roles, absent)
+        if warnings is not None:
+            warnings.append(f"tool API has no {', '.join(absent)}: those paths are left out")
+    wf = _compile(ir, api, roles, warnings)
+    return _strip_absent_tools(wf, absent) if absent else wf
+
+
+def _compile(ir, api, roles, warnings=None):
     cfg = runtime_config(ir, api, roles)
     cv = {k: clean_var(v, "") for k, v in (ir.get("call_variables") or {}).items()}
     cv = {k: v for k, v in cv.items() if v}

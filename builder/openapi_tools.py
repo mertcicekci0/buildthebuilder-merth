@@ -10,6 +10,8 @@ import re
 
 TOOL_NAMES = ("verify_identity", "get_account", "create_promise", "add_note",
               "schedule_callback", "transfer_to_agent", "close_call")
+REQUIRED_TOOLS = ("verify_identity", "get_account", "create_promise", "close_call")
+OPTIONAL_TOOLS = ("add_note", "schedule_callback", "transfer_to_agent")   # a brief that never notes, books or transfers may omit them
 
 # role -> (tool, name patterns in priority order). Patterns are generic words, not values from any brief.
 ROLE_PATTERNS = {
@@ -123,10 +125,11 @@ def load(path_or_dict):
                 contracts[name] = c
             else:
                 unknown.append(name)
-    missing = [t for t in TOOL_NAMES if t not in contracts]
+    missing = [t for t in REQUIRED_TOOLS if t not in contracts]
     info = spec.get("info") or {}
     return {"base_url": base, "title": info.get("title", ""), "api_description": info.get("description", ""),
-            "tools": contracts, "missing_tools": missing, "unknown_operations": unknown}
+            "tools": contracts, "missing_tools": missing, "absent_optional": [t for t in OPTIONAL_TOOLS if t not in contracts],
+            "unknown_operations": unknown}
 
 
 def _match(names, patterns):
