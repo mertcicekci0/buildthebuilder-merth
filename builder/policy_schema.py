@@ -61,7 +61,7 @@ def schema():
         "fixed_sentences": _o({k: S for k in ("deceased", "robot", "scam", "paid", "farewell")}),
         "phrases": _o({k: S for k in PHRASE_KEYS}),
         "locale": _o({"month_names": SL, "weekday_names": SL, "date_pattern": S, "decimal_separator": S, "thousands_separator": S,
-                      "today_words": SL, "tomorrow_words": SL, "day_after_tomorrow_words": SL, "next_words": SL, "this_words": SL}),
+                      "today_words": SL, "tomorrow_words": SL, "day_after_tomorrow_words": SL, "next_words": SL, "this_words": SL, "vague_words": SL}),
         "stage_rules": _o({k: SL for k in STAGES}),
         "evidence": {"type": "array", "items": _o({"path": S, "quote": S})},
         "precedence": {"type": "array", "items": _o({"topic": S, "superseded_quote": S, "governing_quote": S, "why": S})},

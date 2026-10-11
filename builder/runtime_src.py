@@ -315,7 +315,7 @@ def loc_words(text, cfg):
         if len(names) == len(eng):
             pairs += [(fold(n).strip(), eng[i]) for i, n in enumerate(names)]
     for key, eng in (("day_after_tomorrow_words", "day after tomorrow"), ("today_words", "today"), ("tomorrow_words", "tomorrow"),
-                     ("next_words", "next"), ("this_words", "this")):
+                     ("next_words", "next"), ("this_words", "this"), ("vague_words", "soon")):
         pairs += [(fold(n).strip(), eng) for n in (loc.get(key) or [])]
     for name, eng in sorted(pairs, key=lambda x: -len(x[0])):
         if name:

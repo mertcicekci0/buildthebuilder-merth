@@ -125,3 +125,13 @@ def test_day_words_match_without_diacritics_or_in_capitals():
     assert r("CARSAMBA")[0] == datetime.date(2026, 10, 14)
     assert r("5 KASIM") == (datetime.date(2026, 11, 5), "explicit")
     assert r("next friday") == rt.resolve_day_words("next friday", today, cfg)   # English words still read
+
+
+def test_vague_words_and_identity_dates_in_the_locale():
+    cfg = {"locale": dict(LOCALE, vague_words=["ay sonu", "maaş günü"]), "calendar": {"business_weekdays": [0, 1, 2, 3, 4], "holidays": [], "week_start": 0}}
+    today = datetime.date(2026, 10, 14)
+    assert rt.loc_resolve_day_words("ay sonunda", today, cfg) == (None, "vague")
+    assert rt.loc_resolve_day_words("maas gunu oderim", today, cfg) == (None, "vague")
+    _, _, wf = _build(_ir_tr())
+    tool = le._tool(wf, "verify", "verify_identity")
+    assert le.run_pre(tool, {}, {"customer_id": "c", "field": "date_of_birth", "answer": "14 Mart 1988"})["answer"] == "1988-03-14"
