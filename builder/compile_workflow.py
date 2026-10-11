@@ -906,6 +906,8 @@ def _compile(ir, api, roles, warnings=None):
             "FIRST, every turn: if the customer's message contains an answer to the security question (a whole date, all the digits asked for), call verify_identity with it at once, "
             "before anything else, even if the same message also contains a question, a complaint, small talk or cut-off words. "
             "Example: \"3 May 1985. Why do you need this?\" -> call verify_identity with that date first; the rules below apply only to messages with no answer. "
+            "Example: \"The fifth of June nineteen eighty. This is so\" -> the date is complete (day, month and a four-digit year, in digits or words); the words after it were cut off: call verify_identity with 1980-06-05 now, never \"Go on.\". "
+            "A wrong answer that you do not send is still a wrong answer the customer gave: always send it. "
             "Follow the what_to_do_next in its result.\n"
             "An answer may come in pieces over several messages, or just before a cut-off or a complaint: join everything the customer said since you last asked "
             "(\"3 May\" then \"1985\" = 1985-05-03). If they gave an answer you have not checked yet (also one before a \"Go on.\" or a complaint), call verify_identity with it now, before replying.\n"
