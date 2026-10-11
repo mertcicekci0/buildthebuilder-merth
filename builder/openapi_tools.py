@@ -28,7 +28,7 @@ ROLE_PATTERNS = {
     "callback_time":    ("schedule_callback", [r"^time$", r"time", r"hour"]),
     "callback_datetime": ("schedule_callback", [r"datetime", r"date_?time", r"_at$", r"^at$", r"when", r"slot"]),
     "transfer_queue":   ("transfer_to_agent", [r"^queue$", r"queue", r"team", r"department", r"desk"]),
-    "close_outcome":    ("close_call", [r"^outcome$", r"outcome", r"result", r"status", r"disposition", r"resolution"]),
+    "close_outcome":    ("close_call", [r"^outcome$", r"outcome", r"disposition", r"resolution", r"result", r"status"]),
     "close_reason":     ("close_call", [r"^reason$", r"reason", r"sub_?outcome", r"detail"]),
 }
 
@@ -36,7 +36,7 @@ PRODUCT_ROLE_PATTERNS = {  # resolved in this order; a name taken by an earlier 
     "product_id": [r"^product_?id$", r"^id$", r"_id$", r"_ref$", r"^ref", r"product"],
     "days_late": [r"days_?late", r"days_?past_?due", r"dpd", r"days_?overdue", r"^days", r"late",
                   r"overdue_?days", r"arrears_?days", r"days"],
-    "product_type": [r"^type$", r"product_?type", r"kind", r"category", r"_type$", r"type"],
+    "product_type": [r"^type$", r"product_?type", r"^product$", r"kind", r"category", r"_type$", r"type"],
     "past_due": [r"past_?due", r"overdue", r"arrears", r"due_?amount", r"amount_?due", r"balance",
                  r"outstanding", r"total_?due", r"owed", r"debt"],
 }
@@ -60,6 +60,7 @@ RESPONSE_ROLE_PATTERNS = {
         ("error", ("string",), [r"^error$", r"^error_?message$", r"error"]),
     ],
 }
+OUTCOME_WORDS = {"promise", "paid", "no_promise", "transferred", "not_verified", "not_reached"}
 ID_LIKE = r"(^|_)id$|_ref$|^ref|_no$|_number$|^number$|_key$"
 AMOUNT_LIKE = r"amount|due|arrears|balance|overdue|outstanding|owed|debt"
 DAYS_LIKE = r"days|dpd|late"
@@ -194,10 +195,12 @@ def _fallback(role, c, roles, pf):
         return one([f for f in texts if f["required"]]) or one(texts), "the remaining string field"
     if role == "close_outcome":
         cand = [f for f in enums if not re.search(r"reason|detail|sub", f["name"], re.I)] or enums
-        return (one(cand) or prefer(cand, [r"outcome|disposition|status|result|resolution", r"code"]) or one([f for f in cand if f["required"]]),
-                "the enum field")
+        vocab = [f for f in cand if {str(v).lower() for v in f["enum"]} & OUTCOME_WORDS]   # the enum that names call outcomes
+        return (one(cand) or one(vocab) or prefer(cand, [r"outcome", r"disposition|resolution", r"result", r"status", r"code"])
+                or one([f for f in cand if f["required"]]), "the enum field")
     if role == "close_reason":
-        return one([f for f in free if f["type"] == "string"]), "the other string field"
+        rest = [f for f in free if f["type"] == "string" and not (f.get("enum") and {str(v).lower() for v in f["enum"]} & OUTCOME_WORDS)]
+        return one([f for f in rest if not f.get("enum")]) or one(rest), "the other string field"
     if role in ("promise_product", "note_product"):
         if pf.get("product_id") in [f["name"] for f in free]:
             return pf["product_id"], "same name as get_account's product id"
@@ -226,17 +229,24 @@ def infer_roles(api):
     props = (prod or {}).get("properties", {})
     pnames = list(props)
     pfields, pproblems = {}, []
+    ask = {f["name"] for f in tools.get("get_account", {}).get("fields", [])}
+    promise_names = {f["name"] for f in tools.get("create_promise", {}).get("fields", [])}
     for prole, pats in PRODUCT_ROLE_PATTERNS.items():
         rest = [n for n in pnames if n not in pfields.values()]
         hit, why = _match(rest, pats)
+        if prole == "product_id":   # the id-like item field that create_promise also takes beats a name match (e.g. account_id)
+            shared_id = [n for n in rest if n in promise_names and n not in ask and re.search(ID_LIKE, n, re.I)]
+            if len(shared_id) == 1 and shared_id[0] != hit:
+                if hit:
+                    guessed[f"product {prole}"] = f"{shared_id[0]} (shared with create_promise, not {hit})"
+                hit = shared_id[0]
         if not hit and prole == "product_id":   # the item field create_promise also takes (and get_account does not: the customer id)
-            ask = {f["name"] for f in tools.get("get_account", {}).get("fields", [])}
-            shared = [n for n in rest if n in {f["name"] for f in tools.get("create_promise", {}).get("fields", [])} and n not in ask]
+            shared = [n for n in rest if n in promise_names and n not in ask]
             hit = shared[0] if len(shared) == 1 else None
             if hit:
                 guessed[f"product {prole}"] = hit
         if not hit and prole == "product_type":
-            enum_rest = [n for n in rest if (props.get(n) or {}).get("enum")]
+            enum_rest = [n for n in rest if (props.get(n) or {}).get("enum") and not re.search(r"status|state", n, re.I)]
             hit = enum_rest[0] if len(enum_rest) == 1 else None
             if hit:
                 guessed[f"product {prole}"] = hit
@@ -262,6 +272,9 @@ def infer_roles(api):
             continue
         names = [f["name"] for f in c["fields"] if f["name"] != roles.get("customer_id")]
         hit, why = _match(names, pats)
+        if role in ("promise_product", "note_product") and pfields.get("product_id") in names and hit != pfields["product_id"]:
+            guessed[role] = f"{pfields['product_id']} (same name as get_account's product id{', not ' + hit if hit else ''})"
+            hit = pfields["product_id"]   # the same name as get_account's product id wins over e.g. account_id
         if not hit:
             hit, how = _fallback(role, c, roles, pfields)
             if hit:

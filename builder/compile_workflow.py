@@ -227,6 +227,10 @@ def runtime_config(ir, api, roles):
         if p.get("floor_field") and known_fields and p["floor_field"] not in known_fields:
             raise CompileError(f"floor field {p['floor_field']} is not in get_account's product schema {sorted(known_fields)}")
         ptypes[p["api_type"]] = {"spoken": p["spoken"], "floor_field": p.get("floor_field")}
+    if not pf.get("product_type"):   # no type field: one product type applies to every product; several cannot be told apart
+        if len(ptypes) > 1:
+            raise CompileError(f"get_account's products have no recognisable type field, but the policy has {len(ptypes)} product types {sorted(ptypes)}")
+        ptypes.update({"*": v for v in list(ptypes.values())[:1]})
     o = ir["outcomes"]
     close_enum = ot.enum_of(api, "close_call", roles["close_outcome"])
     for key in ("promise", "paid", "transferred", "no_promise", "not_verified", "not_reached"):
@@ -429,7 +433,7 @@ except Exception:
 _f = FORMATS.get(str((config.get('body') or {}).get(FIELD_ROLE)), 'text')
 _v = str((config.get('body') or {}).get(ANSWER_ROLE) or '')
 _n = _f[6:] if _f.startswith('digits') else ''
-if (_n.isdigit() and not (_v.isdigit() and len(_v) == int(_n))) or (_f == 'date' and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', _v)):
+if (_n.isdigit() and not (_v.isdigit() and len(_v) == int(_n))) or (_f == 'date' and not re.fullmatch(r'\\d{4}-\\d{2}-\\d{2}', _v)):
     vars['verify_sent'] = ''
     raise Exception('NOT SENT (not counted): the answer is incomplete or unreadable (' + _v + '). ' +
                     ('All ' + _n + ' digits are needed.' if _n.isdigit() else 'A whole date with day, month and year is needed, sent as YYYY-MM-DD.') +
@@ -589,12 +593,14 @@ for pid in st.get('order', []):
     if int(str(vars.get('att__' + pid) or '0')) > len(steps):
         continue   # persuasion used up
     open_.append(pid)
-sig = raw.strip()
+sig = json.dumps(sorted(items))
 if open_ and str(vars.get('partial_plan_warned') or '') != sig:
     vars['partial_plan_warned'] = sig
     raise Exception('BLOCKED, nothing was recorded yet: ' + ', '.join(open_) + ' still open (no promise, no outcome, persuasion not finished). '
                     'Finish them first (their next offer, or set_product_outcome), then read back ALL agreed promises together, get one confirmation '
-                    'and call save_promises once. If the customer insists on recording only these now, call save_promises again with the same plan.')
+                    'and call save_promises once. If those products already ended (paid, dispute, hardship), call set_product_outcome for them and then '
+                    'save_promises again with the same plan, with no new read-back. If the customer insists on recording only these now, call save_promises '
+                    'again with the same plan.')
 vars['plan_json'] = json.dumps(items)
 vars['plan_ready'] = 'yes'
 raise Exception('ACCEPTED: the system records these promises now and tells the customer the result. Do not say anything about recording yourself.')
@@ -723,7 +729,8 @@ prods = st.get('products', {})
 pid = str(b.get('product_id') or '').strip()
 chosen = [prods[pid]] if pid in prods else list(prods.values())
 words = str(b.get('customer_words') or '')
-if re.search(r'\\b(twenty|thirty)[\\s.,!?-]*$', words.strip().lower()):
+if re.search(r'\\b(twenty|thirty)[\\s.,!?-]*$', words.strip().lower()) and str(vars.get('tens_warned') or '') != words.strip().lower():
+    vars['tens_warned'] = words.strip().lower()
     raise Exception('DATE CHECK RESULT (normal answer, not an error): the customer said "' + words.strip() + '", which stops at a number that may have been '
                     'cut off (twenty-something, thirty-something). Never complete it yourself. If they were accepting a date you offered, read back that '
                     'date; otherwise ask them once to say the day again.')
@@ -969,6 +976,8 @@ def compile_workflow(ir, api, roles, warnings=None):
         raise CompileError("the tool API's fields for these roles were not recognised: " + "; ".join(lost))
     absent = [t for t in ot.OPTIONAL_TOOLS if t not in api["tools"]]
     ir, any_queue = _usable_queues(ir, api, roles, warnings)
+    if "close_reason" in (roles.get("guessed") or {}) and warnings is not None:
+        warnings.append(f"close_call reason field guessed by structure: {roles['guessed']['close_reason']}")
     if absent:
         ir, api, roles = _stub_absent_tools(ir, api, roles, absent)
         if warnings is not None:
