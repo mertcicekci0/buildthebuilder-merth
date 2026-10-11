@@ -127,6 +127,54 @@ print(String(data: data, encoding: .utf8)!)
 """
 
 
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".heic", ".webp"}
+OCR_SWIFT = """import Vision
+import AppKit
+import PDFKit
+import Foundation
+func ocr(_ cg: CGImage) -> String {
+    let req = VNRecognizeTextRequest(); req.recognitionLevel = .accurate; req.usesLanguageCorrection = true
+    req.automaticallyDetectsLanguage = true
+    try? VNImageRequestHandler(cgImage: cg).perform([req])
+    return (req.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\\n")
+}
+var out: [String: String] = [:]
+for p in CommandLine.arguments.dropFirst() {
+    let url = URL(fileURLWithPath: p)
+    if p.lowercased().hasSuffix(".pdf") {
+        guard let d = PDFDocument(url: url) else { continue }
+        var pages: [String] = []
+        for i in 0..<d.pageCount {
+            guard let page = d.page(at: i) else { continue }
+            let b = page.bounds(for: .mediaBox)
+            let img = page.thumbnail(of: NSSize(width: b.width * 2, height: b.height * 2), for: .mediaBox)
+            if let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) { pages.append(ocr(cg)) }
+        }
+        out[p] = pages.joined(separator: "\\n")
+    } else if let img = NSImage(contentsOfFile: p), let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+        out[p] = ocr(cg)
+    }
+}
+print("@@JSON@@" + String(data: try! JSONSerialization.data(withJSONObject: out), encoding: .utf8)!)
+"""
+
+
+def ocr_texts(files):
+    """{path: text} recognised with macOS Vision OCR (images, and PDFs without a text layer); {} when unavailable."""
+    import shutil as _sh
+    import subprocess
+    files = [str(f) for f in files]
+    swift = _sh.which("swift")
+    if not files or not swift:
+        return {}
+    try:
+        r = subprocess.run([swift, "-e", OCR_SWIFT, *files], capture_output=True, timeout=600)
+        got = json.loads(r.stdout.decode("utf-8", "replace").rsplit("@@JSON@@", 1)[1])   # system frameworks may print noise first
+    except (subprocess.TimeoutExpired, ValueError, IndexError):
+        return {}
+    return {f: t for f, t in got.items() if t.strip()}
+
+
 def pdf_texts(files):
     """{path: text} for PDFs via macOS PDFKit (swift), one process for all files. Raises InputError when unavailable or empty."""
     import shutil as _sh
@@ -254,6 +302,8 @@ def read_brief(path, dest, exclude=()):
     stems_with_text = {(f.parent, f.stem) for f in files if f.suffix.lower() in TEXT_EXT}
     pdfs = [f for f in files if f.suffix.lower() == ".pdf" and (f.parent, f.stem) not in stems_with_text]
     pdf_text = pdf_texts(pdfs) if pdfs else {}   # one swift process for every PDF of the bundle
+    to_ocr = [f for f in files if (f.suffix.lower() in IMAGE_EXT) or (f in pdfs and str(f) not in pdf_text)]
+    ocr_text = ocr_texts(to_ocr) if to_ocr else {}   # images (e.g. a flow drawing) and scanned PDFs
     parts, meta, unreadable = [], [], []
     for f in files:
         rel = str(f.relative_to(folder))
@@ -274,6 +324,8 @@ def read_brief(path, dest, exclude=()):
                 continue
         elif str(f) in pdf_text:
             text, how = pdf_text[str(f)], "pdf (PDFKit)"
+        elif str(f) in ocr_text:
+            text, how = "[text recognised by OCR from " + ext[1:] + "; layout and arrows are not preserved]\n" + ocr_text[str(f)], "OCR (Vision)"
         elif (f.parent, f.stem) in stems_with_text:
             meta.append({**entry, "read_as": "skipped: a text version with the same name is read instead"})
             continue

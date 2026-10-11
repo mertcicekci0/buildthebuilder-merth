@@ -392,3 +392,15 @@ def test_official_form_case_folder_and_mock_url(tmp_path):
     urls = set(__import__("re").findall(r'https?://[^"\\\\ ]+', text))
     assert urls and all(u.startswith("https://my-mock.example.workers.dev/") for u in urls)
     assert any("docs/scan.pdf" in json.dumps(x) for x in rows)   # every input file is listed in the trace
+
+
+@pytest.mark.skipif(not __import__("shutil").which("swift"), reason="OCR uses macOS Vision via swift")
+def test_an_image_document_is_read_by_ocr(tmp_path):
+    # tests/fixtures/ocr-sample.png: synthetic text rendered for this test (not from any case)
+    d = tmp_path / "case"
+    d.mkdir()
+    (d / "BRIEF.md").write_text("Brief.")
+    (d / "flow.png").write_bytes((ROOT / "tests/fixtures/ocr-sample.png").read_bytes())
+    text, files = bi.read_brief(d, tmp_path / "o")
+    assert {f["path"]: f["read_as"] for f in files}["flow.png"] == "OCR (Vision)"
+    assert "Borç bildir" in text and "1.250,00" in text
