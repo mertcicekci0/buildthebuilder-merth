@@ -1,0 +1,20 @@
+r3-a-plain             agent c215da13 styles=plain now=case: runs 30, ledger correct 29/30, conversation pass 13 / fail 2 / verdict missing 15, run passes 13/30, cases passing every rep 0/10
+    FAIL PUB-02#r1 [plain] conversation: no verdict
+    FAIL PUB-03#r1 [plain] conversation: no verdict
+    FAIL PUB-04#r1 [plain] conversation: no verdict
+    FAIL PUB-06#r1 [plain] conversation: no verdict
+    FAIL PUB-07#r1 [plain] conversation: no verdict
+    FAIL PUB-08#r1 [plain] conversation: no verdict
+    FAIL PUB-10#r1 [plain] conversation: no verdict
+    FAIL PUB-01#r2 [plain] conversation: no verdict
+    FAIL PUB-03#r2 [plain] outcome ('not_verified', 'declined'), expected ('not_verified', 'failed')
+    FAIL PUB-03#r2 [plain] conversation: The conversation failed on two accounts. First, the success criterion 'the check ends after the third wrong answer' was not met; after the user provided a third date in [Message 7], the assistant continued 
+    FAIL PUB-10#r2 [plain] conversation: All criteria met. The system successfully recorded exactly one promise (ID: pr1) after a failed first attempt and a successful retry. The agent mentioned the promise was 'recorded' in [Message 10], which oc
+    FAIL PUB-04#r3 [plain] conversation: no verdict
+    FAIL PUB-05#r3 [plain] conversation: no verdict
+    FAIL PUB-06#r3 [plain] conversation: no verdict
+    FAIL PUB-07#r3 [plain] conversation: no verdict
+    FAIL PUB-08#r3 [plain] conversation: no verdict
+    FAIL PUB-09#r3 [plain] conversation: no verdict
+    FAIL PUB-10#r3 [plain] conversation: no verdict
+TOTAL                  runs 30, ledger correct 29, conversation pass 13 / fail 2 / verdict missing 15, run passes 13, cases passing every rep 0/10

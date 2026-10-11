@@ -1,7 +1,7 @@
 # Overnight plan (autonomous run)
 
 **Started:** 2026-10-11 03:43 Europe/Istanbul (00:43 UTC)
-**Absolute deadline:** **2026-10-11 09:43 Europe/Istanbul (06:43 UTC)**. Never reset after compaction or resume. At the deadline: start nothing new, leave the repo recoverable, write docs/MORNING_REPORT.md.
+**Absolute deadline:** **2026-10-11 11:00 Europe/Istanbul (08:00 UTC)** — set by Mert at 05:26 Istanbul, explicitly replacing the earlier 09:43 deadline. Never extend it after compaction or resume. At the deadline: start nothing new, leave the repo recoverable, complete docs/MORNING_REPORT.md.
 
 Hidden briefs open 2026-10-11 20:00 Istanbul (17:00 UTC); submission closes 23:00 Istanbul (20:00 UTC).
 
@@ -60,3 +60,9 @@ Stop early if these are met, included usage runs out, or progress needs unavaila
 | fc352c5, 3060a20, 7b8f74a | code-review fixes, placeholders, optional tools, R2 variant | verified offline (44 tests) |
 | 603b2a8 + 3f0b05c | C3 template changes + calendar case fix | experimental until r3 completes |
 | 93fa477 | submission doc, trace ignore rules | done |
+
+- 05:26 RESUME (new /goal from Mert): deadline changed 09:43 -> 11:00 Istanbul (08:00 UTC) by explicit instruction; original start 03:43 kept.
+  Recovered: HEAD d1c5cae on dev/overnight, tree clean except untracked dev exports in submission/. No local process running.
+  r3 suite (C3 = cand-a v2 / cand-ab v3, built from 603b2a8) stopped after r3-a-plain: I edited devtools/regress.sh while it ran
+  (sh reads scripts incrementally -> "unexpected EOF"). Lesson: run a frozen copy. r3-a-plain: ledger 29/30, 15 runs "no verdict"
+  (judge produced none; pending, not passes). C3 is superseded by C4 (identity answer-first 44ca46c/d1c5cae + deadline_unit ddb670e).
