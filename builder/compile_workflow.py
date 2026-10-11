@@ -163,6 +163,7 @@ def runtime_config(ir, api, roles):
             raise CompileError(f"outcome {key} -> {o[key]} is not allowed by close_call ({close_enum})")
     reasons = o.get("reasons", {})
     return {
+        "now_var": (ir.get("call_variables") or {}).get("now") or "now",
         "calendar": ir["calendar"], "bands": ir["bands"], "table_days": 45,
         "products_prefix": f"{ACCOUNT_NODE}_response.data.{roles['products_key']}",
         "fields": {"product_id": pf["product_id"], "product_type": pf.get("product_type", "type"), "past_due": pf["past_due"], "days_late": pf["days_late"]},
@@ -170,8 +171,6 @@ def runtime_config(ir, api, roles):
         "ladder": ir.get("ladder", []),
         "outcomes": {"promise": o["promise"], "paid": o["paid"], "transferred": o["transferred"], "no_promise": o["no_promise"],
                      "not_verified": o["not_verified"], "not_reached": o["not_reached"], "paid_note": "paid",
-                     "transfer_reasons": {k: reasons.get(k, k) for k in ("restructuring", "human", "support")},
-                     "not_verified_reasons": {k: reasons.get(k, k) for k in ("failed", "declined")},
                      "reasons": reasons, "note_reasons": o.get("note_reasons", {})},
         "transfer_queues": ir.get("transfer_queues", {}),
         "identity": ir["identity"],
@@ -186,7 +185,7 @@ def runtime_config(ir, api, roles):
 # ------------------------------------------------------------------ code entries (run inside Freya)
 ENTRY_INIT = """
 try:
-    now = parse_now(vars.get('now'))
+    now = parse_now(vars.get(CFG.get('now_var') or 'now'))
     st = get_state(vars)
     put_state(vars, st)
     vars['today_spoken'] = spoken_date(now.date()) if now else 'unknown'
@@ -236,7 +235,7 @@ def _ladder_text(p, today):
     return '; '.join(parts) if parts else 'no persuasion attempt'
 
 try:
-    now = parse_now(vars.get('now'))
+    now = parse_now(vars.get(CFG.get('now_var') or 'now'))
     today = now.date()
     prods = product_facts(load_products(vars, CFG), today, CFG)
     st = get_state(vars)
@@ -390,7 +389,7 @@ def hook_callback_pre(roles):
         get_dt = "raw = str(b.get(R_DT) or '')\nd_iso, t = raw[:10], raw[11:16]\n"
     else:
         get_dt = "d_iso, t = str(b.get(R_D) or '')[:10], str(b.get(R_T) or '')[:5]\n"
-    return _join("b = config.get('body') if isinstance(config.get('body'), dict) else {}\n" + get_dt + """now = parse_now(vars.get('now'))
+    return _join("b = config.get('body') if isinstance(config.get('body'), dict) else {}\n" + get_dt + """now = parse_now(vars.get(CFG.get('now_var') or 'now'))
 v = callback_check(d_iso, t, now, CFG)
 if v != 'ok':
     st = get_state(vars)
@@ -436,7 +435,7 @@ SAVE_PLAN_PRE = """
 st = get_state(vars)
 b = config.get('body') if isinstance(config.get('body'), dict) else {}
 raw = str(b.get('plan') or '')
-today = parse_now(vars.get('now')).date()
+today = parse_now(vars.get(CFG.get('now_var') or 'now')).date()
 prods = st.get('products', {})
 items, errors = [], []
 for part in [x.strip() for x in re.split(r'[;\\n]+', raw) if x.strip()]:
@@ -566,7 +565,7 @@ raise Exception('REFUSAL RESULT: no persuasion attempt left for ' + pid + ' (' +
 CHECK_DATE_PRE = """
 st = get_state(vars)
 b = config.get('body') if isinstance(config.get('body'), dict) else {}
-today = parse_now(vars.get('now')).date()
+today = parse_now(vars.get(CFG.get('now_var') or 'now')).date()
 prods = st.get('products', {})
 pid = str(b.get('product_id') or '').strip()
 chosen = [prods[pid]] if pid in prods else list(prods.values())
@@ -674,7 +673,7 @@ def compile_workflow(ir, api, roles):
         if queue_enum and q not in queue_enum:
             raise CompileError(f"transfer queue {sem} -> {q} not in API enum {queue_enum}")
 
-    name_map = {k: "{{" + v + "}}" for k, v in cv.items()}
+    name_map = {**{v: "{{" + v + "}}" for v in cv.values()}, **{k: "{{" + v + "}}" for k, v in cv.items()}}  # <title> and <salutation> both work
     opening_line = (ir["opening"]["first_sentence"].strip() + " " + _fill(ir["opening"]["identity_question"], name_map)).strip()
     system_prompt = (
         f"You are the digital assistant of {bank}, speaking {ir.get('language', 'English')} on an outbound phone call.\n"
@@ -847,9 +846,9 @@ def compile_workflow(ir, api, roles):
     nodes["post_record"] = {
         "name": "post_record", "node_type": "conversation", "on_enter": {"type": "tts", "text": "{{record_summary}}"},
         "task_message": (
-            "You have just told the customer the recording result (above). Recorded promises cannot be changed in this call; if asked, say they can change it in the mobile app.\n"
+            "You have just told the customer the recording result (above). Recorded promises cannot be changed in this call; if the customer asks, answer as the rules below say.\n"
             "PRODUCTS:\n{{facts_text}}\n"
-            "Rules:\n" + _rules(ir, "recording") + "\n" + _rules(ir, "closing") + "\n"
+            "Rules:\n" + _rules(ir, "confirmation", "recording", "closing") + "\n"
             "If a product still has no promise and no outcome, call set_product_outcome for it. If the customer asks for restructuring, support or a human, use transfer_to_agent.\n"
             "When nothing is left, call transition_to_wrap_up. Do not say goodbye yourself; the system does."),
         "tools": [set_outcome_tool, transfer_tool], "max_node_turns": 10, "max_turn_transition": "wrap_up",

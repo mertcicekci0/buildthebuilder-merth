@@ -56,10 +56,10 @@ def flatten_products(prefix, products):
     return out
 
 
-def smoke(wf, roles, products, now="2026-10-14T11:00", promise=None):
+def smoke(wf, roles, products, now="2026-10-14T11:00", promise=None, now_var="now"):
     """Drive init -> account -> one guarded promise -> wrap-up -> close on synthetic data. Returns a report dict.
     `products` are dicts with the API's own field names; `promise` = (product_id, amount, date) to try."""
-    vars = {"now": now, "customer_id": "c_local", "first_name": "Test", "last_name": "Customer", "title": "Mr"}
+    vars = {**(wf.get("test_variables") or {}), "customer_id": "c_local", now_var: now}
     run_code_node(wf, "init", vars)
     prefix = f"load_account_response.data.{roles['products_key']}"
     vars.update(flatten_products(prefix, products))

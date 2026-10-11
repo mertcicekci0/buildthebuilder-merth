@@ -1,0 +1,38 @@
+## brief A vs reference (multi/notes off)
+TEXT   opening.first_sentence
+   got: Hello, this is a digital assistant calling from Freya Bank, and this call is recorded.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I'm sorry, I could not verify your identity. Please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 3 text difference(s)
+
+## brief A+B vs reference
+TEXT   opening.first_sentence
+   got: Hello, I am a digital assistant calling from Freya Bank, and this call is recorded.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   first_ask_multi
+   got: Can you make all of these payments today?
+   ref: Can you pay all of them today?
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I'm sorry, I could not verify your identity. Please use the Freya Bank mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 4 text difference(s)
+
+## R1 raw material vs reference
+TEXT   fixed_sentences.farewell
+   got: Thank you for your time. Goodbye.
+   ref: 
+TEXT   first_ask_multi
+   got: Are you able to clear all of the overdue balances today?
+   ref: Are you able to clear all of them today?
+TEXT   identity.failed_message
+   got: I'm sorry, I can't discuss the account. Please visit a branch or use online banking.
+   ref: I'm sorry, I can't continue. Please visit a branch or use online banking.
+0 exact difference(s), 3 text difference(s)

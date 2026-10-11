@@ -1,0 +1,215 @@
+{
+ "_note": "Hand-written reference IR for tests/variants/brief-r1.md + api-r1.json (our own generalisation test; memo and code list applied).",
+ "bank_name": "Kestrel Credit Union",
+ "language": "English",
+ "currency_word": "",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "salutation",
+  "now": "call_time"
+ },
+ "opening": {
+  "first_sentence": "Good day, this is Kestrel Credit Union's automated assistant. This call may be recorded.",
+  "identity_question": "May I speak to <title> <last_name>, please?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "it's me",
+   "the member's own name"
+  ],
+  "not_confirmations": [],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "arrears",
+   "balances",
+   "payments",
+   "collections",
+   "the product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "postcode",
+    "ask": "Could you tell me the postcode on file?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "year_of_birth",
+    "ask": "And your year of birth?",
+    "format": "digits4",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": null,
+  "swapped_instruction": "",
+  "failed_message": "I'm sorry, I can't continue. Please visit a branch or use online banking.",
+  "refusal_explanation": "These questions keep your savings safe.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "card",
+   "spoken": "card ending <card_last4>",
+   "floor_field": "min_due"
+  },
+  {
+   "api_type": "overdraft",
+   "spoken": "overdraft",
+   "floor_field": "min_due"
+  },
+  {
+   "api_type": "auto_loan",
+   "spoken": "auto loan",
+   "floor_field": "monthly_payment"
+  }
+ ],
+ "debt_intro": "I'm calling about an overdue balance on your account.",
+ "product_sentence": "Your <spoken> has <past_due> past due and is <days_late> days late.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-29",
+   "2026-11-30",
+   "2026-12-25",
+   "2027-01-01"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "A",
+   "min": 1,
+   "max": 14,
+   "deadline_business_days": 8,
+   "attempts": 1
+  },
+  {
+   "name": "B",
+   "min": 15,
+   "max": 60,
+   "deadline_business_days": 5,
+   "attempts": 2
+  },
+  {
+   "name": "C",
+   "min": 61,
+   "max": 90,
+   "deadline_business_days": 3,
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Are you able to clear the overdue balance today?",
+ "first_ask_multi": "Are you able to clear all of them today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": []
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "B",
+    "C"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "10:00",
+  "end": "17:30",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "as returned",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "arrears_specialist",
+  "human": "frontdesk",
+  "support": "welfare"
+ },
+ "outcomes": {
+  "promise": "PTP",
+  "paid": "PAID",
+  "transferred": "XFER",
+  "no_promise": "NOPTP",
+  "not_verified": "NOID",
+  "not_reached": "NOCONTACT",
+  "reasons": {
+   "restructuring": "RES",
+   "human": "HUM",
+   "support": "WEL",
+   "refused": "REF",
+   "hardship": "HRD",
+   "dispute": "DIS",
+   "service_error": "SYS",
+   "failed": "FAIL",
+   "declined": "REF",
+   "callback": "CB",
+   "no_callback": "NCB",
+   "wrong_number": "WN",
+   "deceased": "DEC",
+   "unclear": "UNC",
+   "paid": ""
+  },
+  "note_reasons": {
+   "refused": "no_pay",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "paid": "already_paid",
+   "service_error": "tech_fail"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 2,
+  "after_promise_sentence": "You'll receive an email confirming this arrangement.",
+  "read_back_question": "Shall I log that for you?"
+ },
+ "fixed_sentences": {
+  "deceased": "Please accept our condolences.",
+  "robot": "I'm Kestrel Credit Union's automated assistant.",
+  "scam": "You can check this call by ringing the number on the back of your card.",
+  "paid": "Payments can take up to two business days to show.",
+  "farewell": ""
+ },
+ "stage_rules": {
+  "always": [],
+  "opening": [],
+  "third_party": [],
+  "identity": [],
+  "negotiation": [],
+  "multi_product": [],
+  "confirmation": [],
+  "recording": [],
+  "closing": []
+ },
+ "evidence": [],
+ "unmapped_rules": [],
+ "precedence": []
+}

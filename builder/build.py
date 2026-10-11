@@ -58,21 +58,22 @@ def self_test(wf, roles, api, ir, trace):
     """Run the generated code locally on synthetic data. Returns the number of failures."""
     fails = 0
     prods = synthetic_products(api, roles, ir)
+    now_var = (ir.get("call_variables") or {}).get("now") or "now"
     try:
-        r = le.smoke(wf, roles, prods)
+        r = le.smoke(wf, roles, prods, now_var=now_var)
         ok = r["init_ok"] == "yes" and r["account_ok"] == "yes" and r["table_lines"] > 0 and "p1" in r["facts_text"]
         trace.test("local: init + account facts on synthetic products", "pass" if ok else "FAIL",
                    debt=r["debt_statement"], first_ask=r["first_ask"])
         fails += not ok
         pid = prods[0][roles["product_fields"]["product_id"]]
         dl = r["state"]["products"][pid]["deadline"]
-        r2 = le.smoke(wf, roles, prods, promise=(pid, 500.0, dl))
+        r2 = le.smoke(wf, roles, prods, promise=(pid, 500.0, dl), now_var=now_var)
         ok2 = "promise_sent" in r2 and r2["close_body"].get(roles["close_outcome"]) == ir["outcomes"]["promise"]
         trace.test("local: guarded promise on the deadline is sent; close outcome = promise", "pass" if ok2 else "FAIL", detail=r2.get("promise_blocked", ""))
         fails += not ok2
         import datetime
         late = (datetime.date.fromisoformat(dl) + datetime.timedelta(days=30)).isoformat()
-        r3 = le.smoke(wf, roles, prods, promise=(pid, 500.0, late))
+        r3 = le.smoke(wf, roles, prods, promise=(pid, 500.0, late), now_var=now_var)
         ok3 = "promise_blocked" in r3
         trace.test("local: promise after the deadline is blocked before sending", "pass" if ok3 else "FAIL")
         fails += not ok3
