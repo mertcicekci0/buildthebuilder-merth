@@ -24,11 +24,13 @@ commit that contains the builder, the exported workflows and the per-brief trace
 (Inference: a readable history with the builder frozen before 17:00 UTC and any later bug-fix commits separate makes the
 "nothing from a hidden brief" review easy, so we keep focused real commits, never backdated or synthetic.)
 
-## Repository state (updated 2026-10-11 ~06:30 Istanbul)
-- Local only: `master` = baseline a0e7f68 (tag `baseline-v4`); development on `dev/overnight` (focused commits, see the log in docs/OVERNIGHT_PLAN.md).
-- **No git remote is configured. Creating the GitHub repository (and its visibility/access for the organisers) and pushing is a task for Mert**; nothing is pushed by the agent.
-- `tests/test_devtools.py` is intentionally untracked (listed in .git/info/exclude): its fake key-shaped strings trip the pre-commit
-  secret scan, and editing them was refused by the auto-mode classifier. Decide: keep it out, or rewrite the fixtures by hand.
+## Repository state (updated 2026-10-11 17:15 Istanbul; details in docs/READINESS_REPORT.md)
+- **Selected submission builder: C5** (builder tree d0b9c09e…, tag `cand/C5`), carried by `dev/overnight`. Measured: r5 full suite
+  (runs 93/99, groups 27/30). C14 (`dev/c10` 8cb1932, merge candidate `cand/c14-merge` b53a4c9) is rehearsed but its practice suite
+  (r14) could not run (mock bank unreachable from this network); **not promoted** unless r14b runs and meets the rule in DAY_PLAN.
+- Local only: `master` = baseline a0e7f68 (tag `baseline-v4`). **No git remote is configured. Creating the GitHub repository, giving the
+  organisers access and pushing is Mert's task**; nothing is pushed by the agent.
+- `tests/test_devtools.py` is tracked (3e8dc3c) with SYNTHETICTEST fixtures and the narrow scanner exception; real key shapes still flagged.
 
 ## Ignore rules checked
 `git check-ignore` on the final paths: `traces/<brief>.log` and `traces/<brief>.jsonl` are committable (negation rules in .gitignore),
