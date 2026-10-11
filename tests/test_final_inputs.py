@@ -249,3 +249,21 @@ def test_path_parameters_become_engine_variables():
     api = ot.load(s, tool_map={"get_account": "POST /customers/{customer_id}/account"})
     assert api["tools"]["get_account"]["url"].endswith("/customers/{{customer_id}}/account")
     assert api["tools"]["get_account"]["path_params"] == ["customer_id"]
+
+
+@pytest.mark.skipif(not __import__("shutil").which("ruby"), reason="YAML conversion uses ruby")
+def test_yaml_contract_in_a_bundle_is_converted_and_kept_out_of_the_brief(tmp_path):
+    yml = subprocess.run(["ruby", "-ryaml", "-rjson", "-e", "puts YAML.dump(JSON.parse(STDIN.read))"], input=KIT_API.read_bytes(),
+                         capture_output=True, check=True).stdout
+    d = tmp_path / "case"
+    (d / "docs").mkdir(parents=True)
+    (d / "docs/policy.md").write_text(A.read_text())
+    (d / "api.yaml").write_bytes(yml)
+    z = zipped(d, tmp_path / "case.zip")
+    c = bi.find_contract(z, tmp_path / "c")
+    assert c.suffix == ".json" and ot.load(str(c))["missing_tools"] == []
+    text, files = bi.read_brief(z, tmp_path / "o", exclude=[c])
+    assert "openapi:" not in text and any(f["path"] == "api.yaml" and f["read_as"].startswith("contract") for f in files)
+    single = tmp_path / "api.yml"
+    single.write_bytes(yml)
+    assert ot.load(str(bi.find_contract(single, tmp_path / "c2")))["missing_tools"] == []

@@ -127,7 +127,32 @@ def _read_document(f, rel):
     return text, ext[1:] + " xml"
 
 
+def _yaml_to_json(f, out_dir):
+    """A YAML contract converted once to JSON with Ruby's YAML.safe_load (no code execution; this repo has no YAML library).
+    Returns the JSON path, or raises InputError."""
+    import shutil as _sh
+    import subprocess
+    ruby = _sh.which("ruby")
+    if not ruby:
+        raise InputError(f"{f.name} is YAML and no converter is available (no ruby, no PyYAML): convert it to JSON")
+    r = subprocess.run([ruby, "-ryaml", "-rjson", "-rdate", "-e",
+                        "puts JSON.generate(YAML.safe_load(STDIN.read, [Date, Time], [], true))"],
+                       input=f.read_bytes(), capture_output=True, timeout=60)
+    if r.returncode != 0:
+        raise InputError(f"cannot convert {f.name} from YAML: {r.stderr.decode('utf-8', 'replace')[:300]}")
+    out = pathlib.Path(out_dir) / (f.stem + ".converted.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(r.stdout)
+    return out
+
+
+def _yaml_contract(f):
+    return f.suffix.lower() in (".yaml", ".yml") and bool(re.search(r"(?m)^(openapi|swagger)\s*:", f.read_text(encoding="utf-8", errors="replace")))
+
+
 def is_contract(f):
+    if _yaml_contract(f):
+        return True
     if f.suffix.lower() != ".json":
         return False
     try:
@@ -141,11 +166,14 @@ def find_contract(path, dest):
     """The tool contract: the file itself, or the single OpenAPI JSON inside a folder/zip."""
     p = pathlib.Path(path)
     if p.is_file() and not zipfile.is_zipfile(p):
-        return p
+        return _yaml_to_json(p, pathlib.Path(dest).parent / (pathlib.Path(dest).name + "-converted")) if _yaml_contract(p) else p
     folder = unpack(p, dest)
-    hits = sorted(f for f in folder.rglob("*.json") if f.is_file() and not IGNORED.search(str(f.relative_to(folder))) and is_contract(f))
+    hits = sorted(f for f in folder.rglob("*") if f.is_file() and f.suffix.lower() in (".json", ".yaml", ".yml")
+                  and not IGNORED.search(str(f.relative_to(folder))) and is_contract(f))
     if len(hits) != 1:
-        raise InputError(f"expected exactly one OpenAPI JSON contract in {path}, found {[str(h.relative_to(folder)) for h in hits]}")
+        raise InputError(f"expected exactly one OpenAPI contract (JSON or YAML) in {path}, found {[str(h.relative_to(folder)) for h in hits]}")
+    if _yaml_contract(hits[0]):   # the converted copy sits outside the extracted folder, so the brief reader never sees it
+        return _yaml_to_json(hits[0], pathlib.Path(str(folder) + "-converted"))
     return hits[0]
 
 
