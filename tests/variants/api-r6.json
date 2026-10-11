@@ -1,0 +1,492 @@
+{
+ "openapi": "3.0.3",
+ "info": {
+  "title": "Halberd Motor Finance arrears tools",
+  "version": "0.3-draft",
+  "description": "Test double of Halberd's servicing systems for automated arrears calls. Every call is written to the ledger. The service does not enforce the arrears call specification."
+ },
+ "servers": [
+  {
+   "url": "https://r6.example.test/api"
+  }
+ ],
+ "components": {},
+ "paths": {
+  "/verify_identity": {
+   "post": {
+    "summary": "Check one security answer. Up to three wrong answers in total are allowed; the fourth ends the check.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "question": {
+          "type": "string",
+          "enum": [
+           "birth_date",
+           "postcode",
+           "customer_ref_last3"
+          ]
+         },
+         "given_answer": {
+          "type": "string",
+          "description": "birth_date: YYYY-MM-DD. postcode: capital letters, no spaces. customer_ref_last3: three digits. An unreadable value is rejected with ok=false and is not counted as a wrong answer."
+         }
+        },
+        "required": [
+         "customer_id",
+         "question",
+         "given_answer"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          },
+          "correct": {
+           "type": "boolean"
+          },
+          "attempts_left": {
+           "type": "integer"
+          },
+          "identity_confirmed": {
+           "type": "boolean"
+          },
+          "hint": {
+           "type": "string",
+           "enum": [
+            "date_order_suspect"
+           ]
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/get_account": {
+   "post": {
+    "summary": "The agreements in arrears (one to three). Refused until all three questions are passed.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "customer_id"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          },
+          "agreements": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "agreement_id": {
+              "type": "string"
+             },
+             "agreement_type": {
+              "type": "string",
+              "enum": [
+               "hire_purchase",
+               "pcp",
+               "service_plan"
+              ]
+             },
+             "registration": {
+              "type": "string",
+              "description": "hire_purchase and pcp only: the vehicle registration, e.g. LK21ABC"
+             },
+             "arrears": {
+              "type": "number",
+              "description": "pounds and pence"
+             },
+             "days_in_arrears": {
+              "type": "integer"
+             },
+             "monthly_payment": {
+              "type": "number",
+              "description": "hire_purchase and pcp only"
+             },
+             "minimum_due": {
+              "type": "number",
+              "description": "service_plan only"
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/create_promise": {
+   "post": {
+    "summary": "Record a payment promise. One per agreement.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "agreement_id": {
+          "type": "string"
+         },
+         "promised_amount": {
+          "type": "number",
+          "description": "pounds and pence"
+         },
+         "due_date": {
+          "type": "string",
+          "format": "date"
+         }
+        },
+        "required": [
+         "customer_id",
+         "agreement_id",
+         "promised_amount",
+         "due_date"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          },
+          "arrangement_ref": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/add_note": {
+   "post": {
+    "summary": "Record why an agreement ended the call without a promise.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "agreement_id": {
+          "type": "string"
+         },
+         "category": {
+          "type": "string",
+          "enum": [
+           "will_not_pay",
+           "financial_difficulty",
+           "disputes_debt",
+           "says_paid",
+           "tool_failure"
+          ]
+         },
+         "free_text": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "customer_id",
+         "agreement_id",
+         "category"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/schedule_callback": {
+   "post": {
+    "summary": "Book a callback.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "preferred_date": {
+          "type": "string",
+          "format": "date"
+         },
+         "preferred_time": {
+          "type": "string",
+          "description": "HH:MM, local time"
+         }
+        },
+        "required": [
+         "customer_id",
+         "preferred_date",
+         "preferred_time"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/transfer_to_agent": {
+   "post": {
+    "summary": "Hand the call to a Halberd team.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "team": {
+          "type": "string",
+          "enum": [
+           "payment_solutions",
+           "customer_relations",
+           "wellbeing_team"
+          ]
+         }
+        },
+        "required": [
+         "customer_id",
+         "team"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/close_call": {
+   "post": {
+    "summary": "End the call. Always the last tool call. Nothing is accepted after it.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "disposition": {
+          "type": "string",
+          "enum": [
+           "promise-to-pay",
+           "reported-paid",
+           "handed-off",
+           "no-promise",
+           "id-not-confirmed",
+           "not-contacted"
+          ]
+         },
+         "reason_code": {
+          "type": "string",
+          "enum": [
+           "wants-new-terms",
+           "asked-for-person",
+           "wellbeing-referral",
+           "will-not-pay",
+           "financial-difficulty",
+           "disputes-debt",
+           "system-fault",
+           "checks-failed",
+           "checks-refused",
+           "callback-booked",
+           "no-suitable-time",
+           "wrong-number",
+           "customer-deceased",
+           "not-confirmed",
+           "paid-before-call"
+          ],
+          "description": "Required for every disposition except promise-to-pay. See the disposition table of the specification."
+         }
+        },
+        "required": [
+         "customer_id",
+         "disposition"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  }
+ }
+}
