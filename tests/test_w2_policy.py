@@ -169,3 +169,20 @@ def test_next_weekday_meaning_follows_the_ir():
     ir = copy.deepcopy(IR); ir["calendar"]["next_weekday"] = "next_occurrence"
     _, _, wf = build(ir)
     assert '"next_weekday":"next_occurrence"' in wf["nodes"]["init"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+
+
+def test_paid_reason_sent_when_the_reason_enum_has_it():
+    from builder import local_exec as le
+    st = {"products": {}, "promises": {}, "notes": {"p1": "paid"}, "order": ["p1"], "transfer": "", "verified": "yes", "contact": "customer"}
+
+    def close(spec, ir):
+        _, _, wf = build(ir, spec)
+        return le.run_pre(wf["tools"][0], {"st_json": json.dumps(st)}, {"customer_id": "c1", "outcome": "", "reason": ""})
+    ir = copy.deepcopy(IR); ir["outcomes"]["reasons"]["paid"] = "P2"
+    assert close(KIT, ir) == {"customer_id": "c1", "outcome": "paid"}            # free-text reason: a distinct paid outcome sends none
+    spec = copy.deepcopy(KIT)
+    sch = spec["paths"]["/close_call"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    sch["properties"]["reason"]["enum"] = sorted(set(IR["outcomes"]["reasons"].values()) - {""}) + ["P2"]
+    assert close(spec, ir) == {"customer_id": "c1", "outcome": "paid", "reason": "P2"}
+    ir["outcomes"]["reasons"]["paid"] = "not_a_code"                              # not in the enum: still not sent
+    assert close(spec, ir) == {"customer_id": "c1", "outcome": "paid"}

@@ -197,8 +197,11 @@ def runtime_config(ir, api, roles):
         if close_enum and o.get(key) and o[key] not in close_enum:
             raise CompileError(f"outcome {key} -> {o[key]} is not allowed by close_call ({close_enum})")
     reasons = dict(o.get("reasons", {}))
-    if o.get("paid") != o.get("no_promise"):
-        reasons["paid"] = ""   # a distinct paid outcome carries no reason; only a brief that closes "paid" under no_promise names one
+    reason_enum = ot.enum_of(api, "close_call", roles.get("close_reason"))
+    if o.get("paid") != o.get("no_promise") and not (reason_enum and reasons.get("paid") in reason_enum):
+        # a distinct paid outcome carries no reason when the reason is free text; a brief that closes "paid" under
+        # no_promise names one, and so does an API whose reason codes include the IR's paid reason
+        reasons["paid"] = ""
     notes = dict(ir.get("notes") or {"enabled": False})
     notes["default_reason"] = semantic_note_reason(notes.get("default_reason"), o)
     return {
