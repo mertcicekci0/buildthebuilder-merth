@@ -525,7 +525,10 @@ if v != 'ok':
     raise Exception('BLOCKED, nothing was sent: ' + d_iso + ' ' + t + ' is outside the allowed callback window (' + v + '). Allowed: ' +
                     ', '.join(cb.get('days', [])) + ' between ' + cb.get('start', '') + ' and ' + cb.get('end', '') +
                     ', later than now. @@RETRY@@')
-""".replace("@@RETRY@@", callback_retry_text(alternative_asks)), R_DT=roles.get("callback_datetime", ""), R_D=roles.get("callback_date", ""), R_T=roles.get("callback_time", ""))
+""".replace("@@RETRY@@", callback_retry_text(alternative_asks)) + (
+        # one date-time field: send the checked value in ISO form (the model may say '2026-10-14 15:00')
+        "b[R_DT] = d_iso + 'T' + t + ':00'\nconfig['body'] = b\n" if roles.get("callback_datetime") else ""),
+        R_DT=roles.get("callback_datetime", ""), R_D=roles.get("callback_date", ""), R_T=roles.get("callback_time", ""))
 
 
 HOOK_CALLBACK_POST = """
