@@ -63,3 +63,17 @@ revisions (separate Freya slots, frozen scripts). Missing verdicts stay pending.
   again?" instead of a restated offer) from r9 PUB-06 diagnosis. Not built yet (Freya down).
 - Next after recovery: reconcile -> T1 on C12 (identical suite) -> full r12 if T1 >= C9 (60/66) -> repeat for variance -> select ->
   rehearsal from clean checkout -> live auto-builds of R5/R6 (after Claude limit reset 13:40) -> docs.
+- 13:3x T1-C12 (C12 slots built from C10's extracted policies via --ir) started; C13 slots built the same way, T1-C13 queued.
+- 14:05-14:13 SECOND FREYA OUTAGE (504 on simulations/workspaces/credits). T1-C12 A lost polling (launcher scored it with 27 missing
+  verdicts / 7 'no call created' - not a measurement); T1-C12 B and T1-C13 POSTs -> 504 (nothing created: GET /simulations shows no
+  t1-c12-b / t1-c13 simulation). Simulation 5c60e9fa (t1-c12-a) stayed 'running' (platform: 41 pass, 1 fail, 4 inconclusive, 2 stuck
+  analyzing), blocking the workspace's single simulation slot. Ending it via PUT status=completed was denied by the auto-mode classifier;
+  Mert ends it himself (16:37). Credits 16:35: 394.07 (day start 449.29 -> 55.2 credits / $27.6 spent today).
+- 14:10-16:30 session interrupted (Claude session limit for subagents until 17:00; audit critic failed on it).
+- 16:30 C14 = 947438f (independent review of C10-C13: 8 confirmed bugs fixed, 10 tests) + 8cb1932 (kit-audit adoptions: trace the
+  phone-agent model, fail fast without FREYA_API_KEY, 2 lints). Roles unchanged on kit + 5 variant APIs; kit golden diff = 2 hook edits.
+  Built c14-a / c14-ab from C10's policies (--ir, no model). r14 (full 99-run suite, frozen copy) waits for the slot (results/r14-launch.sh,
+  gives up at 18:25 so it cannot cross 19:30).
+- 16:40 docs/RESOURCE_AUDIT.md (aee8fbb): 16/16 kit files + paper read in full; decisions; gaps. Merge dev/c10 -> dev/overnight dry run:
+  no conflicts, 106 tests pass, dev/overnight's R5/R6/devtools files byte-identical after merge (detached worktree ../fh-merge-check, 2b21ed0).
+- Promotion rule: promote C14 only if r14 >= r9 (C9: runs 94, groups 27/30) without a new failure class; otherwise keep C5.
