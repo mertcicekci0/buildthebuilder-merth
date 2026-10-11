@@ -104,10 +104,14 @@ Hosting (Freya calls tools from its cloud, so it needs a public HTTPS URL; nothi
    `.venv/bin/python -c "import sys; sys.path.insert(0,'.'); from builder import openapi_tools as ot; a=ot.load('<contract path>'); print(a['base_url'], sorted(a['tools']), a['missing_tools'], a['unknown_operations']); print(ot.infer_roles(a))"`
    If tools are missing because operations are renamed: write `briefs/tool-map.json` ({canonical: operationId or "METHOD /path"}) from
    the contract text only. Check auth, servers URL, enums and formats.
+   - `a['auth']` non-empty → the contract declares auth. Put the header(s) the mail/case specifies in `briefs/tool-headers.json`
+     ({"X-Api-Key": "..."}); never invent a value. Without it the build traces a loud warning and every call may be rejected.
+   - Path parameters (`/customers/{customer_id}/...`) become `{{customer_id}}` and must be call variables of the same name.
+   - YAML contracts are converted automatically (Ruby YAML.safe_load); PDFs are read with PDFKit; a scanned PDF without text stops.
 5. Mock: write the behaviour file from the documents → `mock_service.py check` → L1 tests → L2 offline build with
    BUILDER_BASE_URL_OVERRIDE → (if hosting is resolved) L3 simulations.
 6. Final build, from the repo root on prep/final with a clean tree, and FREYA_AGENT_* and BUILDER_BASE_URL_OVERRIDE unset:
-   `set -a && . ./env.sh && set +a && sh devtools/final_run.sh --commit [--tool-map briefs/tool-map.json] briefs/final.zip briefs/final.zip`
+   `set -a && . ./env.sh && set +a && sh devtools/final_run.sh --commit [--tool-map briefs/tool-map.json] [--tool-headers briefs/tool-headers.json] briefs/final.zip briefs/final.zip`
    Output: submission/final.workflow.json, traces/final.log + .jsonl, out/final.policy.json, committed as the artefact commit;
    verify_submission prints 0 problems. Never edit the export by hand: the trace records its sha. Package it as the mail requires.
 7. Any builder fix after the release: a separate commit that says what failed and why it contains nothing from the case; then rebuild.
