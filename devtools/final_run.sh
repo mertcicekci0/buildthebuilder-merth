@@ -2,6 +2,7 @@
 # Final run of the official procedure (docs/SUBMISSION.md) for one or more briefs, from the repository root.
 #   sh devtools/final_run.sh [--commit] [--tool-map map.json] [--tool-headers headers.json] <brief> <contract> [<brief2> <contract2> ...]
 #   (brief: a text file, or a folder/zip of documents; contract: OpenAPI JSON, or the same folder/zip holding exactly one)
+#   Official final form: sh devtools/final_run.sh --commit <case_folder> <mock_url>   (outputs named 'final')
 # 1. Refuses to start unless execution-relevant files (builder/, kit/, pyproject.toml, uv.lock, requirements*, .python-version) are
 #    committed and clean and the offline tests pass; records that code commit C.
 # 2. Per brief N (= brief file name without extension): an earlier attempt's artefacts are moved to archive/final-runs/ (kept, never
@@ -39,9 +40,12 @@ PY=python3
 STEMS=""
 i=1
 for f in "$@"; do
-  [ -e "$f" ] || { echo "ABORT: input not found: $f"; exit 2; }   # a file, or a folder/zip bundle (builder/inputs.py)
+  case "$f" in https://*|http://*) [ $(( i % 2 )) -eq 0 ] || { echo "ABORT: a URL can only be the second argument of a pair"; exit 2; } ;;
+    *) [ -e "$f" ] || { echo "ABORT: input not found: $f"; exit 2; };;   # a file, or a folder/zip bundle (builder/inputs.py)
+  esac
   case "$f" in *" "*) echo "ABORT: input path contains a space: '$f'; copy it to e.g. briefs/final.zip"; exit 2;; esac
   if [ $(( i % 2 )) -eq 1 ]; then b=$(basename "$f"); b=${b%.*}
+    case "${2:-}" in https://*|http://*) b=final;; esac   # official form {case_folder} {mock_url}: the builder names it 'final' 
     case " $STEMS " in *" $b "*) echo "ABORT: two briefs share the name '$b'; copy them to distinct names (e.g. briefs/hidden-1.md, briefs/hidden-2.md)"; exit 2;; esac
     STEMS="$STEMS $b"
   fi
@@ -72,6 +76,7 @@ FAIL=0
 while [ $# -ge 2 ]; do
   BRIEF=$1; API=$2; shift 2
   N=$(basename "$BRIEF"); N=${N%.*}
+  case "$API" in https://*|http://*) N=final;; esac   # official form: build.py {case_folder} {mock_url} -> slot 'final' 
   NAMES="$NAMES $N"
   if [ -e "traces/$N.log" ] || [ -e "traces/$N.jsonl" ] || [ -e "submission/$N.workflow.json" ] || [ -e "out/$N.tool-map.json" ]; then
     A="archive/final-runs/$N-$(date -u +%Y%m%dT%H%M%SZ)"

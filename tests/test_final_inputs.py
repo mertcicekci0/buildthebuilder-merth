@@ -60,10 +60,14 @@ def test_zip_bundle_equals_folder_bundle(tmp_path):
     assert ot.load(str(bi.find_contract(z, tmp_path / "c3")))["missing_tools"] == []
 
 
-def test_unreadable_documents_stop_the_build_with_a_clear_message(tmp_path):
-    d = bundle(tmp_path, {"docs/annex.pdf": b"%PDF-1.4 only binary"})
-    with pytest.raises(bi.InputError, match="annex.pdf"):
-        bi.read_brief(d, tmp_path / "o")
+def test_unreadable_documents_are_surfaced_never_silently_skipped(tmp_path):
+    # official rule (2026-10-11): unreadable evidence is surfaced; the build goes on with every readable document
+    d = bundle(tmp_path, {"docs/annex.pdf": b"%PDF-1.4 only binary", "docs/flow.png": b"\x89PNG\r\n\x1a\n\x00binary"})
+    text, files = bi.read_brief(d, tmp_path / "o")
+    how = {f["path"]: f["read_as"] for f in files}
+    assert how["docs/annex.pdf"].startswith("NOT READ") and how["docs/flow.png"].startswith("NOT READ")
+    assert "=== FILE: docs/annex.pdf (present but could not be read as text) ===" in text and "docs/flow.png" in text
+    assert A.read_text().strip() in text
 
 
 def test_zip_members_cannot_escape(tmp_path):
@@ -168,8 +172,8 @@ def test_review_fixes_inputs(tmp_path):
     d.mkdir()
     (d / "a.md").write_text("x")
     (d / "annex.docx").write_bytes(b"notazip")
-    with pytest.raises(bi.InputError, match="annex.docx"):
-        bi.read_brief(d, tmp_path / "o3")
+    text, files = bi.read_brief(d, tmp_path / "o3")
+    assert {f["path"]: f["read_as"] for f in files}["annex.docx"].startswith("NOT READ") and "annex.docx" in text
 
 
 def test_review_fixes_xlsx_alignment_and_docx_structure(tmp_path):
@@ -363,3 +367,28 @@ def test_a_required_close_reason_is_sent_empty_not_dropped(tmp_path):
     assert body[roles["close_outcome"]] == ir["outcomes"]["paid"] and body.get(roles["close_reason"]) == ""
     body, roles = _close_hook_run(KIT_API, ir, {"contact": "customer", "verified": "yes", "notes": {"p1": "paid"}, "order": ["p1"]})
     assert roles["close_reason"] not in body   # not required: still left out, as before
+
+
+
+def test_brief_and_readme_are_read_first_and_diagrams_as_text(tmp_path):
+    d = tmp_path / "case"
+    (d / "docs").mkdir(parents=True)
+    (d / "a-first-alphabetically.md").write_text("A")
+    (d / "README.md").write_text("R")
+    (d / "BRIEF.md").write_text("B")
+    (d / "docs/flow.drawio").write_text("<mxfile><diagram>Verify -> Debt</diagram></mxfile>")
+    text, _ = bi.read_brief(d, tmp_path / "o")
+    heads = [l for l in text.splitlines() if l.startswith("=== FILE:")]
+    assert heads[:2] == ["=== FILE: BRIEF.md ===", "=== FILE: README.md ==="] and "Verify -> Debt" in text
+
+
+def test_official_form_case_folder_and_mock_url(tmp_path):
+    d = bundle(tmp_path)   # documents + the contract inside the folder
+    r, out = _build([str(d), "https://my-mock.example.workers.dev"], {}, tmp_path)
+    assert r.returncode == 0 and "status=compiled" in out, out[-1500:]
+    rows = [json.loads(x) for x in (tmp_path / "traces/final.jsonl").read_text().splitlines()]
+    assert rows[0]["slot"] == "final" and rows[0]["mock_url"] == "https://my-mock.example.workers.dev" and rows[0]["api_sha"] is None
+    text = (ROOT / "out/final.workflow.json").read_text()
+    urls = set(__import__("re").findall(r'https?://[^"\\\\ ]+', text))
+    assert urls and all(u.startswith("https://my-mock.example.workers.dev/") for u in urls)
+    assert any("docs/scan.pdf" in json.dumps(x) for x in rows)   # every input file is listed in the trace

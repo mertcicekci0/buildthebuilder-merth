@@ -14,7 +14,9 @@ import zipfile
 from xml.etree import ElementTree
 
 TEXT_EXT = {".md", ".markdown", ".txt", ".text", ".eml", ".html", ".htm", ".csv", ".tsv", ".json", ".yaml", ".yml", ".xml", ".rst",
-            ".log", ".ics", ".vcf"}
+            ".log", ".ics", ".vcf", ".drawio", ".mmd", ".mermaid", ".puml", ".plantuml", ".dot", ".gv", ".svg", ".bpmn",
+            ".excalidraw"}   # text-based diagram formats (a flow drawing) are read as text
+TEXTUTIL_EXT = {".doc", ".rtf", ".odt", ".wordml"}   # macOS textutil converts these to plain text
 IGNORED = re.compile(r"(^|/)(__MACOSX|\.DS_Store|\._[^/]*|Thumbs\.db)(/|$)")
 
 
@@ -140,18 +142,19 @@ def pdf_texts(files):
         got = json.loads(r.stdout.decode("utf-8", "replace").strip().splitlines()[-1])
     except (ValueError, IndexError):
         raise InputError(f"PDF text extraction failed: {r.stderr.decode('utf-8', 'replace')[-300:]}")
-    for f in files:
-        t = got.get(f, "")
-        if t.startswith("\x00UNREADABLE") or not t.strip():
-            raise InputError(f"{pathlib.Path(f).name}: no text layer could be read (scanned or protected PDF?); provide a text version")
-    return {f: got[f] for f in files}
+    return {f: got.get(f, "") for f in files if got.get(f, "").strip() and "UNREADABLE" not in got.get(f, "")[:20]}
 
 
 def _read_document(f, rel):
     ext = f.suffix.lower()
     if ext == ".pdf":
-        return pdf_texts([f])[str(f)], "pdf (PDFKit)"
-    if ext not in (".docx", ".xlsx"):
+        t = pdf_texts([f]).get(str(f))
+        if not t:
+            raise InputError(f"{rel}: no text layer could be read (scanned or protected PDF?)")
+        return t, "pdf (PDFKit)"
+    if ext in TEXTUTIL_EXT:
+        return _textutil(f, rel), "textutil"
+    if ext not in (".docx", ".xlsx"):   # (pdf and textutil formats are handled above)
         raise InputError(f"cannot read {rel} as text (no converter installed); provide a text version or extend builder/inputs.py")
     try:
         text = _docx_text(f) if ext == ".docx" else _xlsx_text(f)
@@ -183,6 +186,28 @@ def _yaml_to_json(f, out_dir):
 
 def _yaml_contract(f):
     return f.suffix.lower() in (".yaml", ".yml") and bool(re.search(r"(?m)^(openapi|swagger)\s*:", f.read_text(encoding="utf-8", errors="replace")))
+
+
+def _textutil(f, rel):
+    import shutil as _sh
+    import subprocess
+    tu = _sh.which("textutil")
+    if not tu:
+        raise InputError(f"{rel}: no converter for {f.suffix} (macOS textutil not found)")
+    r = subprocess.run([tu, "-convert", "txt", "-stdout", str(f)], capture_output=True, timeout=60)
+    text = r.stdout.decode("utf-8", "replace")
+    if r.returncode != 0 or not text.strip():
+        raise InputError(f"{rel}: textutil could not read it")
+    return text
+
+
+def _order(folder, files):
+    """BRIEF.* first, README.* next (the organisers' reading order), then every other file in sorted path order."""
+    def key(f):
+        name = f.name.lower()
+        rank = 0 if name.startswith("brief.") else 1 if name.startswith("readme.") else 2
+        return (rank, len(f.relative_to(folder).parts) if rank < 2 else 0, str(f.relative_to(folder)))
+    return sorted(files, key=key)
 
 
 def is_contract(f):
@@ -225,7 +250,7 @@ def read_brief(path, dest, exclude=()):
     if folder is None:
         raise InputError(f"{path} is neither a text file, a folder nor a zip")
     skip = {pathlib.Path(x).resolve() for x in exclude}
-    files = sorted(f for f in folder.rglob("*") if f.is_file() and not IGNORED.search(str(f.relative_to(folder))))
+    files = _order(folder, [f for f in folder.rglob("*") if f.is_file() and not IGNORED.search(str(f.relative_to(folder)))])
     stems_with_text = {(f.parent, f.stem) for f in files if f.suffix.lower() in TEXT_EXT}
     pdfs = [f for f in files if f.suffix.lower() == ".pdf" and (f.parent, f.stem) not in stems_with_text]
     pdf_text = pdf_texts(pdfs) if pdfs else {}   # one swift process for every PDF of the bundle
@@ -239,21 +264,26 @@ def read_brief(path, dest, exclude=()):
             continue
         if ext in TEXT_EXT:
             text, how = f.read_text(encoding="utf-8", errors="replace"), "text"
-        elif ext in (".docx", ".xlsx"):
-            text, how = _read_document(f, rel)
+        elif ext in (".docx", ".xlsx") or ext in TEXTUTIL_EXT:
+            try:
+                text, how = _read_document(f, rel)
+            except InputError as e:
+                unreadable.append(rel)
+                meta.append({**entry, "read_as": f"NOT READ: {e}"})
+                parts.append(f"=== FILE: {rel} (could not be read as text: {e}) ===\n")
+                continue
         elif str(f) in pdf_text:
             text, how = pdf_text[str(f)], "pdf (PDFKit)"
         elif (f.parent, f.stem) in stems_with_text:
             meta.append({**entry, "read_as": "skipped: a text version with the same name is read instead"})
             continue
-        else:
+        else:   # an image, a scanned PDF or another binary: surfaced, never silently skipped, and the build goes on
             unreadable.append(rel)
+            meta.append({**entry, "read_as": "NOT READ: no text could be extracted (image, scanned PDF or binary)"})
+            parts.append(f"=== FILE: {rel} (present but could not be read as text) ===\n")
             continue
         parts.append(f"=== FILE: {rel} ===\n{text.strip()}\n")
         meta.append({**entry, "read_as": how})
-    if unreadable:
-        raise InputError("cannot read these documents as text (no converter installed): " + ", ".join(unreadable)
-                         + ". Provide a text version with the same name next to each (e.g. x.pdf -> x.txt) or extend builder/inputs.py.")
-    if not parts:
+    if not [m for m in meta if not str(m.get("read_as", "")).startswith(("NOT READ", "contract", "skipped"))]:
         raise InputError(f"no readable documents in {path}")
     return "\n".join(parts), meta

@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import sys
 import time
 
@@ -201,8 +202,9 @@ def self_test(wf, roles, api, ir, trace):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("brief_path")
-    ap.add_argument("tool_api_path")
+    ap.add_argument("brief_path", help="the case: a folder or zip of documents (with its service contract inside), or one brief file")
+    ap.add_argument("tool_api_path", help="the mock's URL (https://...: the contract is found in the case and every tool calls this URL), "
+                                          "or the contract file (practice/development form)")
     ap.add_argument("--slot", help="Freya slot name (default: brief file name without extension)")
     ap.add_argument("--ir", help="use this policy IR instead of extracting one (no model call)")
     ap.add_argument("--no-save", action="store_true")
@@ -217,10 +219,13 @@ def main():
     if not isinstance(tool_headers, dict) or not all(isinstance(v, str) for v in tool_headers.values()):
         raise SystemExit("--tool-headers must be a JSON object of string values")
     mock_base = os.environ.get("BUILDER_BASE_URL_OVERRIDE", "").strip()   # test builds against our own mock: never a submission
+    # official final form: build.py {case_folder} {mock_url} - the contract comes from the case, tools call the mock URL
+    mock_url = a.tool_api_path.strip() if re.match(r"^https?://[^\s/]+", a.tool_api_path.strip()) else ""
+    contract_src = a.brief_path if mock_url else a.tool_api_path
     arm_watchdog()
     if not a.ir and os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk") == "agent_sdk":
         ensure_model_runtime()
-    slot = a.slot or pathlib.Path(a.brief_path).stem
+    slot = a.slot or ("final" if mock_url else pathlib.Path(a.brief_path).stem)
     if mock_base and not slot.endswith("-mock"):
         slot += "-mock"
     for d in ("out", "submission", "traces"):
@@ -229,7 +234,7 @@ def main():
     trace_dir.mkdir(parents=True, exist_ok=True)
     trace = Trace(trace_dir / f"{slot}.jsonl", t0=T0)
     deadline = T0 + DEADLINE_MIN * 60
-    trace.start(brief=a.brief_path, brief_sha=bi.sha_path(a.brief_path), tool_api=a.tool_api_path, api_sha=bi.sha_path(a.tool_api_path), slot=slot,
+    trace.start(brief=a.brief_path, brief_sha=bi.sha_path(a.brief_path), tool_api=a.tool_api_path, api_sha=None if mock_url else bi.sha_path(a.tool_api_path), mock_url=mock_url or None, slot=slot,
                 tool_map=tool_map, tool_headers=sorted(tool_headers), base_url_override=mock_base or None,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
                 python=sys.version.split()[0], agent_sdk=_sdk_version(), commit=_git_commit(), started_before_s=round(time.time() - T0, 1))
@@ -242,10 +247,14 @@ def main():
         trace.end("failed", error="FREYA_API_KEY is not set")
         raise SystemExit("FREYA_API_KEY is not set (source env.sh); nothing was built")
     try:
-        contract = bi.find_contract(a.tool_api_path, ROOT / "out" / "inputs" / f"{slot}-contract")
+        contract = bi.find_contract(contract_src, ROOT / "out" / "inputs" / f"{slot}-contract")
         brief, files = bi.read_brief(a.brief_path, ROOT / "out" / "inputs" / slot, exclude=[contract])
-        trace.step(f"inputs read: {len(files)} file(s), brief text {len(brief)} chars, contract {contract.name}", files=files)
-        api = ot.load(str(contract), tool_map=tool_map, base_url=mock_base or None)
+        trace.step(f"inputs read: {len(files)} file(s), brief text {len(brief)} chars, contract {contract.name} (sha {bi.sha_path(contract)})",
+                   files=files)
+        input_warnings = [f"{f['path']}: {f['read_as']}" for f in files if str(f.get("read_as", "")).startswith("NOT READ")]
+        for x in input_warnings:
+            trace.warn("input document not read (the agent policy may miss what it says): " + x)
+        api = ot.load(str(contract), tool_map=tool_map, base_url=mock_base or mock_url or None)
         if api["unknown_operations"]:
             trace.warn("contract operations not used by the builder: " + ", ".join(api["unknown_operations"]))
         api["static_headers"] = tool_headers
@@ -319,7 +328,7 @@ def main():
         out = ROOT / ("out" if mock_base else "submission") / f"{slot}.workflow.json"   # a mock-URL build is never a submission
         freya.export_workflow(res["workflow_id"], str(out))
         trace.created(f"exported to {out.relative_to(ROOT)} sha={sha(out)}")
-        status = "ok" if not (fails or missing or lost_tools or cwarn) else "ok with warnings"
+        status = "ok" if not (fails or missing or lost_tools or cwarn or input_warnings) else "ok with warnings"
         return 0
     except BuilderTimeout as e:
         trace.warn(f"timeout: {e}")
