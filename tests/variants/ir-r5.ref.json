@@ -1,0 +1,293 @@
+{
+ "_note": "Hand-written reference IR for tests/variants/brief-r5.md + api-r5.json (our own adversarial generalisation test: raw bank material with out-of-order attachments, two memos where the later partially reverses the earlier, a product-only memo, a not-yet-effective memo, footnote exceptions and a code list with numeric dispositions and retired codes). Assumption: every call date (dial_time) lies in the pilot window 2026-11-09 .. 2027-02-26 stated in the mail, so HC-26-14 (effective 2026-10-01), MF-26-04, HC-26-19 and Annex D apply and PG-26-31 (effective 2027-03-01) never applies. S1 uses deadline_unit calendar_days with the IR meaning 'latest promise date = last business day on or before today+14', which is exactly HC-26-14 point 3. MTR floor_field is the overdue-amount field itself (floor = full; a compiler that reads floor_field null as 'no part payment' would be equivalent). stage_rules are left empty (free text, ignored by ir_diff).",
+ "_expected_precedence": [
+  {"topic": "precedence rule", "winner": "Mail (4 Nov 2026)", "why": "The mail defines how to read the pack: later issue date wins (attachment order is meaningless), a product-only memo wins for its product whatever the dates, a rule counts only from its effective date, footnotes travel with their rule, CP-7 dispositions are translated through Annex D and retired codes are replaced."},
+  {"topic": "callback days", "winner": "HC-26-14 point 1 as kept by HC-26-19", "expected": ["today", "next_business_day"], "superseded": "CP-7 2.3 'today or one of the next two business days' (within_business_days:2)", "why": "HC-26-14 (issued 15 Sep, effective 1 Oct) shortened the horizon; HC-26-19 (20 Oct) explicitly keeps the shorter horizon."},
+  {"topic": "callback hours", "winner": "HC-26-19 point 1 (restores CP-7 2.3)", "expected": "09:30-18:00, both included, after dial_time", "superseded": "HC-26-14 point 1 '08:30 to 20:00'", "why": "Later memo withdraws the extended hours and sends times back to CP-7. Partial reversal: days from HC-26-14, hours from CP-7."},
+  {"topic": "callback footnote (24 and 31 December, 14:00 latest)", "winner": "CP-7 2.3 footnote 1, restored by HC-26-19", "why": "Mail rule 4: a restored rule brings its footnotes back. Not expressible in callback fields: unmapped."},
+  {"topic": "Saturday", "winner": "Mail + CP-7 2.5", "expected": "not a business day; no Saturday callbacks", "superseded": "PG-26-31 Saturday callbacks 09:00-13:00", "why": "PG-26-31 is effective 1 Mar 2027, after the last pilot call (26 Feb 2027); branch Saturday opening is explicitly not a business day."},
+  {"topic": "identity questions and order", "winner": "HC-26-19 point 2 over HC-26-14 point 2 over CP-7 2.4", "expected": ["dob (date, DMY)", "postcode (upper_nospace)", "member_no_last3 (digits3)"], "why": "HC-26-14 added the membership-number question first; HC-26-19 keeps it but moves it last, after the postcode. CP-7 order dob then postcode is otherwise unchanged. 'mmn' exists in the API but CP-7 forbids it."},
+  {"topic": "wrong-answer limit", "winner": "HC-26-19 point 2 (restores CP-7 2.4)", "expected": 3, "superseded": "HC-26-14 point 2 'two wrong answers in total'", "why": "Later memo withdraws the two-answer limit."},
+  {"topic": "stage boundaries and S1 deadline", "winner": "HC-26-14 point 3 (stands per HC-26-19)", "expected": "S1 1-14 days, 14 calendar days (last business day on or before); S2 15-35, 7th business day; S3 36-89, 5th business day", "superseded": "CP-7 3.2 S1 1-10 / 10th business day, S2 11-35", "why": "Later issue date; HC-26-19 explicitly says point 3 stands."},
+  {"topic": "S3 persuasion attempts", "winner": "HC-26-19 point 6 (restores CP-7 3.4)", "expected": "S3 has 2 attempts; no attempt 3", "superseded": "HC-26-14 point 6 'third persuasion attempt: the floor amount, today'", "why": "Later memo withdraws point 6."},
+  {"topic": "attempt 1 in S3", "winner": "CP-7 3.4", "expected": "floor on end of week (S1/S2: full or floor on end of week)", "why": "No later document touches it."},
+  {"topic": "hardship desk and close code", "winner": "HC-26-14 point 4 + Annex D", "expected": "desk financial_support, close XFR/FSU (disposition 203)", "superseded": "CP-7 3.6 desk welfare_team, close 209 (XFR/WEL, retired)", "why": "Later issue date; HC-26-19 says point 4 stands; Annex D marks 209/WEL retired, use 203. welfare_team and WEL are still in the API enums (legacy) and must not be used."},
+  {"topic": "after-promise sentence", "winner": "HC-26-19 point 5", "expected": "You'll receive a text message and an email confirming this arrangement.", "superseded": "CP-7 3.8 text-message sentence; HC-26-14 point 5 letter sentence; PG-26-31 app sentence (not yet effective)", "why": "Latest effective document on this topic."},
+  {"topic": "holidays", "winner": "CP-7 2.5 + HC-26-14 point 7 - HC-26-19 holiday line", "expected": "CP-7 list plus Fri 27 Nov 2026 (Founders' Day), minus Mon 4 Jan 2027", "why": "HC-26-14 adds Founders' Day (point 7 stands); HC-26-19 removes the Scotland-only 4 Jan 2027."},
+  {"topic": "MTR floor", "winner": "MF-26-04 (product-only memo)", "expected": "floor = full overdue amount (floor_field amount_overdue)", "superseded": "CP-7 3.3 instalment_due; HC-26-19 reminder 'UPL and MTR alike, is its instalment_due' (later-dated, general)", "why": "Mail rule 2: a product-limited memo wins for that product whatever the dates, so the later general reminder does not restore instalment_due for MTR."},
+  {"topic": "UPL floor", "winner": "CP-7 3.3 (confirmed by HC-26-19 reminder)", "expected": "instalment_due"},
+  {"topic": "ODR floor", "winner": "CP-7 3.3", "expected": "min_pay", "superseded": "PG-26-31 'floor on an overdraft becomes the full overdue amount'", "why": "PG-26-31 is effective 1 Mar 2027, after the pilot ends."},
+  {"topic": "CRD floor", "winner": "CP-7 3.3 with footnote 2", "expected": "min_pay, except overdue amount <= 30.00 then the full overdue amount", "why": "Footnote is part of the rule (mail rule 4). Conditional floor: unmapped."},
+  {"topic": "close codes", "winner": "Annex D (CRS v4, 1 Oct 2026)", "expected": "send mnemonic as result_code and sub-code as reason_code; never the 3-digit disposition; never a retired code", "superseded": "CP-7 dispositions 209, 304, 601 (retired)", "why": "Mail rule 5 and Annex D header. 601/CBK -> 501 NOCON/CB; 304/SYS -> 305 NPTP/TEC; 209/WEL -> 203 XFR/FSU."},
+  {"topic": "note codes", "winner": "Annex D", "expected": "service_error note TEC (SER retired); others NPR/FHD/DSP/APD as in CP-7 3.5", "superseded": "CP-7 3.5 'SER (system failure)'", "why": "Annex D marks SER retired, use TEC."},
+  {"topic": "retries after a failed create_promise", "winner": "CP-7 3.8", "expected": 1, "why": "No later document changes it."}
+ ],
+ "_calendar_examples": [
+  {"today": "2026-11-23 Mon", "end_of_week": "2026-11-26 (Fri 27 Nov is Founders' Day)", "S1": "2026-12-07", "S2": "2026-12-03", "S3": "2026-12-01"},
+  {"today": "2026-11-26 Thu", "end_of_week": "2026-12-04 (today is the last business day of its week)", "next_business_day": "2026-11-30"},
+  {"today": "2026-12-11 Fri", "S1": "2026-12-24 (today+14 = 25 Dec holiday, back to Thu 24 Dec)"},
+  {"today": "2026-12-18 Fri", "end_of_week": "2026-12-24", "S1": "2026-12-31 (today+14 = 1 Jan holiday, back across the year end to 31 Dec)", "S2": "2026-12-31", "S3": "2026-12-29"},
+  {"today": "2026-12-21 Mon", "end_of_week": "2026-12-24", "S1": "2027-01-04 (would be 2026-12-31 if 4 Jan were kept as a holiday)", "S2": "2027-01-04 (would be 2027-01-05 with 4 Jan kept)", "S3": "2026-12-30"},
+  {"today": "2026-12-24 Thu 11:00", "callback": "today up to 14:00 (footnote 1) or Tue 2026-12-29 09:30-18:00 (25 and 28 Dec are holidays)"},
+  {"today": "2026-12-31 Thu", "end_of_week": "2027-01-08", "next_business_day": "2027-01-04 (not a holiday for the pilot)", "callback": "today up to 14:00 or Mon 2027-01-04 09:30-18:00"}
+ ],
+ "bank_name": "Tidewell Mutual Bank",
+ "language": "English",
+ "currency_word": "pounds",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "forename",
+  "last_name": "surname",
+  "title": "honorific",
+  "now": "dial_time"
+ },
+ "other_call_variables": [],
+ "opening": {
+  "first_sentence": "Hello, this is the automated assistant of Tidewell Mutual Bank. This call is recorded.",
+  "identity_question": "Could I speak with <title> <last_name>, please?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "that's me",
+   "the customer's own name"
+  ],
+  "not_confirmations": [
+   "hello",
+   "who's calling?",
+   "what is it about?"
+  ],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "arrears",
+   "an overdue amount",
+   "a payment",
+   "collections",
+   "the account",
+   "the product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "dob",
+    "ask": "Could you tell me your date of birth, please?",
+    "format": "date",
+    "numeric_order": "DMY"
+   },
+   {
+    "api_value": "postcode",
+    "ask": "Thank you. And the postcode of your home address?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "member_no_last3",
+    "ask": "And finally, the last three digits of your membership number?",
+    "format": "digits3",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": "dmy_swapped",
+  "swapped_instruction": "Ask the customer to say the month as a word. That retry is not a wrong answer.",
+  "failed_message": "I'm sorry, I can't go any further on this call. Please ring the number on your statement or visit a branch.",
+  "refusal_explanation": "These questions are there to protect your account.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "CRD",
+   "spoken": "credit card ending <card_ending>",
+   "floor_field": "min_pay"
+  },
+  {
+   "api_type": "UPL",
+   "spoken": "personal loan",
+   "floor_field": "instalment_due"
+  },
+  {
+   "api_type": "ODR",
+   "spoken": "overdraft on your current account ending <acct_ending>",
+   "floor_field": "min_pay"
+  },
+  {
+   "api_type": "MTR",
+   "spoken": "car finance agreement ending <agreement_ending>",
+   "floor_field": "amount_overdue"
+  }
+ ],
+ "debt_intro": "I'm calling from Tidewell's arrears team about overdue payments.",
+ "product_sentence": "Your <spoken> is <days_late> days overdue, with <past_due> outstanding.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-01-01",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-04",
+   "2026-05-25",
+   "2026-08-31",
+   "2026-11-27",
+   "2026-12-25",
+   "2026-12-28",
+   "2027-01-01",
+   "2027-03-26",
+   "2027-03-29"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "S1",
+   "min": 1,
+   "max": 14,
+   "deadline_business_days": 14,
+   "deadline_unit": "calendar_days",
+   "attempts": 1
+  },
+  {
+   "name": "S2",
+   "min": 15,
+   "max": 35,
+   "deadline_business_days": 7,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  },
+  {
+   "name": "S3",
+   "min": 36,
+   "max": 89,
+   "deadline_business_days": 5,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Are you able to pay the overdue amount today?",
+ "first_ask_multi": "Are you able to pay all of these today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": [
+    "S1",
+    "S2"
+   ]
+  },
+  {
+   "attempt": 1,
+   "amount": "floor",
+   "date": "end_of_week",
+   "bands": [
+    "S3"
+   ]
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "S2",
+    "S3"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "09:30",
+  "end": "18:00",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "as returned",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "borrower_solutions",
+  "human": "contact_centre",
+  "support": "financial_support"
+ },
+ "outcomes": {
+  "promise": "PTP",
+  "paid": "PIF",
+  "transferred": "XFR",
+  "no_promise": "NPTP",
+  "not_verified": "NOID",
+  "not_reached": "NOCON",
+  "reasons": {
+   "restructuring": "RST",
+   "human": "HUM",
+   "support": "FSU",
+   "refused": "REF",
+   "hardship": "HRD",
+   "dispute": "DSP",
+   "service_error": "TEC",
+   "failed": "IDF",
+   "declined": "IDR",
+   "callback": "CB",
+   "no_callback": "NCB",
+   "wrong_number": "WN",
+   "deceased": "DEC",
+   "unclear": "UNC",
+   "paid": ""
+  },
+  "note_reasons": {
+   "refused": "NPR",
+   "hardship": "FHD",
+   "dispute": "DSP",
+   "paid": "APD",
+   "service_error": "TEC"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 1,
+  "after_promise_sentence": "You'll receive a text message and an email confirming this arrangement.",
+  "read_back_question": "Shall I set that up for you?"
+ },
+ "fixed_sentences": {
+  "deceased": "I'm very sorry to hear that.",
+  "robot": "I'm Tidewell Mutual Bank's automated assistant.",
+  "scam": "You can check this call by ringing the number on the back of your card or on your statement.",
+  "paid": "Payments can take up to two business days to show on your account.",
+  "farewell": ""
+ },
+ "stage_rules": {
+  "always": [],
+  "opening": [],
+  "third_party": [],
+  "identity": [],
+  "negotiation": [],
+  "multi_product": [],
+  "confirmation": [],
+  "recording": [],
+  "closing": []
+ },
+ "evidence": [],
+ "unmapped_rules": [
+  "Credit cards (CRD): where the overdue amount is 30.00 pounds or less there is no part payment; the floor is the full overdue amount (CP-7 3.3 footnote 2).",
+  "Car finance (MTR): there is no lower amount to offer; if the customer says the full amount is too much, treat it as a flat refusal (it uses an attempt) (MF-26-04).",
+  "Callbacks on 24 December and 31 December must be at 14:00 or earlier; the contact centre closes at 14:00 on those days (CP-7 2.3 footnote 1, restored by HC-26-19).",
+  "Never ask the mother's maiden name question (mmn), although verify_identity accepts it (CP-7 2.4).",
+  "Never send a retired code, although the dialler accepts them: not WEL, SYS or CBK in close_call, not SER in add_note, not desk welfare_team (Annex D; HC-26-14 point 4).",
+  "Never send the three-digit disposition number; close_call takes the mnemonic as result_code and the sub-code as reason_code, with reason_code left out for PTP and PIF (Annex D).",
+  "Say every amount in pounds and pence exactly as the system gives it; never round (CP-7 3.1)."
+ ],
+ "precedence": []
+}
