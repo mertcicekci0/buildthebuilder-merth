@@ -1,0 +1,15 @@
+{
+  "team": "merth",
+  "members": [
+    {
+      "name": "Mert Cicekci",
+      "email": "mertcicekci29@gmail.com"
+    }
+  ],
+  "repo": "https://github.com/mertcicekci0/buildthebuilder-merth",
+  "commit": "e44fd7594914",
+  "run_command": "python3 builder/build.py {case_folder} {mock_url}",
+  "workflow": "submission/final.workflow.json",
+  "trace": "traces/final.log",
+  "mock_url": "https://merth-bank-mock.mertcicekci29.workers.dev"
+}
