@@ -7,7 +7,7 @@
     }
   ],
   "repo": "https://github.com/mertcicekci0/buildthebuilder-merth",
-  "commit": "e44fd7594914",
+  "commit": "8250bd4a825e",
   "run_command": "python3 builder/build.py {case_folder} {mock_url}",
   "workflow": "submission/final.workflow.json",
   "trace": "traces/final.log",
