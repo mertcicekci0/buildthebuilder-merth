@@ -199,7 +199,7 @@ def test_c9_ported_rules_are_in_the_prompts():
     # fragments: re-ask the pending question at once (practice-call study: better than backchannels), never a backchannel
     assert "reply at once by asking the pending question again in one short, slightly rephrased sentence" in verify
     assert "never add the refusal explanation to this re-ask" in verify and "Never invent or complete digits" in verify
-    assert "reply at once by asking your pending question again in one short, slightly rephrased sentence; call no tool and make no new offer" in neg
+    assert "asking them to say it again" in neg and "never restate an offer you already made" in neg and "do not repeat an offer you already made" in neg
     assert "Go on." not in verify + neg and "Take your time." not in verify + neg and "two such replies" not in verify + neg
     assert "join everything the customer said since you last asked" in verify
     assert "never complete it yourself" in neg and "everything the rules attach to a floor offer" in neg

@@ -214,8 +214,14 @@ TEXT_EDITS = {
     "negotiate": [
         ("A message that stops mid-sentence or is only small talk is not a refusal and not a non-answer: reply with two or three words such as \"Take your time.\" "
          "or \"Go on.\", call no tool and make no new offer; after two such replies, repeat your last question. ",
-         "A message with no answer yet (only small talk, or cut off mid-sentence before the answer) is not a refusal and not a non-answer: reply at once by asking "
-         "your pending question again in one short, slightly rephrased sentence; call no tool and make no new offer. ")],
+         "A message with no answer yet (only small talk, or cut off mid-sentence before the answer) is not a refusal and not a non-answer: reply at once in one "
+         "short sentence asking them to say it again (e.g. \"Sorry, I missed that, could you say that again?\"); never restate an offer you already made, call no tool "
+         "and make no new offer. "),
+        # C12: a question about an offer is answered without asking for it again; other questions do not repeat an offer
+        ("\"That is the amount I mentioned, <amount>, <and every condition you said with it>. Would that work for you?\" That is an answer, not a new attempt: no tool.\n",
+         "\"That is the amount I mentioned, <amount>, <and every condition you said with it>.\" Then stop: do not ask for it again in that turn. That is an answer, "
+         "not a new attempt: no tool.\nWhen you answer any other question from the customer (which account, why you are calling, who you are), answer it and stop; "
+         "do not repeat an offer you already made.\n")],
 }
 # embedded runtime: top-level definitions that may differ (band clamp, next_weekday option)
 RUNTIME_CHANGED = {"band_for", "next_weekday_date", "relative_dates_text", "resolve_day_words"}
