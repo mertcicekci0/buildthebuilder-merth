@@ -394,9 +394,18 @@ def main():
         trace.end(status)
         sess = pathlib.Path(os.environ.get("BUILDER_SESSION_DIR", ""))
         if sess.is_dir():   # the builder agent's own Claude Code session logs, redacted, appended to this run's printed trace
+            try:
+                os.set_blocking(sys.stdout.fileno(), True)   # a large write into a pipe (| tee) must wait, not fail (BlockingIOError)
+            except (OSError, ValueError, AttributeError):
+                pass
             for f in sorted(sess.glob("*.jsonl"), key=lambda x: x.stat().st_mtime):
-                print(f"===== BUILDER AGENT SESSION LOG (Claude Code via Agent SDK): {f.name} =====", flush=True)
-                print(f.read_text(encoding="utf-8", errors="replace"), flush=True)
+                sys.stdout.write(f"===== BUILDER AGENT SESSION LOG (Claude Code via Agent SDK): {f.name} =====\n")
+                text = f.read_text(encoding="utf-8", errors="replace")
+                for i in range(0, len(text), 65536):
+                    sys.stdout.write(text[i:i + 65536])
+                    sys.stdout.flush()
+                sys.stdout.write("\n")
+                sys.stdout.flush()
 
 
 if __name__ == "__main__":
