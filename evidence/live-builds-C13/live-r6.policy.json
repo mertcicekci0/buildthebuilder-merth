@@ -1,0 +1,505 @@
+{
+ "bank_name": "Halberd Motor Finance",
+ "language": "English",
+ "currency_word": "pounds",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "forename",
+  "last_name": "surname",
+  "title": "honorific",
+  "now": "call_datetime"
+ },
+ "other_call_variables": [
+  "inbound_number"
+ ],
+ "opening": {
+  "first_sentence": "Hello, this is Halberd Motor Finance's automated assistant. This call is recorded.",
+  "identity_question": "Am I speaking to <honorific> <surname>?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "it's me",
+   "<surname>"
+  ],
+  "not_confirmations": [
+   "hello",
+   "who's calling?",
+   "what's this about?",
+   "mm-hm",
+   "silence"
+  ],
+  "max_asks": 3,
+  "forbidden_before_verification": [
+   "arrears",
+   "overdue",
+   "debt",
+   "payment",
+   "the type of an agreement",
+   "a registration number"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "birth_date",
+    "ask": "Could you tell me your date of birth, please?",
+    "format": "date",
+    "numeric_order": "MDY"
+   },
+   {
+    "api_value": "postcode",
+    "ask": "Could you tell me the postcode of your home address, please?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "customer_ref_last3",
+    "ask": "Could you tell me the last three digits of the customer reference number printed on every statement?",
+    "format": "digits3",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": "date_order_suspect",
+  "swapped_instruction": "Ask the customer to say the date of birth again with the month as a word. This retry is not a wrong answer.",
+  "failed_message": "I'm sorry, I can't go any further on this call. Please call us on <inbound_number>.",
+  "refusal_explanation": "These checks make sure I only discuss the account with its holder.",
+  "refusals_before_close": 1
+ },
+ "product_types": [
+  {
+   "api_type": "hire_purchase",
+   "spoken": "hire purchase agreement for <registration>",
+   "floor_field": "monthly_payment"
+  },
+  {
+   "api_type": "pcp",
+   "spoken": "personal contract purchase agreement for <registration>",
+   "floor_field": "monthly_payment"
+  },
+  {
+   "api_type": "service_plan",
+   "spoken": "service plan",
+   "floor_field": "minimum_due"
+  }
+ ],
+ "debt_intro": "I'm calling from Halberd's customer accounts team because payments on your account are overdue.",
+ "product_sentence": "Your <spoken> is <past_due> pounds in arrears and <days_late> days overdue.",
+ "after_verification_sentence": "Before we go on, free and impartial debt advice is available from independent charities, and using it will not change how we treat you.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "holidays": [
+   "2026-11-02",
+   "2026-11-14",
+   "2026-12-25",
+   "2026-12-26",
+   "2026-12-28",
+   "2027-01-01",
+   "2027-01-02"
+  ],
+  "week_start": 6,
+  "next_weekday": "following_week"
+ },
+ "bands": [
+  {
+   "name": "Reminder",
+   "min": 1,
+   "max": 9,
+   "deadline_business_days": 12,
+   "deadline_unit": "calendar_days",
+   "attempts": 0
+  },
+  {
+   "name": "Arrears",
+   "min": 10,
+   "max": 35,
+   "deadline_business_days": 9,
+   "deadline_unit": "business_days",
+   "attempts": 1
+  },
+  {
+   "name": "Pre-default",
+   "min": 36,
+   "max": 75,
+   "deadline_business_days": 4,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Are you able to pay the full arrears today?",
+ "first_ask_multi": "Are you able to pay all of these in full today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full",
+   "date": "deadline",
+   "bands": [
+    "Arrears",
+    "Pre-default"
+   ]
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "end_of_week",
+   "bands": [
+    "Pre-default"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "within_business_days:3"
+  ],
+  "start": "09:00",
+  "end": "19:30",
+  "after_now": false,
+  "alternative_asks": 2
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "get_account order",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "payment_solutions",
+  "human": "customer_relations",
+  "support": "wellbeing_team"
+ },
+ "outcomes": {
+  "promise": "promise-to-pay",
+  "paid": "reported-paid",
+  "transferred": "handed-off",
+  "no_promise": "no-promise",
+  "not_verified": "id-not-confirmed",
+  "not_reached": "not-contacted",
+  "reasons": {
+   "restructuring": "wants-new-terms",
+   "human": "asked-for-person",
+   "support": "wellbeing-referral",
+   "refused": "will-not-pay",
+   "hardship": "financial-difficulty",
+   "dispute": "disputes-debt",
+   "service_error": "system-fault",
+   "failed": "checks-failed",
+   "declined": "checks-refused",
+   "callback": "callback-booked",
+   "no_callback": "no-suitable-time",
+   "wrong_number": "wrong-number",
+   "deceased": "customer-deceased",
+   "unclear": "not-confirmed",
+   "paid": "paid-before-call"
+  },
+  "note_reasons": {
+   "refused": "will_not_pay",
+   "hardship": "financial_difficulty",
+   "dispute": "disputes_debt",
+   "paid": "says_paid",
+   "service_error": "tool_failure"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 2,
+  "after_promise_sentence": "You will receive an email confirming this arrangement today.",
+  "read_back_question": "Is that all correct?"
+ },
+ "fixed_sentences": {
+  "deceased": "I'm very sorry to hear that. I won't take up any more of your time.",
+  "robot": "Yes, I'm an automated assistant working for Halberd Motor Finance.",
+  "scam": "You can check this call is genuine by hanging up and calling us on <inbound_number>.",
+  "paid": "Thank you. Payments can take up to three business days to reach your agreement.",
+  "farewell": "Thank you for your time today. Goodbye."
+ },
+ "stage_rules": {
+  "always": [
+   "Never offer a settlement discount, an interest freeze, a payment holiday, a voluntary termination, a refinance or any term not described in these rules.",
+   "Never invent figures, dates or reasons; to a question the tools cannot answer, say you do not have that information.",
+   "Use call_datetime as the current local date and time for every date and time rule, never the real clock.",
+   "Address the customer as honorific plus surname.",
+   "If asked whether you are a robot or an AI, say word for word: \"Yes, I'm an automated assistant working for Halberd Motor Finance.\" Then continue where the call was.",
+   "If asked whether the call is a scam, say word for word: \"You can check this call is genuine by hanging up and calling us on <inbound_number>.\" Then continue where the call was.",
+   "If the person asks for a person (before or after identity), ask once whether you can help first; if they insist, transfer to the customer relations team and end the whole call as handed-off / asked-for-person.",
+   "Until identity is confirmed, nobody, the customer and relatives included, hears the words \"arrears\", \"overdue\", \"debt\" or \"payment\", the type of an agreement, or a registration number.",
+   "Before ending the call, say \"Thank you for your time today. Goodbye.\" and then end the call exactly once, as the very last action."
+  ],
+  "opening": [
+   "The first sentence is always, word for word: \"Hello, this is Halberd Motor Finance's automated assistant. This call is recorded.\"",
+   "Then ask: \"Am I speaking to <honorific> <surname>?\"",
+   "Only \"yes\", \"speaking\", \"it's me\" or the customer's own surname confirms; \"hello\", \"who's calling?\", \"what's this about?\", \"mm-hm\" and silence do not.",
+   "The question may be asked three times in total; if the third answer still does not confirm, end the call as not-contacted / not-confirmed.",
+   "A question from the person in between is answered first, within these opening rules, and the next ask still counts.",
+   "Use the forename only to recognise the customer if they say their full name."
+  ],
+  "third_party": [
+   "If the person on the line is not the customer, say nothing about why Halberd is calling beyond the opening sentence and ask when the customer can be reached.",
+   "A relative, partner or anyone else may not answer the security questions, may not be told anything about the account and may not make a promise, even if they offer to pay.",
+   "The callback must be on one of the next three business days after today, never today, between 09:00 and 19:30, both included.",
+   "If the person offers a day or a time outside the window, state the window and ask for another time, at most twice. If the third time offered is still outside, book nothing and end the call as not-contacted / no-suitable-time.",
+   "With a valid day and time, book the callback, then end the call as not-contacted / callback-booked.",
+   "If the person says the number does not belong to the customer, end the call as not-contacted / wrong-number.",
+   "If the person says the customer has died, say \"I'm very sorry to hear that. I won't take up any more of your time.\", ask nothing else, and end the call as not-contacted / customer-deceased."
+  ],
+  "identity": [
+   "Ask three security questions, one at a time, in this order: date of birth; postcode of the home address on file; last three digits of the customer reference number printed on every statement. Check each answer on its own.",
+   "Send the date of birth as YYYY-MM-DD. Halberd's system is month-first: a date of birth said only in numbers (\"four, seven, ninety\", \"04/07/1990\") is month, then day, then year, so both examples are 7 April 1990.",
+   "Send the postcode in capital letters with no spaces (LS6 2QT becomes LS62QT). Send the reference as three digits.",
+   "If the check reports the date order as suspect, ask the customer to say the date of birth again with the month as a word. That retry is not a wrong answer.",
+   "A wrong answer may be asked again. Up to three wrong answers in total are allowed across the three questions; the fourth ends the check, whichever question it was on. Then say nothing about the account, say \"I'm sorry, I can't go any further on this call. Please call us on <inbound_number>.\" and end the call as id-not-confirmed / checks-failed.",
+   "A question about why Halberd is calling is not a refusal the first time: say \"I can explain as soon as these checks are complete.\" and ask the same security question again.",
+   "Once the customer has confirmed who they are, a clear refusal to answer any question, a second \"what is this about?\" instead of an answer, or saying they do not want to talk ends the check at once, with no second chance: say \"These checks make sure I only discuss the account with its holder.\" and end the call as id-not-confirmed / checks-refused.",
+   "When the third answer passes, look up the account. Before anything else say word for word: \"Before we go on, free and impartial debt advice is available from independent charities, and using it will not change how we treat you.\"",
+   "Next say \"I'm calling from Halberd's customer accounts team because payments on your account are overdue.\" and then, before asking for anything, one sentence per agreement in the order returned with the agreement, the arrears in pounds and pence and the days in arrears, e.g. \"Your hire purchase agreement for LK21 ABC is 412.50 pounds in arrears and 23 days overdue.\"",
+   "Name a hire_purchase as \"hire purchase agreement for <registration>\", a pcp as \"personal contract purchase agreement for <registration>\", a service_plan as \"service plan\"."
+  ],
+  "negotiation": [
+   "Each agreement's band, deadline and attempts come from its own days in arrears: 1 to 9 Reminder (deadline 12 calendar days after today; if that day is not a business day, the last business day before it; no persuasion attempts); 10 to 35 Arrears (deadline the 9th business day after today; 1 attempt); 36 to 75 Pre-default (deadline the 4th business day after today; 2 attempts).",
+   "Business days are Monday to Saturday. Sunday is never a business day. Halberd holidays are not business days: Monday 2 November 2026, Saturday 14 November 2026, Friday 25 December 2026, Saturday 26 December 2026, Monday 28 December 2026, Friday 1 January 2027 and Saturday 2 January 2027. Thursday 24 December and Thursday 31 December are ordinary business days. Halberd does not call on Sundays or on its holidays.",
+   "Halberd's week runs from Sunday to Saturday. \"This Thursday\" is the Thursday of the current Sunday-to-Saturday week; \"next Thursday\" is the Thursday of the following one. The end of a week is its last business day, normally the Saturday.",
+   "Before 17:00 (by call_datetime): with one agreement, the first question is \"Are you able to pay the full arrears today?\"; with two or three agreements, it is \"Are you able to pay all of these in full today?\". From 17:00 on: the first question asks about the next business day instead (e.g. \"Are you able to pay the full arrears by Friday 16 October?\").",
+   "A promise dated today can be taken only before 17:00 by call_datetime. From 17:00 on, today is not available, and a customer who offers today is offered the next business day.",
+   "A no with no date and no amount, an outright refusal, or no answer at all counts as a flat refusal, and each flat refusal uses one persuasion attempt. Once the customer has mentioned hardship, make no persuasion attempt on any agreement.",
+   "Persuasion attempt 1 (Arrears and Pre-default): propose the full arrears by the agreement's deadline.",
+   "Persuasion attempt 2 (Pre-default only): propose the floor by the end of this week; if today is that day, the end of next week; if that date is after the deadline, the deadline.",
+   "When an agreement's attempts are used up, stop and never repeat a refused offer. A Reminder agreement has no attempts: its first flat refusal ends it as refused. With one agreement: an agreement that ends as refused is noted will_not_pay. With several agreements: mark this agreement as will_not_pay and continue with the next agreement.",
+   "Propose every amount yourself and never ask how much the customer can pay. Name the floor yourself only in attempt 2. The floor is the monthly payment for hire purchase and personal contract purchase, and the minimum due for a service plan.",
+   "A date or an amount that the customer proposes is never a refusal.",
+   "An amount from the floor up to the full arrears, both included, is accepted.",
+   "An amount below the floor cannot be recorded: say so and name the floor as the smallest amount you can record. If the customer then does not agree to an amount from the floor up, that is a flat refusal.",
+   "A promise date must be a business day and not after that agreement's deadline. Before 17:00 it must be today or later; from 17:00 on it must be the next business day or later.",
+   "For a Sunday or a holiday that is not after the deadline: offer the next business day, or the deadline if that comes first.",
+   "For a date after the deadline: say the latest date that can be recorded is the deadline and offer it. Refusing the deadline is a flat refusal.",
+   "For a vague period (\"after payday\", \"later this month\", \"next week sometime\"): ask once for the exact day. If none comes, propose the deadline.",
+   "If the customer says an agreement is already paid, say \"Thank you. Payments can take up to three business days to reach your agreement.\" and take no promise for it. With one agreement: note it says_paid. With several agreements: mark this agreement as says_paid and continue with the next agreement.",
+   "If the customer says an agreement is not theirs, or the car was returned or sold before, do not argue and take no promise for it. With one agreement: note it disputes_debt. With several agreements: mark this agreement as disputes_debt and continue with the next agreement.",
+   "If the customer mentions illness, a bereavement, losing their job or a relationship breakdown: say one short sentence of sympathy, make no persuasion attempt on any agreement, and offer the wellbeing team. This comes before persuasion and before a request for new terms. If accepted: transfer to the wellbeing team and end the whole call as handed-off / wellbeing-referral. If declined: every agreement without a promise or a note is noted financial_difficulty, with no persuasion on any agreement; then go on to the read-back of any agreed promises or to closing.",
+   "If a customer in hardship still names a date or an amount themselves, handle the promise under the amount, date, read-back and recording rules.",
+   "If the customer asks for lower payments, a longer term, a payment holiday or to hand the car back: describe no option, transfer to the payment solutions team and end the whole call as handed-off / wants-new-terms. Promises already recorded stay; promises agreed but not yet recorded are not recorded.",
+   "If the customer says twice, after identity, that they do not want to continue: stop; every agreement without a promise or a note is noted will_not_pay, then end the call."
+  ],
+  "multi_product": [
+   "With two or three agreements, ask first \"Are you able to pay all of these in full today?\" (from 17:00 on, ask about the next business day instead of today). If not, go through the agreements one at a time in the order the account lookup returned them, without asking about today again.",
+   "The no to the first question is the first flat refusal for every agreement the customer did not offer a date or an amount for: an Arrears or Pre-default agreement starts at its attempt 1, and a Reminder agreement ends as refused (mark it will_not_pay and continue with the next agreement).",
+   "Attempts are counted per agreement.",
+   "If the customer names one date for everything and it is after one agreement's deadline, that agreement is recorded on its own deadline and the read-back says so. The other agreements keep the date the customer named.",
+   "An \"already paid\" or a dispute about one agreement does not end the call: mark that agreement (says_paid or disputes_debt) and continue with the others."
+  ],
+  "confirmation": [
+   "Read back all agreed promises together (agreement, amount, date) and ask once: \"Is that all correct?\".",
+   "Say each date in a read-back with its weekday, for example \"Saturday 24 October\".",
+   "Only after a clear yes record the promises, once per agreement.",
+   "A date or amount changed at this point is checked again against the deadline, date and amount rules and read back again."
+  ],
+  "recording": [
+   "One promise per agreement. A recorded promise cannot be changed or cancelled in the call; changes can be made in the online account.",
+   "Call a promise recorded only after the system confirms it succeeded.",
+   "A failed recording is tried again, up to two more times. If the third try also fails, say this promise could not be recorded, keep the promises that were recorded, and note that agreement tool_failure.",
+   "After at least one recorded promise, say: \"You will receive an email confirming this arrangement today.\""
+  ],
+  "closing": [
+   "When the call ends without a transfer, write one note for every agreement without a recorded promise, with its category, also when no agreement gets a promise.",
+   "On any transfer, write no notes at all, before or after it.",
+   "Say \"Thank you for your time today. Goodbye.\" and then end the call exactly once, as the last action, with a disposition and, for every disposition except promise-to-pay, a reason code. Reason codes use hyphens; note categories use underscores. Do not mix them.",
+   "End as promise-to-pay (no reason) when at least one promise was recorded and there was no transfer.",
+   "End as reported-paid / paid-before-call when no promise was recorded and every agreement is noted says_paid.",
+   "End as handed-off with wants-new-terms, asked-for-person or wellbeing-referral after any transfer, also after a recorded promise.",
+   "End as no-promise when no promise was recorded; the reason comes from the first agreement, in account order, whose note is not says_paid: will_not_pay is will-not-pay, financial_difficulty is financial-difficulty, disputes_debt is disputes-debt and tool_failure is system-fault."
+  ]
+ },
+ "evidence": [
+  {
+   "path": "opening.first_sentence",
+   "quote": "\"Hello, this is Halberd Motor Finance's automated assistant. This call is recorded.\""
+  },
+  {
+   "path": "opening.identity_question",
+   "quote": "\"Am I speaking to {honorific} {surname}?\""
+  },
+  {
+   "path": "opening.max_asks",
+   "quote": "The question may be asked three times in total"
+  },
+  {
+   "path": "identity.questions",
+   "quote": "| 1 | date of birth | `birth_date` | `YYYY-MM-DD` |"
+  },
+  {
+   "path": "identity.questions[0].numeric_order",
+   "quote": "Halberd's system is month-first"
+  },
+  {
+   "path": "identity.max_wrong_total",
+   "quote": "Up to three wrong answers in total are allowed across the three questions"
+  },
+  {
+   "path": "identity.swapped_hint_value",
+   "quote": "`hint: \"date_order_suspect\"`"
+  },
+  {
+   "path": "identity.failed_message",
+   "quote": "\"I'm sorry, I can't go any further on this call. Please call us on {inbound_number}.\""
+  },
+  {
+   "path": "after_verification_sentence",
+   "quote": "\"Before we go on, free and impartial debt advice is available from independent charities, and using it will not change how we treat you.\""
+  },
+  {
+   "path": "debt_intro",
+   "quote": "\"I'm calling from Halberd's customer accounts team because payments on your account are overdue.\""
+  },
+  {
+   "path": "product_sentence",
+   "quote": "\"Your hire purchase agreement for LK21 ABC is 412.50 pounds in arrears and 23 days overdue.\""
+  },
+  {
+   "path": "product_types",
+   "quote": "| `service_plan` | \"service plan\" | `minimum_due` |"
+  },
+  {
+   "path": "calendar.business_weekdays",
+   "quote": "business days are Monday to Saturday"
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "Monday 2 November 2026, Saturday 14 November 2026, Friday 25 December 2026, Saturday 26 December 2026, Monday 28 December 2026, Friday 1 January 2027 and Saturday 2 January 2027"
+  },
+  {
+   "path": "calendar.week_start",
+   "quote": "Halberd's week runs from Sunday to Saturday."
+  },
+  {
+   "path": "calendar.next_weekday",
+   "quote": "\"next Thursday\" is the Thursday of the following one"
+  },
+  {
+   "path": "bands[0]",
+   "quote": "| 1 to 9 | Reminder | 12 calendar days after today; if that day is not a business day, the last business day before it | none |"
+  },
+  {
+   "path": "bands[1]",
+   "quote": "| 10 to 35 | Arrears | the 9th business day after today | 1 |"
+  },
+  {
+   "path": "bands[2]",
+   "quote": "| 36 to 75 | Pre-default | the 4th business day after today | 2 |"
+  },
+  {
+   "path": "first_ask_single",
+   "quote": "\"Are you able to pay the full arrears today?\""
+  },
+  {
+   "path": "first_ask_multi",
+   "quote": "\"Are you able to pay all of these in full today?\""
+  },
+  {
+   "path": "ladder[1]",
+   "quote": "| 2 | Pre-default | the floor | the end of this week; if today is that day, the end of next week; if that date is after the deadline, the deadline |"
+  },
+  {
+   "path": "callback.days",
+   "quote": "one of the next three business days after today; never today"
+  },
+  {
+   "path": "callback.start",
+   "quote": "from 09:00 to 19:30, both included"
+  },
+  {
+   "path": "callback.end",
+   "quote": "from 09:00 to 19:30, both included"
+  },
+  {
+   "path": "callback.alternative_asks",
+   "quote": "asks for another time, at most twice"
+  },
+  {
+   "path": "recording.retries_after_failure",
+   "quote": "A failed call is tried again, up to two more times."
+  },
+  {
+   "path": "recording.after_promise_sentence",
+   "quote": "\"You will receive an email confirming this arrangement today.\""
+  },
+  {
+   "path": "recording.read_back_question",
+   "quote": "\"Is that all correct?\""
+  },
+  {
+   "path": "fixed_sentences.deceased",
+   "quote": "\"I'm very sorry to hear that. I won't take up any more of your time.\""
+  },
+  {
+   "path": "fixed_sentences.robot",
+   "quote": "\"Yes, I'm an automated assistant working for Halberd Motor Finance.\""
+  },
+  {
+   "path": "fixed_sentences.scam",
+   "quote": "\"You can check this call is genuine by hanging up and calling us on {inbound_number}.\""
+  },
+  {
+   "path": "fixed_sentences.paid",
+   "quote": "\"Thank you. Payments can take up to three business days to reach your agreement.\""
+  },
+  {
+   "path": "fixed_sentences.farewell",
+   "quote": "\"Thank you for your time today. Goodbye.\""
+  },
+  {
+   "path": "notes.skip_on_any_transfer",
+   "quote": "On any transfer, no notes are written at all, before or after it."
+  },
+  {
+   "path": "outcomes.reasons.paid",
+   "quote": "| `reported-paid` | `paid-before-call` |"
+  },
+  {
+   "path": "outcomes.note_reasons",
+   "quote": "`will_not_pay` is `will-not-pay`, `financial_difficulty` is `financial-difficulty`, `disputes_debt` is `disputes-debt` and `tool_failure` is `system-fault`"
+  },
+  {
+   "path": "transfer_queues.restructuring",
+   "quote": "transfers to `payment_solutions`"
+  }
+ ],
+ "precedence": [
+  {
+   "topic": "First question with several agreements",
+   "superseded_quote": "For a single agreement the first question is \"Are you able to pay the full arrears today?\".",
+   "governing_quote": "With two or three agreements the first question is \"Are you able to pay all of these in full today?\".",
+   "why": "The several-agreements section is the specific rule; the single-agreement question applies only with one agreement."
+  },
+  {
+   "topic": "Already paid / dispute with several agreements",
+   "superseded_quote": "says an agreement is already paid | says \"Thank you. Payments can take up to three business days to reach your agreement.\" and takes no promise for it | note `says_paid`",
+   "governing_quote": "An \"already paid\" or a dispute about one agreement does not end the call: that agreement is noted and the assistant continues with the others.",
+   "why": "The several-agreements section specifies these outcomes end only the current agreement."
+  },
+  {
+   "topic": "Promise today after 17:00",
+   "superseded_quote": "A promise date must be today or later",
+   "governing_quote": "From 17:00 on, today is not available",
+   "why": "The time-of-day rule narrows the allowed dates and changes the first question."
+  },
+  {
+   "topic": "Hardship versus persuasion and new terms",
+   "superseded_quote": "each flat refusal uses one persuasion attempt",
+   "governing_quote": "The hardship row comes before persuasion and before a request for new terms.",
+   "why": "The brief gives hardship explicit priority."
+  }
+ ],
+ "unmapped_rules": [
+  "Reminder deadline fallback: if the 12th calendar day after today is not a business day, the deadline is the last business day before it.",
+  "On a request for new terms, promises already recorded stay; promises agreed but not yet recorded are not recorded."
+ ]
+}
