@@ -196,7 +196,12 @@ def test_c9_ported_rules_are_in_the_prompts():
     api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
     verify, neg = wf["nodes"]["verify"]["task_message"], wf["nodes"]["negotiate"]["task_message"]
     assert "the words after it were cut off: call verify_identity" in verify and "A wrong answer that you do not send" in verify
-    assert "After two such replies in a row, ask the question again" in verify          # C5 behaviour kept (C7 removed it and regressed)
+    # fragments: re-ask the pending question at once (practice-call study: better than backchannels), never a backchannel
+    assert "reply at once by asking the pending question again in one short, slightly rephrased sentence" in verify
+    assert "never add the refusal explanation to this re-ask" in verify and "Never invent or complete digits" in verify
+    assert "reply at once by asking your pending question again in one short, slightly rephrased sentence; call no tool and make no new offer" in neg
+    assert "Go on." not in verify + neg and "Take your time." not in verify + neg and "two such replies" not in verify + neg
+    assert "join everything the customer said since you last asked" in verify
     assert "never complete it yourself" in neg and "everything the rules attach to a floor offer" in neg
     assert "including products you already marked as refused" in neg
 

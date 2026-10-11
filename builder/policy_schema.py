@@ -1,7 +1,9 @@
 """Policy IR: the typed contract between the brief reader (model) and the compiler (code).
 
 `schema()` is the JSON Schema used as the extraction's structured output (no min/max keywords, closed objects).
-`check(ir, api, roles, brief_text)` runs the deterministic checks; every problem is a sentence a repair prompt can use.
+`check(ir, api, roles, brief_text, warnings=None)` runs the deterministic checks; every problem is a sentence a repair prompt can use.
+Findings that may be wrong about a correct IR (a holiday whose date the brief writes in a form we do not read) are not
+problems: they go to the optional `warnings` list, are traced, and never trigger a model repair.
 """
 import datetime
 import re
@@ -37,8 +39,9 @@ def schema():
                         "max_wrong_total": I, "swapped_hint_value": NS, "swapped_instruction": S, "failed_message": S,
                         "refusal_explanation": S, "refusals_before_close": I}),
         "product_types": {"type": "array", "items": _o({"api_type": S, "spoken": S, "floor_field": NS})},
-        "debt_intro": S, "product_sentence": S,
-        "calendar": _o({"business_weekdays": IL, "holidays": SL, "week_start": I}),
+        "debt_intro": S, "product_sentence": S, "after_verification_sentence": S,
+        "calendar": _o({"business_weekdays": IL, "holidays": SL, "week_start": I,
+                         "next_weekday": {"type": "string", "enum": ["following_week", "next_occurrence"]}}),
         "bands": {"type": "array", "items": _o({"name": S, "min": I, "max": I, "deadline_business_days": I,
                                                 "deadline_unit": {"type": "string", "enum": ["business_days", "calendar_days"]}, "attempts": I})},
         "first_ask_single": S, "first_ask_multi": S,
@@ -63,7 +66,7 @@ def _norm(s):
     return re.sub(r"\s+", " ", re.sub(r"[*_`>|#]", " ", str(s))).strip().lower()
 
 
-def check(ir, api, roles, brief_text=""):
+def check(ir, api, roles, brief_text="", warnings=None):
     p = []
     close_enum = ot.enum_of(api, "close_call", roles.get("close_outcome"))
     o = ir["outcomes"]
@@ -111,6 +114,9 @@ def check(ir, api, roles, brief_text=""):
     bands = sorted(ir["bands"], key=lambda b: b["min"])
     if not bands:
         p.append("bands is empty")
+    for b in bands:
+        if b["max"] < b["min"]:
+            p.append(f"band {b['name']} has max {b['max']} below min {b['min']}")
     for a, b in zip(bands, bands[1:]):
         if b["min"] != a["max"] + 1:
             p.append(f"bands {a['name']} ({a['min']}-{a['max']}) and {b['name']} ({b['min']}-{b['max']}) leave a gap or overlap")
@@ -135,14 +141,55 @@ def check(ir, api, roles, brief_text=""):
             if q and q not in nb:
                 p.append(f"evidence[{i}] ({e['path']}) quote is not in the brief verbatim: {e['quote'][:80]!r}")
         for h in ir["calendar"]["holidays"]:
-            if not _date_mentioned(h, brief_text):
-                p.append(f"holiday {h} is not mentioned in the brief")
+            try:
+                mentioned = _date_mentioned(h, brief_text)
+            except ValueError:
+                continue   # a non-ISO holiday is already a problem above
+            if not mentioned and warnings is not None:
+                warnings.append(f"holiday {h} was not found written in the brief (kept; check it)")
     return p
 
 
+_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+_ORD = r"(?:st|nd|rd|th)?"
+_RANGE = r"(?:\s*(?:-|\u2013|\u2014|to|through|thru|until|till|and|&)\s*(\d{1,2})" + _ORD + r")?"
+
+
+def _month_re(month):
+    names = {_MONTHS[month - 1], _MONTHS[month - 1][:3]} | ({"sept"} if month == 9 else set())
+    return r"\b(?:" + "|".join(sorted(names, key=len, reverse=True)) + r")\b\.?"
+
+
 def _date_mentioned(iso_date, text):
+    """Is this date written in the text? Reads ISO, day-month and month-day with full or short month names and ordinals
+    ("25 Dec", "December 25th", "the 25th of December", "Friday 25 December"), day ranges ("24-26 December",
+    "24 to 26 December", "December 24-26") and numeric dates ("25.12.2026", "25-12-2026", "12/25/2026", "25/12", "25.12.")."""
     d = datetime.date.fromisoformat(iso_date)
-    t = text.lower()
-    month = d.strftime("%B").lower()
-    pats = [iso_date, f"{d.day} {month}", f"{month} {d.day}", f"{d.day:02d}/{d.month:02d}", f"{d.day}/{d.month}", f"{d.day}.{d.month}.", d.strftime("%d.%m.")]
-    return any(x in t for x in pats) or bool(re.search(rf"\b{d.day}(st|nd|rd|th)?\s+(of\s+)?{month}", t)) or bool(re.search(rf"{month}\s+{d.day}(st|nd|rd|th)?\b", t))
+    t = re.sub(r"\s+", " ", re.sub(r"[*_`]", "", str(text).lower().replace("\u00a0", " ")))
+    if iso_date in t:
+        return True
+    mon = _month_re(d.month)
+
+    def within(lo, hi):
+        lo = int(lo)
+        hi = int(hi) if hi else lo
+        return lo <= d.day <= hi
+    for m in re.finditer(r"\b(\d{1,2})" + _ORD + _RANGE + r"\s+(?:of\s+)?" + mon, t):
+        if within(m.group(1), m.group(2)):
+            return True
+    for m in re.finditer(mon + r"\s+(?:the\s+)?(\d{1,2})" + _ORD + _RANGE + r"(?!\d)", t):
+        if within(m.group(1), m.group(2)):
+            return True
+    for m in re.finditer(r"(?<![\d.,/-])(\d{1,4})([./-])(\d{1,2})(?:\2(\d{2,4}))?(?![\d/-]|\.\d)", t):
+        a, sep, b, c = m.group(1), m.group(2), m.group(3), m.group(4)
+        if len(a) == 4:
+            if c and (int(a), int(b), int(c)) == (d.year, d.month, d.day):
+                return True
+            continue
+        if not c and not (sep == "/" or (sep == "." and t[m.end():m.end() + 1] == ".")):
+            continue   # "1-7" or "1.5" without a year is a range or a number, not a date
+        if c and int(c) not in (d.year, d.year % 100):
+            continue
+        if (int(a), int(b)) in ((d.day, d.month), (d.month, d.day)):
+            return True
+    return False

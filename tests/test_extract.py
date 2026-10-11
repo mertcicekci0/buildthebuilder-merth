@@ -70,3 +70,13 @@ def test_trace_lists_aux_models_and_replaces_file_on_rerun(tmp_path):
         tr.end("ok")
     assert open(out).read().count("aux_model=claude-haiku-5-5(in=3,out=4)") == 1
     assert sum(1 for l in open(tmp_path / "t.jsonl") if '"kind": "start"' in l) == 1
+
+
+def test_check_warnings_are_traced_and_never_repaired():
+    api = ot.load(str(ROOT / "kit/tools/openapi.json")); roles, _ = ot.infer_roles(api)
+    odd = copy.deepcopy(IR); odd["calendar"]["holidays"] = odd["calendar"]["holidays"] + ["2026-12-31"]   # not in the brief
+    fake = FakeLLM([copy.deepcopy(odd), {"changes": [], "ir": copy.deepcopy(odd)}])
+    out = io.StringIO()
+    ir, problems, _ = ex.extract(fake, BRIEF, api, roles, Trace(stream=out))
+    assert problems == [] and "2026-12-31" in ir["calendar"]["holidays"] and len(fake.calls) == 2   # no repair call
+    assert "holiday 2026-12-31 was not found written in the brief" in out.getvalue()

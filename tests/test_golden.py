@@ -1,5 +1,5 @@
 """The compiled workflow for the kit API + public IR, and for the R1-R3 reference IRs with their APIs, must not change
-unless a change is deliberate (golden files produced at commit 4baeea6, before the API-robustness work)."""
+unless a change is deliberate. Regenerated at the C10 merge: relative to 4baeea6 the kit output differs only by the W2 changes that tests/test_w2_policy.py enumerates against golden_w2_kit_workflow.json (4baeea6)."""
 import hashlib, json, pathlib, sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))

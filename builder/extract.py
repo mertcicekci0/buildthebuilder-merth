@@ -5,6 +5,7 @@ Passes (each one model call through llm.ask_json, traced):
   2. audit    - independent re-read of the brief against the IR: omissions, wrong values, wrong precedence.
                Returns the corrected IR and a change list (source quotes for every change).
   3. repair   - only if deterministic checks (policy_schema.check) still fail; at most `max_repairs` times.
+               Check warnings (e.g. a holiday written in a form the check cannot read) are traced, never repaired.
 Nothing from any specific brief is written here: the guide below describes the IR's meaning, not a bank's rules.
 """
 import json
@@ -29,7 +30,8 @@ Field meanings:
 - identity.swapped_hint_value: the API hint value meaning day/month swapped, or null if none.
 - product_types: one entry per product type in the API enum. spoken: how to name it, with <field> placeholders for get_account product fields (e.g. a card's last digits). floor_field: the get_account field that is the minimum acceptable amount for that type, or null.
 - debt_intro / product_sentence: how the debt is stated after verification. product_sentence placeholders: <spoken> <past_due> <days_late> <floor>.
-- calendar: business_weekdays as numbers 0=Monday..6=Sunday; holidays as YYYY-MM-DD (resolve the year from the brief); week_start 0=Monday.
+- after_verification_sentence: a sentence the brief requires right after identity is verified and before the debt is stated (e.g. a disclosure or notice), exactly as quoted; "" if none. Do not repeat debt_intro here.
+- calendar: business_weekdays as numbers 0=Monday..6=Sunday; holidays as YYYY-MM-DD (resolve the year from the brief); week_start 0=Monday. next_weekday: what "next <weekday>" means: "following_week" (that weekday in the following calendar week; the default when the brief does not say) or "next_occurrence" (the first such weekday after today, e.g. "next Friday" said on a Wednesday is in two days).
 - bands: lateness bands from days late: min/max days (inclusive), deadline_business_days = the N in "the N-th business day after today" (deadline_unit "business_days"); if the brief counts plain days ("within 10 days of today", "10 calendar days"), put that N and deadline_unit "calendar_days". attempts = persuasion attempts allowed.
 - first_ask_single / first_ask_multi: the first question about paying (one product / several products).
 - ladder: the persuasion steps in order. amount: full | floor | full_or_floor ("full, or the floor if the customer already said the full amount is too much"). date: today | end_of_week (last business day of this week, or of next week if today is that day) | deadline. bands: band names the step applies to ([] = all).
@@ -89,8 +91,12 @@ def extract(llm, brief_text, api, roles, trace, max_repairs=2):
     trace.step(f"audit pass: {len(changes)} change(s)", changes=changes)
     ir = audit.get("ir") or ir
     for attempt in range(max_repairs + 1):
-        problems = ps.check(ir, api, roles, brief_text)
-        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems)
+        check_warnings = []
+        problems = ps.check(ir, api, roles, brief_text, warnings=check_warnings)
+        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems,
+                   warnings=check_warnings)
+        for w in check_warnings:
+            trace.warn("policy check: " + w)
         if not problems or attempt == max_repairs:
             return ir, problems, changes
         try:

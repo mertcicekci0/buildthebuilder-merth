@@ -74,6 +74,7 @@
  ],
  "debt_intro": "I'm calling from the collections team about a late payment.",
  "product_sentence": "Your <spoken> has <past_due> past due and is <days_late> days late.",
+ "after_verification_sentence": "",
  "calendar": {
   "business_weekdays": [
    0,
@@ -89,7 +90,8 @@
    "2026-12-25",
    "2027-01-01"
   ],
-  "week_start": 0
+  "week_start": 0,
+  "next_weekday": "following_week"
  },
  "bands": [
   {

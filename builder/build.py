@@ -232,9 +232,12 @@ def main():
 
         if a.ir:
             ir = {k: val for k, val in json.load(open(a.ir)).items() if not k.startswith("_")}
-            problems = ps.check(ir, api, roles, brief)
+            check_warnings = []
+            problems = ps.check(ir, api, roles, brief, warnings=check_warnings)
             trace.step(f"policy IR loaded from {a.ir} (no model call)")
-            trace.test("policy checks", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems)
+            trace.test("policy checks", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems, warnings=check_warnings)
+            for w in check_warnings:
+                trace.warn("policy check: " + w)
         else:
             from builder.extract import extract
             from builder.llm import LLM

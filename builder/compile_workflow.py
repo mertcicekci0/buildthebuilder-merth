@@ -233,8 +233,11 @@ def runtime_config(ir, api, roles):
         if close_enum and o.get(key) and o[key] not in close_enum:
             raise CompileError(f"outcome {key} -> {o[key]} is not allowed by close_call ({close_enum})")
     reasons = dict(o.get("reasons", {}))
-    if o.get("paid") != o.get("no_promise"):
-        reasons["paid"] = ""   # a distinct paid outcome carries no reason; only a brief that closes "paid" under no_promise names one
+    reason_enum = ot.enum_of(api, "close_call", roles.get("close_reason"))
+    if o.get("paid") != o.get("no_promise") and not (reason_enum and reasons.get("paid") in reason_enum):
+        # a distinct paid outcome carries no reason when the reason is free text; a brief that closes "paid" under
+        # no_promise names one, and so does an API whose reason codes include the IR's paid reason
+        reasons["paid"] = ""
     notes = dict(ir.get("notes") or {"enabled": False})
     notes["default_reason"] = semantic_note_reason(notes.get("default_reason"), o)
     return {
@@ -482,7 +485,18 @@ except Exception:
        FAILED_MESSAGE=failed_message or "")
 
 
-def hook_callback_pre(roles):
+def callback_retry_text(alternative_asks=1):
+    """What the agent does after a callback time outside the window, for the brief's number of alternative asks."""
+    n = _count(alternative_asks, 1)
+    if n == 1:
+        return "Ask once for another time; if the next answer is also outside, do not schedule and call transition_to_close_no_callback."
+    if n == 0:
+        return "Do not ask for another time: do not schedule and call transition_to_close_no_callback."
+    return (f"Ask for another time, at most {n} times in total after the first time given; if the answer to the {_ordinal(n)} such ask is also outside, "
+            "do not schedule and call transition_to_close_no_callback.")
+
+
+def hook_callback_pre(roles, alternative_asks=1):
     if roles.get("callback_datetime"):
         get_dt = "raw = str(b.get(R_DT) or '')\nd_iso, t = raw[:10], raw[11:16]\n"
     else:
@@ -496,8 +510,8 @@ if v != 'ok':
     cb = CFG.get('callback') or {}
     raise Exception('BLOCKED, nothing was sent: ' + d_iso + ' ' + t + ' is outside the allowed callback window (' + v + '). Allowed: ' +
                     ', '.join(cb.get('days', [])) + ' between ' + cb.get('start', '') + ' and ' + cb.get('end', '') +
-                    ', later than now. Ask once for another time; if the next answer is also outside, do not schedule and call transition_to_close_no_callback.')
-""", R_DT=roles.get("callback_datetime", ""), R_D=roles.get("callback_date", ""), R_T=roles.get("callback_time", ""))
+                    ', later than now. @@RETRY@@')
+""".replace("@@RETRY@@", callback_retry_text(alternative_asks)), R_DT=roles.get("callback_datetime", ""), R_D=roles.get("callback_date", ""), R_T=roles.get("callback_time", ""))
 
 
 HOOK_CALLBACK_POST = """
@@ -813,6 +827,25 @@ def _hook(cfg, body):
 
 
 # ------------------------------------------------------------------ prompts
+_ORDINALS = {1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth", 7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth"}
+
+
+def _ordinal(n):
+    return _ORDINALS.get(n, f"{n}th")
+
+
+def _times(n):
+    return {1: "once", 2: "twice"}.get(n, f"{n} times")
+
+
+def _count(value, default, low=0):
+    """An IR count as an int (the public default when missing or unreadable), never below `low`."""
+    try:
+        return max(low, int(value))
+    except (TypeError, ValueError):
+        return default
+
+
 def _rules(ir, *stages):
     out = []
     for s in stages:
@@ -878,6 +911,37 @@ def missing_roles(api, roles):
     return out
 
 
+def _usable_queues(ir, api, roles, warnings):
+    """Transfer queues the API accepts. An empty or unknown queue drops that transfer path (with a warning) instead of
+    failing the build; returns the IR with those queues set to "" and whether any queue is left."""
+    if "transfer_to_agent" not in api["tools"]:
+        return ir, True   # the whole transfer path is left out as an absent optional tool
+    queues = dict(ir.get("transfer_queues") or {})
+    queue_enum = ot.enum_of(api, "transfer_to_agent", roles.get("transfer_queue"))
+    changed = False
+    for sem, q in list(queues.items()):
+        q = str(q or "").strip()
+        if not q or (queue_enum and q not in queue_enum):
+            if warnings is not None:
+                warnings.append(f"transfer queue {sem} = {q!r} is " + ("empty" if not q else f"not in the API queues {queue_enum}") +
+                                ": that transfer path is left out")
+            changed = changed or queues[sem] != ""
+            queues[sem] = ""
+    if changed:
+        ir = dict(ir, transfer_queues=queues)
+    return ir, any(queues.values())
+
+
+def _drop_human_transfer(wf):
+    """No queue for a person: remove the transfer_human step and every instruction that leads to it."""
+    wf["nodes"].pop("transfer_human", None)
+    for n in wf["nodes"].values():
+        n["transitions"] = [tr for tr in n.get("transitions", []) if tr.get("target_node") in wf["nodes"]]
+        if isinstance(n.get("task_message"), str):
+            n["task_message"] = "\n".join(ln for ln in n["task_message"].split("\n") if "transition_to_transfer_human" not in ln)
+    return wf
+
+
 def compile_workflow(ir, api, roles, warnings=None):
     if api["missing_tools"]:
         raise CompileError(f"tool API lacks {api['missing_tools']}")
@@ -885,12 +949,25 @@ def compile_workflow(ir, api, roles, warnings=None):
     if lost:
         raise CompileError("the tool API's fields for these roles were not recognised: " + "; ".join(lost))
     absent = [t for t in ot.OPTIONAL_TOOLS if t not in api["tools"]]
+    ir, any_queue = _usable_queues(ir, api, roles, warnings)
     if absent:
         ir, api, roles = _stub_absent_tools(ir, api, roles, absent)
         if warnings is not None:
             warnings.append(f"tool API has no {', '.join(absent)}: those paths are left out")
     wf = _compile(ir, api, roles, warnings)
+    if not any_queue and "transfer_to_agent" not in absent:
+        absent = absent + ["transfer_to_agent"]   # no usable queue at all: no transfer tool anywhere
+    if not (ir.get("transfer_queues") or {}).get("human"):
+        wf = _drop_human_transfer(wf)
     return _strip_absent_tools(wf, absent) if absent else wf
+
+
+SPEAK_ON_ENTRY = {
+    "someone_else": "Your first message in this step must always say something to the person, never nothing: if you already asked when the customer "
+                    "can be reached, repeat that question in one short sentence.",
+    "": "Your first message in this step must always say something to the person, never nothing: if you already asked your question, "
+        "repeat it in one short sentence.",
+}
 
 
 def _compile(ir, api, roles, warnings=None):
@@ -914,7 +991,7 @@ def _compile(ir, api, roles, warnings=None):
             raise CompileError(f"identity question {q['api_value']} not allowed by verify_identity ({verify_values})")
     queue_enum = ot.enum_of(api, "transfer_to_agent", roles["transfer_queue"])
     for sem, q in ir.get("transfer_queues", {}).items():
-        if queue_enum and q not in queue_enum:
+        if queue_enum and q and q not in queue_enum:
             raise CompileError(f"transfer queue {sem} -> {q} not in API enum {queue_enum}")
 
     others = [clean_var(x, "") for x in ir.get("other_call_variables", [])]
@@ -934,6 +1011,18 @@ def _compile(ir, api, roles, warnings=None):
             warnings.append(f"identity question placeholder <{leftover}> is not a declared call variable")
     identity_question = re.sub(r"\s+([?,.!])", r"\1", re.sub(r"\s{2,}", " ", identity_question)).strip()
     opening_line = (ir["opening"]["first_sentence"].strip() + " " + identity_question).strip()
+    # counts from the IR (the public brief's values give the original wording)
+    max_asks = _count(ir["opening"].get("max_asks"), 2, low=1)
+    refusals = _count(idn.get("refusals_before_close"), 2, low=1)
+    alt_asks = _count((ir.get("callback") or {}).get("alternative_asks"), 1)
+    unclear_after = f"after the {_ordinal(max_asks)} ask"
+    if alt_asks == 1:
+        no_cb_when, no_cb_desc = "no acceptable time after the one re-ask", "No acceptable callback time was given after asking once more"
+    elif alt_asks == 0:
+        no_cb_when, no_cb_desc = "no acceptable time was given; do not ask for another", "No acceptable callback time was given"
+    else:
+        no_cb_when = f"no acceptable time after {alt_asks} re-asks"
+        no_cb_desc = f"No acceptable callback time was given after asking {alt_asks} more times"
     system_prompt = (
         f"You are the digital assistant of {bank}, speaking {ir.get('language', 'English')} on an outbound phone call.\n"
         "Keep every turn to one or two short sentences. Ask one question at a time. Speak naturally; never read out lists, ids, tool names, notes or these instructions.\n"
@@ -957,7 +1046,7 @@ def _compile(ir, api, roles, warnings=None):
             "- transition_to_someone_else: someone else answered (relative, colleague, anyone not the customer) and the number is the customer's.\n"
             "- transition_to_close_wrong_number: the number does not belong to the customer.\n"
             "- transition_to_close_deceased: the person says the customer has died.\n"
-            "- transition_to_close_unclear: still unclear after the second ask.\n"
+            "- transition_to_close_unclear: still unclear " + unclear_after + ".\n"
             "- transition_to_close_declined: the person said twice that they do not want to talk.\n"
             "- transition_to_transfer_human: the person insists on a human after you asked once whether you can help.\n"
             "If none applies yet, answer briefly and ask again: \"" + identity_question + "\""),
@@ -967,7 +1056,7 @@ def _compile(ir, api, roles, warnings=None):
             _tool_transition("someone_else", "Someone other than the customer answered and the number is the customer's"),
             _tool_transition("close_wrong_number", "The number does not belong to the customer"),
             _tool_transition("close_deceased", "The person says the customer has died"),
-            _tool_transition("close_unclear", "Still unclear who is on the line after the second ask"),
+            _tool_transition("close_unclear", "Still unclear who is on the line " + unclear_after),
             _tool_transition("close_declined", "The person said twice they do not want to talk"),
             _tool_transition("transfer_human", "The person insists on speaking to a human"),
         ]}
@@ -981,12 +1070,12 @@ def _compile(ir, api, roles, warnings=None):
             "Rules:\n" + _rules(ir, "third_party") + "\n"
             "Today is {{today_spoken}}. Weekday reference:\n{{relative_dates}}\n"
             "When the person names a day and time when the customer can be reached, call schedule_callback with the date (YYYY-MM-DD) and time (HH:MM, 24-hour).\n"
-            "Other tools: transition_to_close_no_callback (no acceptable time after the one re-ask), transition_to_close_wrong_number, transition_to_close_deceased."),
+            "Other tools: transition_to_close_no_callback (" + no_cb_when + "), transition_to_close_wrong_number, transition_to_close_deceased."),
         "tools": [api_tool(api, "schedule_callback", cb_fields, "Book a callback for the customer. CALL it as soon as a day and a time are given.",
-                            pre=_hook(cfg, hook_callback_pre(roles)), post=_hook(cfg, response_hook(HOOK_CALLBACK_POST, "schedule_callback", roles)), model_fields=cb_model)],
+                            pre=_hook(cfg, hook_callback_pre(roles, alt_asks)), post=_hook(cfg, response_hook(HOOK_CALLBACK_POST, "schedule_callback", roles)), model_fields=cb_model)],
         "max_node_turns": 12, "max_turn_transition": "close_no_callback",
         "transitions": [_when("cb_done", "yes", "goodbye_plain", "callback booked"),
-                        _tool_transition("close_no_callback", "No acceptable callback time was given after asking once more"),
+                        _tool_transition("close_no_callback", no_cb_desc),
                         _tool_transition("close_wrong_number", "The number does not belong to the customer"),
                         _tool_transition("close_deceased", "The customer has died")]}
     # ---- identity
@@ -1002,6 +1091,20 @@ def _compile(ir, api, roles, warnings=None):
                             post=_hook(cfg, hook_verify_post(idn["questions"], idn.get("swapped_hint_value"), idn.get("swapped_instruction"), idn.get("failed_message"),
                                                           names=(roles.get("responses") or {}).get("verify_identity"))),
                             model_fields=[roles["verify_field"], roles["verify_answer"]])
+    expl = idn.get('refusal_explanation', '')
+    if refusals == 1:
+        refusal_text = (f"If the customer refuses to answer: say \"{expl}\" and call transition_to_close_declined. "
+                        "If they ask a question back instead of answering (the message holds no answer; why, which account, what this is about): "
+                        "answer in one short sentence without saying why you are calling, then ask the question once more; if they refuse, call transition_to_close_declined. ")
+    else:
+        refusal_text = (f"If the customer refuses, or asks a question back instead of answering (the message holds no answer; why, which account, what this is about): say once \"{expl}\" "
+                        "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
+                        "If their next message neither answers nor refuses, ask the question once more. ")
+        if refusals == 2:
+            refusal_text += "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined. "
+        else:
+            refusal_text += (f"If they refuse again (or ask again what the call is about instead of answering), answer in one short sentence and ask the question once more; "
+                             f"when they have refused {refusals} times (the {_ordinal(refusals)} refusal), call transition_to_close_declined. ")
     qlist = "\n".join(f"{i + 1}. field {q['api_value']}: \"{q['ask']}\"" for i, q in enumerate(idn["questions"]))
     nodes["customer_confirmed"] = _code_node("customer_confirmed", cfg, entry_set(contact="customer"), [_always("verify")])
     nodes["verify"] = {
@@ -1014,27 +1117,24 @@ def _compile(ir, api, roles, warnings=None):
             "FIRST, every turn: if the customer's message contains an answer to the security question (a whole date, all the digits asked for), call verify_identity with it at once, "
             "before anything else, even if the same message also contains a question, a complaint, small talk or cut-off words. "
             "Example: \"3 May 1985. Why do you need this?\" -> call verify_identity with that date first; the rules below apply only to messages with no answer. "
-            "Example: \"The fifth of June nineteen eighty. This is so\" -> the date is complete (day, month and a four-digit year, in digits or words); the words after it were cut off: call verify_identity with 1980-06-05 now, never \"Go on.\". "
+            "Example: \"The fifth of June nineteen eighty. This is so\" -> the date is complete (day, month and a four-digit year, in digits or words); the words after it were cut off: call verify_identity with 1980-06-05 now, never ask for it again. "
             "A wrong answer that you do not send is still a wrong answer the customer gave: always send it. "
             "Follow the what_to_do_next in its result.\n"
             "An answer may come in pieces over several messages, or just before a cut-off or a complaint: join everything the customer said since you last asked "
-            "(\"3 May\" then \"1985\" = 1985-05-03). If they gave an answer you have not checked yet (also one before a \"Go on.\" or a complaint), call verify_identity with it now, before replying.\n"
+            "(\"3 May\" then \"1985\" = 1985-05-03). If they gave an answer you have not checked yet (also one before a cut-off or a complaint), call verify_identity with it now, before replying.\n"
             "Only the result of verify_identity decides that the check is over; the system then says the closing message and ends the call. "
             "If you think enough wrong answers were given but the system has not ended the check, an answer is still unchecked: call verify_identity with it. Never say the closing message yourself.\n"
             "Only if the answer itself is missing or incomplete (small talk only, a date without the year, fewer digits than asked, a message cut off before the answer) is it not an answer yet, and not a refusal: "
-            "do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence. "
-            "Right after you gave the explanation below or answered their question, a message without an answer gets the question again in one short sentence instead.\n"
-            f"If the customer refuses, or asks a question back instead of answering (the message holds no answer; why, which account, what this is about): say once \"{idn.get('refusal_explanation', '')}\" "
-            "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
-            "If their next message neither answers nor refuses, ask the question once more. "
-            "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined. "
+            "reply at once by asking the pending question again in one short, slightly rephrased sentence (for a partial answer, ask only for the missing part, such as the year or the remaining digits); "
+            "call no tool and never add the refusal explanation to this re-ask. Never invent or complete digits or a year yourself.\n"
+            + refusal_text +
             "Only consecutive non-answers to the same question count: any answer, right or wrong, resets this count, and a question about robots, scams or a human is answered under its own rule and never counts as declining.\n"
             "If they insist on a human after you asked once whether you can help, call transition_to_transfer_human.\n"
             "Never say goodbye or end the call yourself in this step: the call ends only through the system (too many wrong answers) or a transition tool."),
         "tools": [verify_tool], "max_node_turns": 30, "max_turn_transition": "close_declined",
         "transitions": [_when("id_state", "all", ACCOUNT_NODE, "identity verified"),
                         _when("id_state", "locked", "close_failed", "too many wrong answers"),
-                        _tool_transition("close_declined", "The customer declined the security questions twice"),
+                        _tool_transition("close_declined", "The customer declined the security questions " + _times(refusals)),
                         _tool_transition("transfer_human", "The customer insists on speaking to a human")]}
     # ---- account
     nodes[ACCOUNT_NODE] = {"name": ACCOUNT_NODE, "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "account",
@@ -1063,10 +1163,12 @@ def _compile(ir, api, roles, warnings=None):
             "product_id": {"type": "string", "description": "product id, for example p1"},
             "outcome": {"type": "string", "enum": outcomes_enum, "description": "One of: " + ", ".join(outcomes_enum)}},
             "required": ["product_id", "outcome"]}}}
+    tq = ir.get("transfer_queues") or {}
+    transfer_uses = [(what + " (queue " + tq[sem] + ")") for sem, what in (("restructuring", "restructuring request"),
+                                                                           ("support", "customer accepted the support team after hardship"),
+                                                                           ("human", "customer insists on a human")) if tq.get(sem)]
     transfer_tool = api_tool(api, "transfer_to_agent", {roles["customer_id"]: cust},
-                              "Hand the call to a person. CALL it for: restructuring request (queue " + ir["transfer_queues"].get("restructuring", "") +
-                              "), customer accepted the support team after hardship (queue " + ir["transfer_queues"].get("support", "") +
-                              "), customer insists on a human (queue " + ir["transfer_queues"].get("human", "") + ").",
+                              "Hand the call to a person. CALL it for: " + ", ".join(transfer_uses) + ".",
                               pre=_hook(cfg, hook_transfer_pre(roles)), post=_hook(cfg, response_hook(HOOK_TRANSFER_POST, "transfer_to_agent", roles)), model_fields=[roles["transfer_queue"]])
     acct = api["tools"]["get_account"]
     check_tool = {"type": "function", "config": {"timeoutMs": 8000, "maxRetries": 0},
@@ -1103,10 +1205,12 @@ def _compile(ir, api, roles, warnings=None):
                                         "summary": {"type": "string", "description": "one short line: how each product ended", "default": "{{summary}}"}},
                                         "required": ["summary"]}}}},
                    "pre_process_code": _hook(cfg, FINISH_PRE)}
+    after_verified = str(ir.get("after_verification_sentence") or "").strip()
+    after_verified = after_verified + " " if after_verified else ""   # a sentence the brief requires between verification and the debt
     neg_rules = _rules(ir, "negotiation") + ("\n" + _rules(ir, "multi_product") if multi else "") + "\n" + _rules(ir, "confirmation") + "\n" + _rules(ir, "recording")
     nodes["negotiate"] = {
         "name": "negotiate", "node_type": "conversation",
-        "on_enter": {"type": "tts", "text": "Thank you, you are verified. {{debt_statement}} {{first_ask}}"}, "on_enter_first_entry_only": True,
+        "on_enter": {"type": "tts", "text": "Thank you, you are verified. " + after_verified + "{{debt_statement}} {{first_ask}}"}, "on_enter_first_entry_only": True,
         "task_message": (
             "The customer is verified. You have stated the debt and asked the first question.\n"
             "PRODUCTS (amounts, floors, deadlines and persuasion steps are computed; use them exactly):\n{{facts_text}}\n\n"
@@ -1116,7 +1220,7 @@ def _compile(ir, api, roles, warnings=None):
             "If the customer asks about an offer you just made (how much, which day, 'you tell me'), refer back to it instead of proposing it again: "
             "\"That is the amount I mentioned, <amount>, <and every condition you said with it>. Would that work for you?\" That is an answer, not a new attempt: no tool.\n"
             "Until the system has confirmed a recording, never say that anything is recorded, noted, saved or logged; in the read-back say \"To confirm: ...\".\n"
-            "A message that stops mid-sentence or is only small talk is not a refusal and not a non-answer: reply with two or three words such as \"Take your time.\" or \"Go on.\", call no tool and make no new offer; after two such replies, repeat your last question. "
+            "A message with no answer yet (only small talk, or cut off mid-sentence before the answer) is not a refusal and not a non-answer: reply at once by asking your pending question again in one short, slightly rephrased sentence; call no tool and make no new offer. "
             "A day or an amount at the very end of a message that stops mid-word may be cut off (\"I accept the twenty\"): never complete it yourself. "
             "If the customer is accepting a date or amount you offered and their words fit its beginning, use what you offered; otherwise ask them once to say it again. "
             "A non-answer is a complete turn with no yes, no no, no date and no amount.\n"
@@ -1207,6 +1311,11 @@ def _compile(ir, api, roles, warnings=None):
             t = t.replace("<" + k + ">", "{{" + name + "}}")
         return t
     system_prompt = fill_prompt(system_prompt)
+    for n in nodes.values():
+        if (n.get("on_enter") or {}).get("type") == "llm" and isinstance(n.get("task_message"), str):
+            # the model speaks first in this step: it must never produce an empty turn (practice run: silence, then a hang-up)
+            first, _, rest = n["task_message"].partition("\n")
+            n["task_message"] = first + "\n" + SPEAK_ON_ENTRY.get(n["name"], SPEAK_ON_ENTRY[""]) + ("\n" + rest if rest else "")
     for n in nodes.values():
         if isinstance(n.get("task_message"), str):
             n["task_message"] = fill_prompt(n["task_message"])
