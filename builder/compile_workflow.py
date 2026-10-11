@@ -113,10 +113,41 @@ def _end_node(name, function_name, message):
                                                               "spoken_message": {"type": "string", "default": message}}}}}}
 
 
-def _api_tool(api, tool, body_defaults, description="", max_retries=0, pre=None, post=None, model_fields=()):
-    """A Freya api_call tool generated from the contract. body_defaults: field -> default; model_fields are left to the model."""
+FILLER_TEXT = "Logged by the phone agent"   # a required free-text field the brief gives nothing for
+COUNT_NAME = r"count|number_of|^n_|^num_|attempts|tries"
+
+
+def _extra_required(c, f, engine, model_fields, warnings):
+    """A required request field the template does not fill. A model-called tool lets the model fill it; an engine-run
+    tool gets a neutral constant for free text, 0 for a count, and nothing (with a warning) for an enum or anything else."""
+    name, where = f["name"], c["name"]
+    if not engine:
+        if warnings is not None:
+            warnings.append(f"{where}.{name} is required and has no role: the model fills it from the API description")
+        return "{{" + name + "}}"
+    if f.get("enum"):
+        if warnings is not None:
+            warnings.append(f"{where}.{name} is a required enum field with no role: no value can be chosen, the request will lack it")
+        return None
+    if f["type"] == "string" and not f.get("format"):
+        if warnings is not None:
+            warnings.append(f"{where}.{name} is required and has no role: sent as the constant {FILLER_TEXT!r}")
+        return FILLER_TEXT
+    if f["type"] in ("number", "integer") and re.search(COUNT_NAME, name, re.I):
+        if warnings is not None:
+            warnings.append(f"{where}.{name} is a required count with no role: sent as 0")
+        return 0
+    if warnings is not None:
+        warnings.append(f"{where}.{name} ({f['type']}{', ' + f['format'] if f.get('format') else ''}) is required and has no role: not sent")
+    return None
+
+
+def _api_tool(api, tool, body_defaults, description="", max_retries=0, pre=None, post=None, model_fields=(), warnings=None):
+    """A Freya api_call tool generated from the contract. body_defaults: field -> default; model_fields are left to the model.
+    A tool without model_fields is run by the engine; required fields with no role are filled by _extra_required."""
     c = api["tools"][tool]
     props, required = {}, []
+    engine = not model_fields
     for f in c["fields"]:
         name = f["name"]
         leaf = {"type": f["type"] if f["type"] in ("string", "number", "integer", "boolean") else "string"}
@@ -129,6 +160,11 @@ def _api_tool(api, tool, body_defaults, description="", max_retries=0, pre=None,
             leaf["default"] = body_defaults[name]
         elif name in model_fields:
             leaf["default"] = "{{" + name + "}}"
+        elif f["required"]:
+            extra = _extra_required(c, f, engine, model_fields, warnings)
+            if extra is None:
+                continue
+            leaf["default"] = extra
         else:
             continue  # optional field we do not use
         props[name] = leaf
@@ -398,39 +434,39 @@ if (_n.isdigit() and not (_v.isdigit() and len(_v) == int(_n))) or (_f == 'date'
 """, FORMATS=fmt_by_value, ORDERS=order_by_value or {}, FIELD_ROLE=field_role, ANSWER_ROLE=answer_role)
 
 
-def hook_verify_post(questions, swapped_value, swapped_instruction, failed_message):
-    return _join("""
+def hook_verify_post(questions, swapped_value, swapped_instruction, failed_message, names=None):
+    return _names("""
 try:
     d = result.get('data') if isinstance(result, dict) else None
     d = d if isinstance(d, dict) else {}
     true = lambda x: str(x).lower() == 'true'
-    left = d.get('wrong_answers_left')
+    left = d.get(@LEFT@)
     asked = str(vars.get('verify_sent') or '').split('=')[0]
     nxt = ''
     for i, q in enumerate(QUESTIONS):
         if q['api_value'] == asked and i + 1 < len(QUESTIONS):
             nxt = QUESTIONS[i + 1]['ask']
-    if true(d.get('verified')) and asked:
+    if true(d.get(@VERIFIED@)) and asked:
         vars['idok__' + asked] = 'yes'
     every = all(str(vars.get('idok__' + q['api_value']) or '') == 'yes' for q in QUESTIONS)
-    if true(d.get('all_verified')) or (d.get('all_verified') is None and true(d.get('verified')) and every):
+    if true(d.get(@ALL@)) or (d.get(@ALL@) is None and true(d.get(@VERIFIED@)) and every):
         vars['id_state'] = 'all'
         msg = 'Identity verified. The system continues now.'
-    elif SWAPPED and str(d.get('hint')) == SWAPPED:
+    elif SWAPPED and str(d.get(@HINT@)) == SWAPPED:
         vars['id_state'] = 'swapped'
         msg = 'Not verified yet. ' + SWAPPED_INSTRUCTION
-    elif d.get('hint') and not true(d.get('verified')) and str(left) not in ('0', '0.0'):
+    elif d.get(@HINT@) and not true(d.get(@VERIFIED@)) and str(left) not in ('0', '0.0'):
         # a hint the brief does not describe (e.g. day and month swapped): the service did not count it; never report it as wrong
-        vars['id_state'] = 'hint'
-        msg = ('Not verified yet, and not counted as a wrong answer: the service says "' + str(d.get('hint')).replace('_', ' ') +
+        vars['id_state'] = @HINT@
+        msg = ('Not verified yet, and not counted as a wrong answer: the service says "' + str(d.get(@HINT@)).replace('_', ' ') +
                '". Ask for the same answer again in a way that removes the doubt (for a date: the month as a word).')
-    elif str(left) in ('0', '0.0') or 'over' in str(d.get('error', '')):
+    elif str(left) in ('0', '0.0') or 'over' in str(d.get(@ERROR@, '')):
         vars['id_state'] = 'locked'
         msg = 'Too many wrong answers. Do not state any debt. Say: ' + FAILED_MESSAGE
-    elif true(d.get('verified')):
+    elif true(d.get(@VERIFIED@)):
         vars['id_state'] = 'next'
         msg = 'That answer is correct. Now ask the next question: ' + nxt if nxt else 'That answer is correct.'
-    elif not true(d.get('ok', 'true')):
+    elif not true(d.get(@OK@, 'true')):
         vars['id_state'] = 'unreadable'
         msg = 'The answer could not be read (not counted). Ask the same question again, clearly.'
     else:
@@ -442,7 +478,8 @@ try:
         result.pop('header', None)
 except Exception:
     pass
-""", QUESTIONS=questions, SWAPPED=swapped_value or "", SWAPPED_INSTRUCTION=swapped_instruction or "", FAILED_MESSAGE=failed_message or "")
+""", _response_names("verify_identity", names), QUESTIONS=questions, SWAPPED=swapped_value or "", SWAPPED_INSTRUCTION=swapped_instruction or "",
+       FAILED_MESSAGE=failed_message or "")
 
 
 def hook_callback_pre(roles):
@@ -467,14 +504,14 @@ HOOK_CALLBACK_POST = """
 try:
     d = result.get('data') if isinstance(result, dict) else None
     d = d if isinstance(d, dict) else {}
-    if str(d.get('ok')).lower() == 'true':
+    if @SUCCESS@:
         st = get_state(vars)
         st['contact'] = 'callback'
         put_state(vars, st)
         vars['cb_done'] = 'yes'
         d['what_to_do_next'] = 'Callback booked. The system closes the call now.'
     else:
-        d['what_to_do_next'] = 'Not booked (' + str(d.get('error')) + '). Ask for another time.'
+        d['what_to_do_next'] = 'Not booked (' + str(d.get(@ERROR@)) + '). Ask for another time.'
     if isinstance(result, dict):
         result['data'] = d
         result.pop('header', None)
@@ -576,7 +613,7 @@ try:
     d = d if isinstance(d, dict) else {}
     pid = str(vars.get('cur_pid') or '')
     vars['rec_attempted'] = str(vars.get('rec_attempted') or '') + ' ' + pid
-    if str(d.get('ok')).lower() == 'true' and pid:
+    if @SUCCESS@ and pid:
         vars['pr__' + pid] = json.dumps([num(vars.get('cur_amount')), str(vars.get('cur_date'))])
         vars['oc__' + pid] = ''
     elif pid:
@@ -691,12 +728,12 @@ HOOK_TRANSFER_POST = """
 try:
     d = result.get('data') if isinstance(result, dict) else None
     d = d if isinstance(d, dict) else {}
-    if str(d.get('ok')).lower() == 'true':
+    if @SUCCESS@:
         vars['transfer_done'] = 'yes'
         d['what_to_do_next'] = 'Transfer started. The system says goodbye now.'
     else:
         vars['tr__'] = ''
-        d['what_to_do_next'] = 'Transfer failed (' + str(d.get('error')) + '). Tell the customer and continue.'
+        d['what_to_do_next'] = 'Transfer failed (' + str(d.get(@ERROR@)) + '). Tell the customer and continue.'
     if isinstance(result, dict):
         result['data'] = d
         result.pop('header', None)
@@ -720,13 +757,55 @@ try:
     config['body'] = b
 except Exception:
     pass
-""", R_OUT=roles["close_outcome"], R_REASON=roles["close_reason"])
+""" if roles.get("close_reason") else """
+try:
+    st = get_state(vars)
+    out, reason = outcome_fold(st, CFG)
+    b = config.get('body') if isinstance(config.get('body'), dict) else {}
+    b[R_OUT] = out
+    config['body'] = b
+except Exception:
+    pass
+""", R_OUT=roles["close_outcome"], R_REASON=roles.get("close_reason") or "")
 
 
 def _join(template, **consts):
     """Prefix a hook template with constant definitions (repr literals contain no double braces for our data)."""
     head = "".join(f"{k} = {v!r}\n" for k, v in consts.items())
     return head + template
+
+
+# Response field names the hooks read when the API does not say otherwise (the kit's names).
+RESPONSE_DEFAULTS = {"ok": "ok", "error": "error", "verified": "verified", "wrong_answers_left": "wrong_answers_left",
+                     "all_verified": "all_verified", "hint": "hint"}
+# Success when the response schema has no success flag: an HTTP 2xx without an error and without an explicit false flag.
+SUCCESS_2XX = ("(str(result.get('status_code') or (200 if result.get('status') == 'success' else 0))[:1] == '2' and not d.get(@ERROR@) "
+               "and 'false' not in (str(d.get('ok')).lower(), str(d.get('success')).lower()))")
+
+
+def _response_names(tool, names):
+    """Placeholder -> literal for a hook template, from roles['responses'][tool] (absent roles keep the default name;
+    an absent success flag becomes the HTTP 2xx test)."""
+    ok = RESPONSE_DEFAULTS["ok"] if names is None else names.get("ok")   # None: roles from before response roles existed
+    names = names or {}
+    got = {k: names.get(k) or v for k, v in RESPONSE_DEFAULTS.items()}
+    success = ("str(d.get(" + repr(ok) + ")).lower() == 'true'") if ok else SUCCESS_2XX
+    return {"@SUCCESS@": success.replace("@ERROR@", repr(got["error"])), "@OK@": repr(got["ok"]), "@ERROR@": repr(got["error"]),
+            "@VERIFIED@": repr(got["verified"]), "@LEFT@": repr(got["wrong_answers_left"]), "@ALL@": repr(got["all_verified"]),
+            "@HINT@": repr(got["hint"])}
+
+
+def _names(template, mapping, **consts):
+    """_join after replacing @NAME@ placeholders with the API's response field names (as Python literals)."""
+    for k, v in mapping.items():
+        template = template.replace(k, v)
+    if "@" in template.replace("'@'", ""):
+        raise CompileError("unfilled response-name placeholder in a hook")
+    return _join(template, **consts)
+
+
+def response_hook(template, tool, roles):
+    return _names(template, _response_names(tool, (roles.get("responses") or {}).get(tool)))
 
 
 def _hook(cfg, body):
@@ -783,9 +862,28 @@ def _strip_absent_tools(wf, absent):
     return wf
 
 
+NEEDED_ROLES = {"customer_id": None, "verify_field": "verify_identity", "verify_answer": "verify_identity",
+                "promise_product": "create_promise", "promise_amount": "create_promise", "promise_date": "create_promise",
+                "close_outcome": "close_call", "transfer_queue": "transfer_to_agent", "note_product": "add_note", "note_reason": "add_note"}
+
+
+def missing_roles(api, roles):
+    """Roles the compiler cannot build without, as sentences (an absent optional tool needs none of its roles)."""
+    out = [f"{r} (tool {t or 'all'})" for r, t in NEEDED_ROLES.items() if not roles.get(r) and (t is None or t in api["tools"])]
+    if "schedule_callback" in api["tools"] and not (roles.get("callback_datetime") or (roles.get("callback_date") and roles.get("callback_time"))):
+        out.append("callback date and time (tool schedule_callback)")
+    out += [f"product {r} (get_account)" for r in ("product_id", "past_due", "days_late") if not (roles.get("product_fields") or {}).get(r)]
+    if not roles.get("products_key"):
+        out.append("products array (get_account)")
+    return out
+
+
 def compile_workflow(ir, api, roles, warnings=None):
     if api["missing_tools"]:
         raise CompileError(f"tool API lacks {api['missing_tools']}")
+    lost = missing_roles(api, roles)
+    if lost:
+        raise CompileError("the tool API's fields for these roles were not recognised: " + "; ".join(lost))
     absent = [t for t in ot.OPTIONAL_TOOLS if t not in api["tools"]]
     if absent:
         ir, api, roles = _stub_absent_tools(ir, api, roles, absent)
@@ -797,6 +895,10 @@ def compile_workflow(ir, api, roles, warnings=None):
 
 def _compile(ir, api, roles, warnings=None):
     cfg = runtime_config(ir, api, roles)
+    tool_warnings = []
+
+    def api_tool(*args, **kw):
+        return _api_tool(*args, warnings=tool_warnings, **kw)
     cv = {k: clean_var(v, "") for k, v in (ir.get("call_variables") or {}).items()}
     cv = {k: v for k, v in cv.items() if v}
     cust = "{{" + cv.get("customer_id", "customer_id") + "}}"
@@ -880,8 +982,8 @@ def _compile(ir, api, roles, warnings=None):
             "Today is {{today_spoken}}. Weekday reference:\n{{relative_dates}}\n"
             "When the person names a day and time when the customer can be reached, call schedule_callback with the date (YYYY-MM-DD) and time (HH:MM, 24-hour).\n"
             "Other tools: transition_to_close_no_callback (no acceptable time after the one re-ask), transition_to_close_wrong_number, transition_to_close_deceased."),
-        "tools": [_api_tool(api, "schedule_callback", cb_fields, "Book a callback for the customer. CALL it as soon as a day and a time are given.",
-                            pre=_hook(cfg, hook_callback_pre(roles)), post=_hook(cfg, HOOK_CALLBACK_POST), model_fields=cb_model)],
+        "tools": [api_tool(api, "schedule_callback", cb_fields, "Book a callback for the customer. CALL it as soon as a day and a time are given.",
+                            pre=_hook(cfg, hook_callback_pre(roles)), post=_hook(cfg, response_hook(HOOK_CALLBACK_POST, "schedule_callback", roles)), model_fields=cb_model)],
         "max_node_turns": 12, "max_turn_transition": "close_no_callback",
         "transitions": [_when("cb_done", "yes", "goodbye_plain", "callback booked"),
                         _tool_transition("close_no_callback", "No acceptable callback time was given after asking once more"),
@@ -894,10 +996,11 @@ def _compile(ir, api, roles, warnings=None):
     date_note = ""
     if order_by_value:
         date_note = " (dates as YYYY-MM-DD; " + ("month before day" if "MDY" in order_by_value.values() else "day before month") + " when said only as numbers)"
-    verify_tool = _api_tool(api, "verify_identity", {roles["customer_id"]: cust},
+    verify_tool = api_tool(api, "verify_identity", {roles["customer_id"]: cust},
                             "Check ONE security answer. CALL it every time the customer gives an answer, with the question's field and the answer exactly as said" + date_note + ".",
                             pre=_hook(cfg, hook_verify_pre(fmt_by_value, roles["verify_field"], roles["verify_answer"], order_by_value)),
-                            post=_hook(cfg, hook_verify_post(idn["questions"], idn.get("swapped_hint_value"), idn.get("swapped_instruction"), idn.get("failed_message"))),
+                            post=_hook(cfg, hook_verify_post(idn["questions"], idn.get("swapped_hint_value"), idn.get("swapped_instruction"), idn.get("failed_message"),
+                                                          names=(roles.get("responses") or {}).get("verify_identity"))),
                             model_fields=[roles["verify_field"], roles["verify_answer"]])
     qlist = "\n".join(f"{i + 1}. field {q['api_value']}: \"{q['ask']}\"" for i, q in enumerate(idn["questions"]))
     nodes["customer_confirmed"] = _code_node("customer_confirmed", cfg, entry_set(contact="customer"), [_always("verify")])
@@ -936,7 +1039,7 @@ def _compile(ir, api, roles, warnings=None):
     # ---- account
     nodes[ACCOUNT_NODE] = {"name": ACCOUNT_NODE, "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "account",
                            "on_enter": {"type": "silent"}, "disable_inactivity_monitor": True,
-                           "pre_actions": [_api_tool(api, "get_account", {roles["customer_id"]: cust}, max_retries=2)],
+                           "pre_actions": [api_tool(api, "get_account", {roles["customer_id"]: cust}, max_retries=2)],
                            "response_mapping": [], "transitions": [_always("account")]}
     nodes["account"] = _code_node("account", cfg, ENTRY_ACCOUNT, [_always("negotiate")])
     # ---- negotiation
@@ -960,11 +1063,11 @@ def _compile(ir, api, roles, warnings=None):
             "product_id": {"type": "string", "description": "product id, for example p1"},
             "outcome": {"type": "string", "enum": outcomes_enum, "description": "One of: " + ", ".join(outcomes_enum)}},
             "required": ["product_id", "outcome"]}}}
-    transfer_tool = _api_tool(api, "transfer_to_agent", {roles["customer_id"]: cust},
+    transfer_tool = api_tool(api, "transfer_to_agent", {roles["customer_id"]: cust},
                               "Hand the call to a person. CALL it for: restructuring request (queue " + ir["transfer_queues"].get("restructuring", "") +
                               "), customer accepted the support team after hardship (queue " + ir["transfer_queues"].get("support", "") +
                               "), customer insists on a human (queue " + ir["transfer_queues"].get("human", "") + ").",
-                              pre=_hook(cfg, hook_transfer_pre(roles)), post=_hook(cfg, HOOK_TRANSFER_POST), model_fields=[roles["transfer_queue"]])
+                              pre=_hook(cfg, hook_transfer_pre(roles)), post=_hook(cfg, response_hook(HOOK_TRANSFER_POST, "transfer_to_agent", roles)), model_fields=[roles["transfer_queue"]])
     acct = api["tools"]["get_account"]
     check_tool = {"type": "function", "config": {"timeoutMs": 8000, "maxRetries": 0},
                   "function": {"name": "check_date", "handler": "__function__:api_call",
@@ -1035,7 +1138,7 @@ def _compile(ir, api, roles, warnings=None):
     # ---- sequential recording (no model involvement, verified: re-entry re-bakes values; engine retries HTTP 500)
     nodes["record_next"] = _code_node("record_next", cfg, ENTRY_RECORD_NEXT, [_when("rec_go", "yes", "write_promise", "record one promise"), _always("post_record")])
     rec_body = {roles["customer_id"]: cust, roles["promise_product"]: "{{cur_pid}}", roles["promise_amount"]: "{{cur_amount}}", roles["promise_date"]: "{{cur_date}}"}
-    rec_tool = _api_tool(api, "create_promise", rec_body, max_retries=int(rec.get("retries_after_failure", 1)), post=_hook(cfg, HOOK_RECORD_POST))
+    rec_tool = api_tool(api, "create_promise", rec_body, max_retries=int(rec.get("retries_after_failure", 1)), post=_hook(cfg, response_hook(HOOK_RECORD_POST, "create_promise", roles)))
     for f in api["tools"]["create_promise"]["fields"]:
         if f["name"] == roles["promise_amount"]:
             rec_tool["function"]["parameters"]["properties"]["body"]["properties"][f["name"]]["type"] = "number"
@@ -1066,7 +1169,7 @@ def _compile(ir, api, roles, warnings=None):
         note_body = {roles["customer_id"]: cust, roles["note_product"]: "{{note_pid}}", roles["note_reason"]: "{{note_reason}}"}
         nodes["write_note"] = {"name": "write_note", "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "note_next",
                                "on_enter": {"type": "silent"}, "disable_inactivity_monitor": True,
-                               "pre_actions": [_api_tool(api, "add_note", note_body, max_retries=1)], "response_mapping": [],
+                               "pre_actions": [api_tool(api, "add_note", note_body, max_retries=1)], "response_mapping": [],
                                "transitions": [_always("note_next")]}
     else:
         nodes["note_next"]["transitions"] = [_when("has_promise", "yes", "goodbye_promise", "a promise was recorded"), _always("goodbye_plain")]
@@ -1081,7 +1184,7 @@ def _compile(ir, api, roles, warnings=None):
     human_q = ir["transfer_queues"].get("human")
     nodes["transfer_human"] = {"name": "transfer_human", "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "goodbye_transfer",
                                "on_enter": {"type": "silent"}, "disable_inactivity_monitor": True,
-                               "pre_actions": [_api_tool(api, "transfer_to_agent", {roles["customer_id"]: cust, roles["transfer_queue"]: human_q},
+                               "pre_actions": [api_tool(api, "transfer_to_agent", {roles["customer_id"]: cust, roles["transfer_queue"]: human_q},
                                                          pre=_hook(cfg, hook_transfer_pre(roles)))],
                                "response_mapping": [], "transitions": [_always("goodbye_transfer")]}
     farewell = fs.get("farewell", "Thank you for your time. Goodbye.")
@@ -1092,8 +1195,10 @@ def _compile(ir, api, roles, warnings=None):
     nodes["goodbye_deceased"] = _end_node("goodbye_deceased", "ended_deceased", (fs.get("deceased", "") + " Goodbye.").strip())
     nodes["goodbye_transfer"] = _end_node("goodbye_transfer", "ended_transferred", "I am connecting you now. " + farewell)
 
-    close = _api_tool(api, "close_call", {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}", roles["close_reason"]: "{{close_reason}}"},
-                      pre=_hook(cfg, hook_close_pre(roles)))
+    close_body = {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}"}
+    if roles.get("close_reason"):
+        close_body[roles["close_reason"]] = "{{close_reason}}"
+    close = api_tool(api, "close_call", close_body, pre=_hook(cfg, hook_close_pre(roles)))
     close["config"]["alwaysRunsAt"] = ["end_of_call"]
     vn = var_names(ir)
 
@@ -1109,4 +1214,6 @@ def _compile(ir, api, roles, warnings=None):
             n["on_enter"]["text"] = fill_prompt(n["on_enter"]["text"])
     test_vars = {cv[k]: v for k, v in {"customer_id": "c_test", "first_name": "Daniel", "last_name": "Reyes", "title": "Mr", "now": "2026-10-14T11:00"}.items() if k in cv}
     test_vars.update({x: "Example " + x.replace("_", " ") for x in others if x not in test_vars})   # declared variables only
+    if warnings is not None:
+        warnings.extend(w for w in dict.fromkeys(tool_warnings) if w not in warnings)
     return {"initial_node": "init", "system_prompt": system_prompt, "nodes": nodes, "global_nodes": {}, "tools": [close], "test_variables": test_vars}
