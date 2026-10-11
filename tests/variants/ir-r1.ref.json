@@ -10,6 +10,7 @@
   "title": "salutation",
   "now": "call_time"
  },
+ "other_call_variables": [],
  "opening": {
   "first_sentence": "Good day, this is Kestrel Credit Union's automated assistant. This call may be recorded.",
   "identity_question": "May I speak to <title> <last_name>, please?",

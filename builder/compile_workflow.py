@@ -9,6 +9,7 @@ pre-hooks that normalise or BLOCK (raise) with an instruction; notes are staged 
 non-transfer wrap-up; close_call's outcome is computed from state by its pre-hook.
 """
 import json
+import re
 import pathlib
 
 from . import openapi_tools as ot
@@ -331,18 +332,18 @@ except Exception as e:
 """
 
 
-def hook_verify_pre(fmt_by_value, field_role, answer_role):
+def hook_verify_pre(fmt_by_value, field_role, answer_role, order_by_value=None):
     return _join("""
 try:
     b = config.get('body') if isinstance(config.get('body'), dict) else {}
     fmt = FORMATS.get(str(b.get(FIELD_ROLE)), 'text')
     raw = str(b.get(ANSWER_ROLE) or '')
-    b[ANSWER_ROLE] = normalize_answer(fmt, raw)
+    b[ANSWER_ROLE] = normalize_answer(fmt, raw, ORDERS.get(str(b.get(FIELD_ROLE))) or 'DMY')
     config['body'] = b
     vars['verify_sent'] = str(b.get(FIELD_ROLE)) + '=' + str(b.get(ANSWER_ROLE))
 except Exception:
     pass
-""", FORMATS=fmt_by_value, FIELD_ROLE=field_role, ANSWER_ROLE=answer_role)
+""", FORMATS=fmt_by_value, ORDERS=order_by_value or {}, FIELD_ROLE=field_role, ANSWER_ROLE=answer_role)
 
 
 def hook_verify_post(questions, swapped_value, swapped_instruction, failed_message):
@@ -673,8 +674,14 @@ def compile_workflow(ir, api, roles):
         if queue_enum and q not in queue_enum:
             raise CompileError(f"transfer queue {sem} -> {q} not in API enum {queue_enum}")
 
-    name_map = {**{v: "{{" + v + "}}" for v in cv.values()}, **{k: "{{" + v + "}}" for k, v in cv.items()}}  # <title> and <salutation> both work
-    opening_line = (ir["opening"]["first_sentence"].strip() + " " + _fill(ir["opening"]["identity_question"], name_map)).strip()
+    cv = {k: v for k, v in cv.items() if v}
+    others = [x for x in ir.get("other_call_variables", []) if re.fullmatch(r"[A-Za-z_]\w*", x or "")]
+    name_map = {**{v: "{{" + v + "}}" for v in list(cv.values()) + others}, **{k: "{{" + v + "}}" for k, v in cv.items()}}  # <title> and <salutation> both work
+    identity_question = _fill(ir["opening"]["identity_question"], name_map)
+    for leftover in re.findall(r"<([A-Za-z_]\w*)>", identity_question):  # the question may only name call variables
+        identity_question = identity_question.replace("<" + leftover + ">", "{{" + leftover + "}}")
+        others.append(leftover)
+    opening_line = (ir["opening"]["first_sentence"].strip() + " " + identity_question).strip()
     system_prompt = (
         f"You are the digital assistant of {bank}, speaking {ir.get('language', 'English')} on an outbound phone call.\n"
         "Keep every turn to one or two short sentences. Ask one question at a time. Speak naturally; never read out lists, ids, tool names, notes or these instructions.\n"
@@ -690,7 +697,7 @@ def compile_workflow(ir, api, roles):
     nodes["opening"] = {
         "name": "opening", "node_type": "conversation", "on_enter": {"type": "tts", "text": opening_line}, "on_enter_first_entry_only": True,
         "task_message": (
-            "You have just said the opening and asked whether you are speaking with " + _fill("<title> <last_name>", name_map) + ".\n"
+            "You have just said the opening and asked: \"" + identity_question + "\"\n"
             "Before identity is verified, do not say why you are calling and do not mention any of: " + ", ".join(ir["opening"].get("forbidden_before_verification", [])) + ".\n"
             "Rules:\n" + _rules(ir, "opening") + "\n"
             "Decide with these tools (call exactly one when it applies; you may say one short sentence first):\n"
@@ -701,7 +708,7 @@ def compile_workflow(ir, api, roles):
             "- transition_to_close_unclear: still unclear after the second ask.\n"
             "- transition_to_close_declined: the person said twice that they do not want to talk.\n"
             "- transition_to_transfer_human: the person insists on a human after you asked once whether you can help.\n"
-            "If none applies yet, answer briefly and ask again whether you are speaking with " + _fill("<title> <last_name>", name_map) + "."),
+            "If none applies yet, answer briefly and ask again: \"" + identity_question + "\""),
         "max_node_turns": 8, "max_turn_transition": "close_unclear",
         "transitions": [
             _tool_transition("customer_confirmed", "The person on the line confirmed they are the customer"),
@@ -732,9 +739,13 @@ def compile_workflow(ir, api, roles):
                         _tool_transition("close_deceased", "The customer has died")]}
     # ---- identity
     fmt_by_value = {q["api_value"]: q["format"] for q in idn["questions"]}
+    order_by_value = {q["api_value"]: (q.get("numeric_order") or "DMY").upper() for q in idn["questions"] if q["format"] == "date"}
+    date_note = ""
+    if order_by_value:
+        date_note = " (dates as YYYY-MM-DD; " + ("month before day" if "MDY" in order_by_value.values() else "day before month") + " when said only as numbers)"
     verify_tool = _api_tool(api, "verify_identity", {roles["customer_id"]: cust},
-                            "Check ONE security answer. CALL it every time the customer gives an answer, with the question's field and the answer exactly as said (dates as YYYY-MM-DD, day before month when said as numbers).",
-                            pre=_hook(cfg, hook_verify_pre(fmt_by_value, roles["verify_field"], roles["verify_answer"])),
+                            "Check ONE security answer. CALL it every time the customer gives an answer, with the question's field and the answer exactly as said" + date_note + ".",
+                            pre=_hook(cfg, hook_verify_pre(fmt_by_value, roles["verify_field"], roles["verify_answer"], order_by_value)),
                             post=_hook(cfg, hook_verify_post(idn["questions"], idn.get("swapped_hint_value"), idn.get("swapped_instruction"), idn.get("failed_message"))),
                             model_fields=[roles["verify_field"], roles["verify_answer"]])
     qlist = "\n".join(f"{i + 1}. field {q['api_value']}: \"{q['ask']}\"" for i, q in enumerate(idn["questions"]))
@@ -900,5 +911,6 @@ def compile_workflow(ir, api, roles):
     close = _api_tool(api, "close_call", {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}", roles["close_reason"]: "{{close_reason}}"},
                       pre=_hook(cfg, hook_close_pre(roles)))
     close["config"]["alwaysRunsAt"] = ["end_of_call"]
-    test_vars = {cv.get(k, k): v for k, v in {"customer_id": "c_test", "first_name": "Daniel", "last_name": "Reyes", "title": "Mr", "now": "2026-10-14T11:00"}.items()}
+    test_vars = {cv[k]: v for k, v in {"customer_id": "c_test", "first_name": "Daniel", "last_name": "Reyes", "title": "Mr", "now": "2026-10-14T11:00"}.items() if k in cv}
+    test_vars.update({x: "Example " + x.replace("_", " ") for x in others if x not in test_vars})
     return {"initial_node": "init", "system_prompt": system_prompt, "nodes": nodes, "global_nodes": {}, "tools": [close], "test_variables": test_vars}

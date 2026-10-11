@@ -342,9 +342,9 @@ def normalize_date_answer(text, order="DMY"):
         return str(text)
 
 
-def normalize_answer(fmt, text):
+def normalize_answer(fmt, text, order="DMY"):
     if fmt == "date":
-        return normalize_date_answer(text)
+        return normalize_date_answer(text, "MDY" if str(order).upper() == "MDY" else "DMY")
     if fmt.startswith("digits"):
         digits = words_to_digits(text)
         return digits or str(text)

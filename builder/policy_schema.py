@@ -30,6 +30,7 @@ def schema():
     return _o({
         "bank_name": S, "language": S, "currency_word": S,
         "call_variables": _o({k: S for k in ("customer_id", "first_name", "last_name", "title", "now")}),
+        "other_call_variables": SL,
         "opening": _o({"first_sentence": S, "identity_question": S, "accepted_confirmations": SL, "not_confirmations": SL,
                        "max_asks": I, "forbidden_before_verification": SL}),
         "identity": _o({"questions": {"type": "array", "items": _o({"api_value": S, "ask": S, "format": S, "numeric_order": S})},

@@ -10,6 +10,7 @@
   "title": "title",
   "now": "now"
  },
+ "other_call_variables": [],
  "opening": {
   "first_sentence": "Hello, this is the digital assistant of Freya Bank calling. This call is recorded.",
   "identity_question": "Am I speaking with <title> <last_name>?",

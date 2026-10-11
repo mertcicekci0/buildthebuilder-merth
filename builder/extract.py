@@ -19,7 +19,9 @@ confirmation -> recording promises -> notes for products without a promise -> tr
 You supply the POLICY: every number, name, sentence, calendar and rule, taken only from the brief and the tool API.
 
 Field meanings:
-- call_variables: the names of the call variables the brief lists for: customer id, first name, last name, title, current date-time ("now").
+- language: a language name, e.g. "English". accepted_confirmations / not_confirmations: literal phrases, with <...> only for call variables.
+- A sentence the brief only describes (not quotes): write the shortest natural sentence that says exactly that and adds nothing.
+- call_variables: the names of the call variables the brief lists for: customer id, first name, last name, title, current date-time ("now"); "" for a role the brief has no variable for. other_call_variables: the names of any further call variables the brief lists (e.g. a company name), [] if none.
 - opening.first_sentence: the agent's exact first sentence satisfying every opening requirement (who it is, which bank, recording disclosure...). Do not mention the purpose if the brief forbids it before verification.
 - opening.identity_question: the question confirming the person, with <variable> placeholders for call variables, e.g. "<title> <last_name>" if the brief says so.
 - opening.forbidden_before_verification: words/topics that must not be said before identity is verified.
@@ -37,7 +39,12 @@ Field meanings:
 - outcomes: map each semantic outcome to the close_call outcome value of THIS API, and each semantic reason (reasons, note_reasons) to the exact API/brief value. If the brief names outcomes with codes (a code list), map them to the API's values. reasons.<key> is the reason sent with close_call in that situation: "" when the brief lists no reason for it (e.g. an outcome whose table row has no reason) or has no such situation. If the brief closes a situation under a different outcome than its name suggests (e.g. "already paid" closed as no_promise with reason X), put that outcome value in outcomes.<key> and X in reasons.<key>.
 - recording: retries after a failed write (e.g. "try once more" = 1), the exact sentence required after a recorded promise, the read-back question.
 - fixed_sentences: exact sentences the brief requires (deceased condolence, robot/AI answer, scam answer, already-paid explanation, farewell). Use the brief's wording when it gives one.
-- stage_rules: the brief's rules rewritten as short imperative instructions for the phone agent, grouped by stage. Include EVERY behavioural rule, including ones the fields above already encode (the agent needs the wording). Keep the brief's numbers and quoted phrases. Never add rules the brief does not state.
+- stage_rules: the brief's rules rewritten as short imperative instructions for the phone agent, grouped by stage. Include EVERY behavioural rule, including ones the fields above already encode (the agent needs the wording). Keep the brief's numbers, qualifiers ("both included", "in total", "once", "second", "before and after", "later than") and quoted phrases. Never add rules the brief does not state. How to write them:
+  * The phone agent never sees the brief: no rule or section numbers, no "the brief", "Brief X" or "rule 30"; replace every cross-reference with the behaviour it points to. Leave out statements about tools that are not used.
+  * Describe actions by effect, not by tool or parameter names: "transfer to the restructuring queue", "end the call as <outcome> / <reason>", "record the promise", "mark this product as dispute". The compiler gives each stage its own tools.
+  * Say what each ending ends: the whole call, or only the current product. When several products are possible, product-level endings read "mark this product as <reason> and continue with the next product".
+  * Apply precedence everywhere: when a later rule (memo, amendment, multi-product section) replaces an earlier one only in some situations, rewrite every stage rule that still states the earlier behaviour as an explicit "With one product: ... With several products: ..." (or "Before ...: ... After ...: ..."). No superseded wording may remain unconditional in any stage.
+  * Stages that are shown to the agent together must not contradict each other: "always" is in every stage; negotiation, multi_product, confirmation and recording form one prompt.
 - evidence: for each important value (bands, holidays, deadlines, floors, callback window, outcomes, identity questions, required sentences), the path and a SHORT VERBATIM quote copied character for character from the brief.
 - precedence: when a later memo, amendment or notice changes an earlier rule, record both quotes and why the later one governs. Use the governing rule everywhere.
 - unmapped_rules: brief rules you could not express anywhere above (should be rare; they are still put in stage_rules).
@@ -74,8 +81,15 @@ def extract(llm, brief_text, api, roles, trace, max_repairs=2):
 
 AUDIT TASK: another reader produced the IR below. Re-read the whole brief sentence by sentence. For every rule, number,
 date, name, sentence or exception: is it in the IR, correct, and does the latest governing version win (memos,
-amendments, code lists)? List every problem with a verbatim quote, then return the full corrected IR. Change nothing
-that is correct. Empty changes list if the IR is right.""",
+amendments, code lists)? In particular:
+(a) every numbered or bulleted rule of the brief is carried by a field or a stage rule; a rule with no carrier is an omission;
+(b) qualifiers survive rule by rule: bounds, "in total", "whichever", "once", "second", "before and after", "later than", priorities;
+(c) every precedence entry is applied in stage_rules too: no superseded wording left unconditional (e.g. a one-product
+    ending that ends the whole call, next to a several-products rule that says to continue with the next product);
+(d) no two rules shown to the agent together give different actions for the same situation;
+(e) stage rules follow the writing rules above (no rule numbers, no tool names, endings say call or product).
+List every problem with a verbatim quote, then return the full corrected IR. Change nothing that is correct.
+Empty changes list if the IR is right.""",
                          base + "\n\nIR TO AUDIT:\n" + json.dumps(ir, indent=1), audit_schema)
     changes = audit.get("changes", [])
     trace.step(f"audit pass: {len(changes)} change(s)", changes=changes)

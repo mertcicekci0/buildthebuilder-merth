@@ -70,3 +70,28 @@ def test_postcode_said_in_words_is_normalised():
     exec((ROOT / "builder/runtime_src.py").read_text(), ns)
     assert ns["normalize_answer"]("upper_nospace", "S W one A, one A A") == "SW1A1AA"
     assert ns["normalize_answer"]("digits4", "nineteen eighty-eight") == "1988"
+
+
+def test_month_first_dates_follow_the_brief():
+    ir = copy.deepcopy(IR)
+    ir["identity"]["questions"][1] = {"api_value": "year_of_birth", "ask": "Your date of birth?", "format": "date", "numeric_order": "MDY"}
+    wf = compiled(ir)
+    tool = [t for t in wf["nodes"]["verify"]["tools"] if t["function"]["name"] == "verify_identity"][0]
+    assert "month before day" in tool["function"]["description"]
+    body = le.run_pre(tool, {}, {"customer_id": "c1", "field": "year_of_birth", "answer": "03/04/1988"})
+    assert body["answer"] == "1988-03-04"
+    ir["identity"]["questions"][1]["numeric_order"] = "DMY"
+    tool = [t for t in compiled(ir)["nodes"]["verify"]["tools"] if t["function"]["name"] == "verify_identity"][0]
+    assert le.run_pre(tool, {}, {"customer_id": "c1", "field": "year_of_birth", "answer": "03/04/1988"})["answer"] == "1988-04-03"
+
+
+def test_extra_call_variable_and_missing_title():
+    ir = copy.deepcopy(IR)
+    ir["call_variables"]["title"] = ""
+    ir["other_call_variables"] = ["company_name"]
+    ir["opening"]["identity_question"] = "Am I speaking with <first_name> <last_name> of <company_name>?"
+    wf = compiled(ir)
+    text = wf["nodes"]["opening"]["on_enter"]["text"]
+    assert text.endswith("Am I speaking with {{first_name}} {{last_name}} of {{company_name}}?") and "<" not in text
+    assert "company_name" in wf["test_variables"] and "" not in wf["test_variables"]
+    assert v.lint(wf, API) == []
