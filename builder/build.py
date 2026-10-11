@@ -219,7 +219,14 @@ def main():
     trace.start(brief=a.brief_path, brief_sha=sha(a.brief_path), tool_api=a.tool_api_path, api_sha=sha(a.tool_api_path), slot=slot,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
                 python=sys.version.split()[0], agent_sdk=_sdk_version(), commit=_git_commit(), started_before_s=round(time.time() - T0, 1))
+    # the phone-agent model is the event's (kit/freya.py AGENT_LLM); organisers may override it by env, so it is traced, never changed
+    trace.step("phone-agent model", agent_llm={"provider": os.environ.get("FREYA_AGENT_PROVIDER", "experimental-5"),
+                                                "model": os.environ.get("FREYA_AGENT_MODEL", "experimental-5")},
+               overridden=bool(os.environ.get("FREYA_AGENT_PROVIDER") or os.environ.get("FREYA_AGENT_MODEL")))
     status = "failed"
+    if not a.no_save and not os.environ.get("FREYA_API_KEY"):   # fail before the model calls, not after them
+        trace.end("failed", error="FREYA_API_KEY is not set")
+        raise SystemExit("FREYA_API_KEY is not set (source env.sh); nothing was built")
     try:
         brief = pathlib.Path(a.brief_path).read_text(encoding="utf-8", errors="replace")
         api = ot.load(a.tool_api_path)

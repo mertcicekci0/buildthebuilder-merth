@@ -92,3 +92,31 @@ def test_partial_plan_key_ignores_item_order_and_bare_tens_blocks_once():
 def test_guide_defines_the_count_fields():
     for phrase in ("opening.max_asks:", "identity.refusals_before_close:", "alternative_asks (how many times"):
         assert phrase in extract.GUIDE
+
+
+def test_lint_flags_transitions_the_engine_would_merge_and_previous_outside_globals():
+    from builder import validate as v
+    api = ot.load(str(ROOT / "kit/tools/openapi.json"))
+    roles, _ = ot.infer_roles(api)
+    wf = cw.compile_workflow(copy.deepcopy(IR), api, roles, warnings=[])
+    assert v.lint(wf, api) == []
+    node = next(n for n in wf["nodes"].values() if len(n.get("transitions", [])) >= 2)
+    bad = copy.deepcopy(wf)
+    trs = next(n for n in bad["nodes"].values() if n["name"] == node["name"])["transitions"]
+    trs[1]["target_node"] = trs[0]["target_node"]
+    assert any("merged into one" in p for p in v.lint(bad, api))
+    bad = copy.deepcopy(wf)
+    next(n for n in bad["nodes"].values() if n["name"] == node["name"])["transitions"][0]["target_node"] = "__previous__"
+    assert any("unknown node __previous__" in p for p in v.lint(bad, api))
+
+
+def test_build_stops_before_model_calls_without_a_freya_key(tmp_path):
+    import os, subprocess
+    env = {k: x for k, x in os.environ.items() if k != "FREYA_API_KEY"}
+    env["BUILDER_TRACE_DIR"] = str(tmp_path)
+    r = subprocess.run([sys.executable, str(ROOT / "builder/build.py"), str(ROOT / "kit/briefs/brief-a.md"),
+                        str(ROOT / "kit/tools/openapi.json"), "--slot", "nokey-test"], env=env, capture_output=True, text=True, timeout=120)
+    assert r.returncode != 0 and "FREYA_API_KEY is not set" in (r.stderr + r.stdout)
+    rows = [json.loads(x) for x in (tmp_path / "nokey-test.jsonl").read_text().splitlines()]
+    assert not any(x.get("kind") == "model_call" for x in rows)
+    assert any(x.get("agent_llm") for x in rows)

@@ -46,7 +46,12 @@ def lint(wf, api=None):
     for path, v in _walk(wf):
         if v is None:
             problems.append(f"null value at {path}")
-    targets_ok = set(nodes) | {"__previous__"}
+    targets_ok = set(nodes)   # __previous__ only in global nodes (kit docs/workflow-format.md transition table)
+    for name, n in list(nodes.items()) + [(k, g) for k, g in (wf.get("global_nodes") or {}).items()]:
+        tg = [tr.get("target_node") for tr in n.get("transitions", [])]
+        dup = sorted({x for x in tg if tg.count(x) > 1})
+        if dup:   # the engine ORs same-target transitions at load time (workflow-format.md, routing step 2)
+            problems.append(f"{name}: several transitions to {dup} are merged into one by the engine")
     for name, n in nodes.items():
         t = n.get("node_type")
         if n.get("name") != name:
