@@ -1,5 +1,5 @@
 #!/bin/sh
-# Clean-checkout rehearsal of the official procedure (docs/SUBMISSION.md), fully automatic.
+# Clean-checkout rehearsal of the official procedure (docs/SUBMISSION.md), fully automatic. Uses the clone's devtools/final_run.sh when present.
 #   sh devtools/rehearse.sh <workdir> <commit> <name1> <brief1> <api1> [<name2> <brief2> <api2>]
 # Clones this repository at <commit> into <workdir>/repo (no .venv, no local state), copies the inputs to <workdir>/inputs/<name>.md
 # and <name>.openapi.json, runs `python3 builder/build.py ... | tee traces/<name>.log` for each brief with wall-clock timing,
@@ -17,6 +17,14 @@ while [ $# -ge 3 ]; do
 done
 cd "$W/repo" || exit 1
 mkdir -p traces submission
+if [ -f devtools/final_run.sh ]; then   # rehearse the exact final procedure (commit inside the throwaway clone only)
+  git config user.name rehearsal && git config user.email rehearsal@localhost
+  ARGS=""
+  for n in $NAMES; do ARGS="$ARGS ../inputs/$n.md ../inputs/$n.openapi.json"; done
+  sh devtools/final_run.sh --commit $ARGS 2>&1 | tee ../final_run.txt | grep "^\[final\]\|problem(s)" | tee ../timings.txt
+  grep "problem(s)" ../final_run.txt > ../verify.txt
+  exit 0
+fi
 for n in $NAMES; do
   s=$(date +%s)
   python3 builder/build.py "../inputs/$n.md" "../inputs/$n.openapi.json" 2>&1 | tee "traces/$n.log" > /dev/null
