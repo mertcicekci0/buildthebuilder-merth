@@ -1,0 +1,13 @@
+[2026-10-11T03:54:40+00:00 +   0.5s] START    builder run started brief=tests/variants/brief-r4-live.md brief_sha=8f0c43f828bb3796 tool_api=kit/tools/openapi.json api_sha=9a8410b12e5c82b6 slot=x-r4 builder_model=claude-opus-5-5 llm_backend=agent_sdk python=3.12.6 agent_sdk=0.2.165 commit=67f3070396a2a8e75e9ede631aa756d412bc1ab8 started_before_s=0.5
+[2026-10-11T03:54:40+00:00 +   0.5s] STEP     tool API parsed: 7 tools at https://freya-bank-mock.freyavoice.workers.dev/v1
+[2026-10-11T03:55:33+00:00 +  53.5s] MODEL    model=claude-opus-5-5 purpose="extract the policy IR from the brief and the tool API" status=success input_tokens=2 output_tokens=6959 backend=agent_sdk seconds=53.0 aux_model=claude-haiku-5-5(in=4924,out=20) rate_limit=status:allowed,window:five_hour,resets_at:1791703200
+[2026-10-11T03:55:33+00:00 +  53.5s] STEP     extraction pass returned
+[2026-10-11T03:56:30+00:00 + 109.9s] MODEL    model=claude-opus-5-5 purpose="audit the IR against the brief for omissions, wrong values and precedence" status=success input_tokens=2 output_tokens=7368 backend=agent_sdk seconds=56.4 aux_model=claude-haiku-5-5(in=10774,out=24) rate_limit=status:allowed,window:five_hour,resets_at:1791703200
+[2026-10-11T03:56:30+00:00 + 109.9s] STEP     audit pass: 1 change(s)
+[2026-10-11T03:56:30+00:00 + 109.9s] TEST     policy checks (round 1): pass
+[2026-10-11T03:56:30+00:00 + 109.9s] TEST     workflow lint: pass
+[2026-10-11T03:56:30+00:00 + 109.9s] STEP     workflow compiled: 25 steps, 27 tools, 234067 bytes
+[2026-10-11T03:56:30+00:00 + 109.9s] TEST     local: init + account facts on synthetic products: pass
+[2026-10-11T03:56:30+00:00 + 109.9s] TEST     local: guarded promise on the deadline is sent; close outcome = promise: pass
+[2026-10-11T03:56:30+00:00 + 109.9s] TEST     local: promise after the deadline is blocked before sending: pass
+[2026-10-11T03:56:30+00:00 + 109.9s] END      builder run ended status=compiled (not saved) duration_s=110 model_calls=2

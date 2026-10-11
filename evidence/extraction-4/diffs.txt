@@ -1,0 +1,22 @@
+EXACT  identity.swapped_hint_value
+   got: null
+   ref: "day_month_swapped"
+EXACT  multi_product.enabled
+   got: true
+   ref: false
+TEXT   first_ask_multi
+   got: Can you make these payments today?
+   ref: Can you pay all of them today?
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: Please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue. Please use the mobile app or visit a branch.
+2 exact difference(s), 3 text difference(s)
+
+Assessment: both exact differences are defensible readings of R4, not extraction errors:
+- identity.swapped_hint_value null: brief R4 never mentions the day/month swap rule (the reference assumed the API's hint). Without it the
+  agent just re-asks; the bank does not count a swapped date as wrong.
+- multi_product.enabled true: R4 says "name each product" and never limits a call to one product; single-product flow is unchanged.
+Memo items (callback 09:00-17:00, late deadline 5th business day, holiday 26 Oct removed / 29 Oct added) and the reason-code list are exact.
