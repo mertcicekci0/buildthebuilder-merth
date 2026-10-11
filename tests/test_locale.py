@@ -115,3 +115,13 @@ def test_runtime_locale_helpers():
     assert r("3 Şubat") == (datetime.date(2027, 2, 3), "explicit")
     assert rt.loc_normalize_answer("date", "14 Mart 1988", "DMY", cfg) == "1988-03-14"
     assert rt.loc_normalize_answer("digits4", "4471", "DMY", cfg) == "4471"
+
+
+def test_day_words_match_without_diacritics_or_in_capitals():
+    cfg = {"locale": LOCALE, "calendar": {"business_weekdays": [0, 1, 2, 3, 4], "holidays": [], "week_start": 0}}
+    today = datetime.date(2026, 10, 14)
+    r = lambda w: rt.loc_resolve_day_words(w, today, cfg)
+    assert r("yarin") == (datetime.date(2026, 10, 15), "relative")
+    assert r("CARSAMBA")[0] == datetime.date(2026, 10, 14)
+    assert r("5 KASIM") == (datetime.date(2026, 11, 5), "explicit")
+    assert r("next friday") == rt.resolve_day_words("next friday", today, cfg)   # English words still read
