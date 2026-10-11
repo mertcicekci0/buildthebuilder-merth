@@ -55,3 +55,11 @@ revisions (separate Freya slots, frozen scripts). Missing verdicts stay pending.
   main quality lever - cannot run in the final; (2) our compiler + verified template already implements the skill's rules (route on tool
   results, rules in routes/code rather than prompts, never claim a failed recording); (3) measured: kit base agent 0/13 vs our C5/C9 93-94/99.
   Relevance: ~150 competitors likely start from this baseline. A head-to-head run is low priority (long agentic run + sims, no change to what we ship).
+- 12:45-13:00 FREYA OUTAGE: GET/POST /api/v2/simulations and /workspaces return 504. T1-C10 incomplete: A part lost polling of simulation
+  3f90e97a-456a-4d52-826f-ca64bd658f16 (may have completed on the platform; to collect read-only); B part POST /simulations -> 504
+  (unknown whether created; to check via GET /api/v2/simulations list before any launch). T1-C11 launcher stopped before it created anything
+  (empty result dir set aside as results/t1-c11-a.aborted-*). Owned launchers: none running; recovery check: 1 GET / 2 min.
+- 12:58 C12 = 61dc7a4 on dev/c10 (C11 + after answering a question never repeat an offer; negotiation fragments get "could you say that
+  again?" instead of a restated offer) from r9 PUB-06 diagnosis. Not built yet (Freya down).
+- Next after recovery: reconcile -> T1 on C12 (identical suite) -> full r12 if T1 >= C9 (60/66) -> repeat for variance -> select ->
+  rehearsal from clean checkout -> live auto-builds of R5/R6 (after Claude limit reset 13:40) -> docs.
