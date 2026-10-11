@@ -3,6 +3,7 @@
 Each check comes from a documented or verified platform rule (docs/*.md, probes/README.md).
 """
 import json
+import re
 
 
 def _walk(x, path=""):
@@ -106,6 +107,8 @@ def lint(wf, api=None):
             compile(src, where, "exec")
         except SyntaxError as e:
             problems.append(f"{where}: syntax error {e}")
+        if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", src):   # an escape lost in a non-raw template (e.g. a regex \b became a backspace)
+            problems.append(f"{where}: control character in generated code")
     if api:
         problems += contract_problems(wf, api)
     return problems

@@ -225,3 +225,11 @@ def test_bare_tens_day_words_are_never_completed():
         assert "may have been cut off" in msg and "30 October is" not in msg
     ok = _oracle(wf, "negotiate", "check_date", vars, {"product_id": "p1", "customer_words": "the thirtieth", "date": "2026-10-30"})
     assert "cut off" not in ok
+
+
+def test_lint_flags_control_characters_in_generated_code():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    assert v.lint(wf, api) == []
+    tool = le._tool(wf, "negotiate", "check_date")
+    tool["pre_process_code"] = tool["pre_process_code"].replace("import re", "import re\nx = '\b'", 1)
+    assert any("control character" in p for p in v.lint(wf, api))
