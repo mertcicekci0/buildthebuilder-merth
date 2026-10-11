@@ -229,6 +229,12 @@ def infer_roles(api):
     for prole, pats in PRODUCT_ROLE_PATTERNS.items():
         rest = [n for n in pnames if n not in pfields.values()]
         hit, why = _match(rest, pats)
+        if not hit and prole == "product_id":   # the item field create_promise also takes (and get_account does not: the customer id)
+            ask = {f["name"] for f in tools.get("get_account", {}).get("fields", [])}
+            shared = [n for n in rest if n in {f["name"] for f in tools.get("create_promise", {}).get("fields", [])} and n not in ask]
+            hit = shared[0] if len(shared) == 1 else None
+            if hit:
+                guessed[f"product {prole}"] = hit
         if not hit and prole == "product_type":
             enum_rest = [n for n in rest if (props.get(n) or {}).get("enum")]
             hit = enum_rest[0] if len(enum_rest) == 1 else None
