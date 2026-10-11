@@ -1,0 +1,516 @@
+{
+ "openapi": "3.0.3",
+ "info": {
+  "title": "Tidewell Mutual Bank dialler tools",
+  "version": "0.3-draft",
+  "description": "Test double of the bank's dialler and core banking systems for the arrears pilot. Every call is written to the ledger. The service does not enforce CP-7 or its memos, and it still accepts retired codes."
+ },
+ "servers": [
+  {
+   "url": "https://dialler.tidewell.example.test/v4"
+  }
+ ],
+ "components": {
+  "schemas": {
+   "ArrearsAccount": {
+    "type": "object",
+    "properties": {
+     "account_ref": {
+      "type": "string"
+     },
+     "product_code": {
+      "type": "string",
+      "enum": [
+       "CRD",
+       "UPL",
+       "ODR",
+       "MTR"
+      ]
+     },
+     "card_ending": {
+      "type": "string",
+      "description": "CRD only: last four digits of the card"
+     },
+     "acct_ending": {
+      "type": "string",
+      "description": "ODR only: last four digits of the current account"
+     },
+     "agreement_ending": {
+      "type": "string",
+      "description": "MTR only: last four characters of the agreement number"
+     },
+     "amount_overdue": {
+      "type": "number",
+      "description": "pounds and pence"
+     },
+     "days_past_due": {
+      "type": "integer"
+     },
+     "min_pay": {
+      "type": "number",
+      "description": "CRD and ODR only"
+     },
+     "instalment_due": {
+      "type": "number",
+      "description": "UPL and MTR only: the contractual monthly instalment"
+     }
+    }
+   }
+  }
+ },
+ "paths": {
+  "/verify_identity": {
+   "post": {
+    "summary": "Check one security answer.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "question": {
+          "type": "string",
+          "enum": [
+           "dob",
+           "postcode",
+           "member_no_last3",
+           "mmn"
+          ]
+         },
+         "answer_text": {
+          "type": "string",
+          "description": "dob: the date as YYYY-MM-DD. postcode: capitals, no spaces. member_no_last3: three digits. mmn: capitals. An unreadable value is rejected with ok=false and is not counted as a wrong answer."
+         }
+        },
+        "required": [
+         "customer_id",
+         "question",
+         "answer_text"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          },
+          "passed": {
+           "type": "boolean",
+           "description": "this answer was right"
+          },
+          "attempts_left": {
+           "type": "integer",
+           "description": "wrong answers left before the check ends"
+          },
+          "security_complete": {
+           "type": "boolean",
+           "description": "every question the bank requires has been passed"
+          },
+          "hint": {
+           "type": "string",
+           "enum": [
+            "dmy_swapped"
+           ]
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/get_account": {
+   "post": {
+    "summary": "The accounts in arrears (one to three). Refused until security is complete.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "customer_id"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          },
+          "accounts": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/ArrearsAccount"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/create_promise": {
+   "post": {
+    "summary": "Record a payment promise. One per product.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "account_ref": {
+          "type": "string"
+         },
+         "promised_amount": {
+          "type": "number",
+          "description": "pounds and pence"
+         },
+         "due_date": {
+          "type": "string",
+          "format": "date"
+         }
+        },
+        "required": [
+         "customer_id",
+         "account_ref",
+         "promised_amount",
+         "due_date"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          },
+          "arrangement_ref": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/add_note": {
+   "post": {
+    "summary": "Record why an account ended the call without a promise.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "account_ref": {
+          "type": "string"
+         },
+         "note_code": {
+          "type": "string",
+          "enum": [
+           "NPR",
+           "FHD",
+           "DSP",
+           "APD",
+           "TEC",
+           "SER",
+           "OTH"
+          ]
+         },
+         "free_text": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "customer_id",
+         "account_ref",
+         "note_code"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/schedule_callback": {
+   "post": {
+    "summary": "Book a callback.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "cb_date": {
+          "type": "string",
+          "format": "date"
+         },
+         "cb_time": {
+          "type": "string",
+          "description": "HH:MM, local time"
+         }
+        },
+        "required": [
+         "customer_id",
+         "cb_date",
+         "cb_time"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/transfer_to_agent": {
+   "post": {
+    "summary": "Hand the call to a person.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "desk": {
+          "type": "string",
+          "enum": [
+           "borrower_solutions",
+           "contact_centre",
+           "financial_support",
+           "welfare_team"
+          ]
+         }
+        },
+        "required": [
+         "customer_id",
+         "desk"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  },
+  "/close_call": {
+   "post": {
+    "summary": "End the call. Always the last tool call. Nothing is accepted after it.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customer_id": {
+          "type": "string"
+         },
+         "result_code": {
+          "type": "string",
+          "enum": [
+           "PTP",
+           "PIF",
+           "XFR",
+           "NPTP",
+           "NOID",
+           "NOCON",
+           "CBK"
+          ]
+         },
+         "reason_code": {
+          "type": "string",
+          "enum": [
+           "RST",
+           "HUM",
+           "FSU",
+           "WEL",
+           "REF",
+           "HRD",
+           "DSP",
+           "SYS",
+           "TEC",
+           "IDF",
+           "IDR",
+           "CB",
+           "NCB",
+           "WN",
+           "DEC",
+           "UNC"
+          ],
+          "description": "The sub-code from the code list. Leave it out for PTP and PIF."
+         }
+        },
+        "required": [
+         "customer_id",
+         "result_code"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "`ok` is false when the action was not carried out.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "error": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "The service failed. Nothing was recorded. The call may be repeated."
+     }
+    }
+   }
+  }
+ }
+}
