@@ -159,3 +159,18 @@ def test_r2_sme_brief_compiles_and_fills_company_name():
     assert st["attempts"] == 0
     # band 1 (1-10 days): 10th business day after Wed 14 Oct with Saturdays working and 31 Oct a holiday
     assert st["deadline"] == "2026-10-26"
+
+
+def test_r3_calendar_day_deadlines_and_three_step_ladder():
+    api3 = ot.load(str(ROOT / "tests/variants/api-r3.json"))
+    roles3, _ = ot.infer_roles(api3)
+    ir3 = {k: x for k, x in json.load(open(ROOT / "tests/variants/ir-r3.ref.json")).items() if not k.startswith("_")}
+    assert ps.check(ir3, api3, roles3, (ROOT / "tests/variants/brief-r3.md").read_text()) == []
+    wf = cw.compile_workflow(ir3, api3, roles3)
+    assert v.lint(wf, api3) == []
+    prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1", "past_due": 300, "days_late": 5, "minimum_payment": 90},
+             {"product_id": "p2", "type": "personal_loan", "past_due": 900, "days_late": 20, "instalment_amount": 300},
+             {"product_id": "p3", "type": "car_loan", "past_due": 600, "days_late": 40, "instalment_amount": 200}]
+    st = le.smoke(wf, roles3, prods, now="2026-10-14T11:00")["state"]["products"]
+    assert (st["p1"]["deadline"], st["p2"]["deadline"], st["p3"]["deadline"]) == ("2026-10-28", "2026-10-23", "2026-10-19")
+    assert (st["p1"]["attempts"], st["p2"]["attempts"], st["p3"]["attempts"]) == (1, 2, 3)
