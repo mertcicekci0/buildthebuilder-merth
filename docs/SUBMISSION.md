@@ -37,6 +37,16 @@ commit that contains the builder, the exported workflows and the per-brief trace
 Dev runs also write `submission/cand-*.workflow.json` etc.; commit only the hidden-brief files.
 
 ## Final-run procedure (Sunday after 17:00 UTC)
+**Checked one-command version** (does steps 1-4 below, refuses to run on a dirty code tree or failing tests, archives any earlier attempt
+under archive/final-runs/ instead of deleting it, never pushes):
+```bash
+cd /Users/mertcicekci/Documents/ChatGPT/freyahackathon && git checkout <selected branch/commit> && set -a && . ./env.sh && set +a
+sh devtools/final_run.sh --commit briefs/hidden-1.md briefs/hidden-1.openapi.json briefs/hidden-2.md briefs/hidden-2.openapi.json
+```
+(Use the hidden files' real names; the trace/export names follow the brief file names.) Without `--commit` it stops after the checks and
+prints the exact `git add`/`git commit`/`verify_submission.py` commands. Then step 5 (push + form) is manual.
+
+Manual equivalent:
 1. Freeze: `git status` clean (tracked files), all offline tests pass, commit C = the builder to submit. Note C.
 2. For each hidden brief N (names as delivered, e.g. hidden-1): from the repo root, with FREYA_API_KEY set and the Claude Code login active:
    `python3 builder/build.py briefs/hidden-N.md briefs/hidden-N.openapi.json 2>&1 | tee traces/hidden-N.log`
