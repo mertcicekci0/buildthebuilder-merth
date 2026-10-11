@@ -1,0 +1,18 @@
+r4-a-plain             agent c215da13 styles=plain now=case: runs 30, ledger correct 30/30, conversation pass 30 / fail 0 / verdict missing 0, run passes 30/30, cases passing every rep 10/10
+r4-b-plain             agent ef2c68a2 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 9 / fail 0 / verdict missing 0, run passes 9/9, cases passing every rep 3/3
+r4-b-styled            agent ef2c68a2 styles=asks_back,talkative now=case: runs 18, ledger correct 17/18, conversation pass 17 / fail 1 / verdict missing 0, run passes 17/18, cases passing every rep 2/3
+    FAIL PUB-11#r2 [talkative] outcome ('no_promise', 'refused'), expected ('promise', None)
+    FAIL PUB-11#r2 [talkative] promises [], expected [('p1', 220.0, '2026-10-16'), ('p2', 640.0, '2026-10-16'), ('p3', 75.0, '2026-10-16')]
+    FAIL PUB-11#r2 [talkative] conversation: The agent correctly stated all three products (credit card, personal loan, and car loan) in Message 6 before asking for any payment. However, the call ended before any read-backs, confirmations, or 'create_
+r4-a-styled            agent c215da13 styles=asks_back,talkative,in_words now=case: runs 30, ledger correct 29/30, conversation pass 26 / fail 4 / verdict missing 0, run passes 25/30, cases passing every rep 5/10
+    FAIL PUB-02#r2 [talkative] conversation: All success criteria were met: the agent never disclosed the reason for the call, amount, or specific debt details, even when asked by the third party. The tools verify_identity and get_account were not cal
+    FAIL PUB-08#r2 [talkative] conversation: All criteria met. The assistant stated that payments can take one business day to appear as required. There was no promise recorded in the system events; instead, the assistant correctly updated the product
+    FAIL PUB-05#r3 [in_words] outcome (None, None), expected ('no_promise', 'hardship')
+    FAIL PUB-05#r3 [in_words] the call was not closed with close_call
+    FAIL PUB-06#r3 [in_words] conversation: 1. The minimum payment was offered twice (Message 8 and Message 10), which violates the criterion that it be offered only once. 2. The agent correctly avoided asking how much the user could pay. 3. The mini
+    FAIL PUB-10#r3 [in_words] conversation: The call failed the success criteria because the assistant used the word 'recorded' in message 8, which occurred before the successful execution of the 'create_promise' API call (which happened after messag
+r4-a-cal               agent c215da13 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 8 / fail 1 / verdict missing 0, run passes 8/9, cases passing every rep 2/3
+    FAIL CAL-XMAS#r2 [plain] conversation: The agent failed to state that the rest of the balance stays overdue when offering the minimum payment, which was a mandatory criterion. All other criteria were met: the agent offered the minimum payment ex
+r4-b-cal               agent ef2c68a2 styles=plain,pieces,corrects now=case: runs 3, ledger correct 3/3, conversation pass 3 / fail 0 / verdict missing 0, run passes 3/3, cases passing every rep 1/1
+TOTAL                  runs 99, ledger correct 97, conversation pass 93 / fail 6 / verdict missing 0, run passes 92, cases passing every rep 23/30
+REGRESS_DONE

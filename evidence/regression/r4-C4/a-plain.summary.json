@@ -1,0 +1,3488 @@
+{
+ "label": "r4-a-plain",
+ "agent_id": "c215da13-a6ba-45b4-96dd-d3ece6b5982c",
+ "simulation_id": "4957db21-24c1-4335-9777-aa3a1f07a7fa",
+ "iteration_id": "b085406f-7bd7-4bf6-b956-e5293e0abd5d",
+ "status": "completed",
+ "seconds": 366,
+ "reps": 3,
+ "styles": "plain",
+ "now": null,
+ "cases": [
+  "PUB-01",
+  "PUB-02",
+  "PUB-03",
+  "PUB-04",
+  "PUB-05",
+  "PUB-06",
+  "PUB-07",
+  "PUB-08",
+  "PUB-09",
+  "PUB-10"
+ ],
+ "passed_cases": 10,
+ "total_cases": 10,
+ "run_pass_rate": 1.0,
+ "final": {
+  "PUB-01": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-02": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-03": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-04": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-05": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-06": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-07": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-08": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-09": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  },
+  "PUB-10": {
+   "passes": 3,
+   "runs": 3,
+   "pass": true
+  }
+ },
+ "rows": [
+  {
+   "key": "PUB-01#r1",
+   "id": "PUB-01",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "32205743-2e4e-4971-90c4-75924a9bcf98",
+   "customer_id": "c_1507516a-e1e",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-01",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 420,
+      "date": "2026-10-14"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1988-03-14"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "4471"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "4821",
+         "past_due": 420,
+         "days_late": 6,
+         "minimum_payment": 126
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-14",
+       "amount": 420,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686290567
+   }
+  },
+  {
+   "key": "PUB-02#r1",
+   "id": "PUB-02",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "1be1d681-4c4e-4d81-9f36-26d79c68e4e6",
+   "customer_id": "c_3468e4aa-6b9",
+   "tools": [
+    "schedule_callback",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-02",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {},
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [
+     {
+      "date": "2026-10-15",
+      "time": "11:00"
+     }
+    ],
+    "transfers": [],
+    "outcome": "not_reached",
+    "reason": "callback",
+    "failures": {
+     "schedule_callback": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "schedule_callback",
+      "args": {
+       "date": "2026-10-15",
+       "time": "11:00"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     },
+     {
+      "n": 2,
+      "tool": "close_call",
+      "args": {
+       "reason": "callback",
+       "outcome": "not_reached"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686057928
+   }
+  },
+  {
+   "key": "PUB-03#r1",
+   "id": "PUB-03",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "c7ad2046-ed3e-44f9-9592-b50bdd84684f",
+   "customer_id": "c_e5ae36ac-b85",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "verify_identity",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-03",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {},
+    "wrong": 3,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "not_verified",
+    "reason": "failed",
+    "failures": {
+     "verify_identity": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1991-07-12"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 2,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1992-08-21"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 1,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 3,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1990-07-21"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 0,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "reason": "failed",
+       "outcome": "not_verified"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686057173
+   }
+  },
+  {
+   "key": "PUB-04#r1",
+   "id": "PUB-04",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "0bd6301f-7619-4482-b44d-8b4a74ba0e9f",
+   "customer_id": "c_070edfc1-8b9",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-04",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "car_loan",
+      "amount": 1250,
+      "date": "2026-10-23"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1984-01-30"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "2219"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "car_loan",
+         "past_due": 1250,
+         "days_late": 14,
+         "instalment_amount": 400
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-23",
+       "amount": 1250,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686095903
+   }
+  },
+  {
+   "key": "PUB-05#r1",
+   "id": "PUB-05",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "6513f8a3-ae9f-4df1-9d7c-8ab0dd5bcba2",
+   "customer_id": "c_6cfd1de7-684",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-05",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "no_promise",
+    "reason": "hardship",
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1990-09-09"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "8846"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 780,
+         "days_late": 21,
+         "instalment_amount": 260
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "reason": "hardship",
+       "outcome": "no_promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686315367
+   }
+  },
+  {
+   "key": "PUB-06#r1",
+   "id": "PUB-06",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "2014a55b-b355-44d4-b52a-b472840d081c",
+   "customer_id": "c_168a22ba-b46",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-06",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 637.5,
+      "date": "2026-10-16"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1986-05-17"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "1502"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "1903",
+         "past_due": 2125.1,
+         "days_late": 12,
+         "minimum_payment": 637.5
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 637.5,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686297452
+   }
+  },
+  {
+   "key": "PUB-07#r1",
+   "id": "PUB-07",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "dffc2250-5c79-4b4e-a792-3e2c971c93fc",
+   "customer_id": "c_1d175e58-896",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-07",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "personal_loan",
+      "amount": 540,
+      "date": "2026-10-27"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1975-12-05"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "7093"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 540,
+         "days_late": 5,
+         "instalment_amount": 180
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-27",
+       "amount": 540,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686095689
+   }
+  },
+  {
+   "key": "PUB-08#r1",
+   "id": "PUB-08",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "65048f39-8483-4f2d-9ca7-054ff1d38cb7",
+   "customer_id": "c_3196588a-20b",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-08",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "paid",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1993-04-28"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "3317"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "5512",
+         "past_due": 180,
+         "days_late": 5,
+         "minimum_payment": 54
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "outcome": "paid"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686074083
+   }
+  },
+  {
+   "key": "PUB-09#r1",
+   "id": "PUB-09",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "99bfd982-836f-42cd-a0a5-24ca0c743c99",
+   "customer_id": "c_f2dfae56-90e",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "transfer_to_agent",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-09",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [
+     {
+      "queue": "restructuring"
+     }
+    ],
+    "outcome": "transferred",
+    "reason": "restructuring",
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "transfer_to_agent": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1981-08-11"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "5560"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 2100,
+         "days_late": 28,
+         "instalment_amount": 700
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "transfer_to_agent",
+      "args": {
+       "queue": "restructuring"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "reason": "restructuring",
+       "outcome": "transferred"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686100617
+   }
+  },
+  {
+   "key": "PUB-10#r1",
+   "id": "PUB-10",
+   "rep": 1,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "eb94a141-2a0d-4c6e-8bad-78dd26713531",
+   "customer_id": "c_89be14a3-15e",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-10",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 365,
+      "date": "2026-10-16"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 1,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1989-02-23"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "9904"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "7740",
+         "past_due": 365,
+         "days_late": 8,
+         "minimum_payment": 109.5
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 365,
+       "product_id": "p1"
+      },
+      "status": 500,
+      "result": {
+       "ok": false,
+       "error": "service unavailable, nothing was recorded"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 365,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 6,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686251133
+   }
+  },
+  {
+   "key": "PUB-01#r2",
+   "id": "PUB-01",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "85e2d6a2-5ded-435c-93f9-b62f7cb5b713",
+   "customer_id": "c_65b019fd-2e9",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-01",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 420,
+      "date": "2026-10-14"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1988-03-14"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "4471"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "4821",
+         "past_due": 420,
+         "days_late": 6,
+         "minimum_payment": 126
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-14",
+       "amount": 420,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686236903
+   }
+  },
+  {
+   "key": "PUB-02#r2",
+   "id": "PUB-02",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "1c5584b9-c91d-4b81-b5a1-25b857b8d5e1",
+   "customer_id": "c_9ee7db50-f81",
+   "tools": [
+    "schedule_callback",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-02",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {},
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [
+     {
+      "date": "2026-10-15",
+      "time": "11:00"
+     }
+    ],
+    "transfers": [],
+    "outcome": "not_reached",
+    "reason": "callback",
+    "failures": {
+     "schedule_callback": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "schedule_callback",
+      "args": {
+       "date": "2026-10-15",
+       "time": "11:00"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     },
+     {
+      "n": 2,
+      "tool": "close_call",
+      "args": {
+       "reason": "callback",
+       "outcome": "not_reached"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686120516
+   }
+  },
+  {
+   "key": "PUB-03#r2",
+   "id": "PUB-03",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "923ab532-d661-47aa-a9e9-cf53c2757812",
+   "customer_id": "c_b3b3ff94-870",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "verify_identity",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-03",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {},
+    "wrong": 3,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "not_verified",
+    "reason": "failed",
+    "failures": {
+     "verify_identity": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1991-07-12"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 2,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1992-08-21"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 1,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 3,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1990-07-21"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 0,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "reason": "failed",
+       "outcome": "not_verified"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686113196
+   }
+  },
+  {
+   "key": "PUB-04#r2",
+   "id": "PUB-04",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "cab89fcd-e953-4920-b022-0eab92e046f7",
+   "customer_id": "c_6020c518-f1f",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-04",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "car_loan",
+      "amount": 1250,
+      "date": "2026-10-23"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1984-01-30"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "2219"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "car_loan",
+         "past_due": 1250,
+         "days_late": 14,
+         "instalment_amount": 400
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-23",
+       "amount": 1250,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686133327
+   }
+  },
+  {
+   "key": "PUB-05#r2",
+   "id": "PUB-05",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "372b3058-8aa9-46ca-a62f-8eb98a16d41d",
+   "customer_id": "c_ecb0bdb8-d1e",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-05",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "no_promise",
+    "reason": "hardship",
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1990-09-09"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "8846"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 780,
+         "days_late": 21,
+         "instalment_amount": 260
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "reason": "hardship",
+       "outcome": "no_promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686176169
+   }
+  },
+  {
+   "key": "PUB-06#r2",
+   "id": "PUB-06",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "df005a4c-84cc-4792-83fb-db5ebffd9812",
+   "customer_id": "c_e0b64254-8af",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-06",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 637.5,
+      "date": "2026-10-16"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1986-05-17"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "1502"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "1903",
+         "past_due": 2125.1,
+         "days_late": 12,
+         "minimum_payment": 637.5
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 637.5,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686206982
+   }
+  },
+  {
+   "key": "PUB-07#r2",
+   "id": "PUB-07",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "59a6f3dc-501b-4aaf-9510-bc00e9f43bb8",
+   "customer_id": "c_4de316e4-2a0",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-07",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "personal_loan",
+      "amount": 540,
+      "date": "2026-10-27"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1975-12-05"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "7093"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 540,
+         "days_late": 5,
+         "instalment_amount": 180
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-27",
+       "amount": 540,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686214520
+   }
+  },
+  {
+   "key": "PUB-08#r2",
+   "id": "PUB-08",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "dfa41cf4-7782-4870-a939-07ad51838f99",
+   "customer_id": "c_ec58d8a8-aa0",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-08",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "paid",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1993-04-28"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "3317"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "5512",
+         "past_due": 180,
+         "days_late": 5,
+         "minimum_payment": 54
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "outcome": "paid"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791685988125
+   }
+  },
+  {
+   "key": "PUB-09#r2",
+   "id": "PUB-09",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "c08f044c-70f2-4758-a340-6e50b9e9d904",
+   "customer_id": "c_ce7ea8f6-8bc",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "transfer_to_agent",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-09",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [
+     {
+      "queue": "restructuring"
+     }
+    ],
+    "outcome": "transferred",
+    "reason": "restructuring",
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "transfer_to_agent": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1981-08-11"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "5560"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 2100,
+         "days_late": 28,
+         "instalment_amount": 700
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "transfer_to_agent",
+      "args": {
+       "queue": "restructuring"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "reason": "restructuring",
+       "outcome": "transferred"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791685998612
+   }
+  },
+  {
+   "key": "PUB-10#r2",
+   "id": "PUB-10",
+   "rep": 2,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "9e513c89-84b7-4415-8d08-dafb9665ce38",
+   "customer_id": "c_1a62e58d-0bd",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-10",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 365,
+      "date": "2026-10-16"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 1,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1989-02-23"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "9904"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "7740",
+         "past_due": 365,
+         "days_late": 8,
+         "minimum_payment": 109.5
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 365,
+       "product_id": "p1"
+      },
+      "status": 500,
+      "result": {
+       "ok": false,
+       "error": "service unavailable, nothing was recorded"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 365,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 6,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686186712
+   }
+  },
+  {
+   "key": "PUB-01#r3",
+   "id": "PUB-01",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "346b356c-80f1-4a39-bf5f-4af024895816",
+   "customer_id": "c_898bde48-9e1",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-01",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 420,
+      "date": "2026-10-14"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1988-03-14"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "4471"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "4821",
+         "past_due": 420,
+         "days_late": 6,
+         "minimum_payment": 126
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-14",
+       "amount": 420,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686057367
+   }
+  },
+  {
+   "key": "PUB-02#r3",
+   "id": "PUB-02",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "ad9c8ac4-38a0-4acb-99d8-07a6bd92c23a",
+   "customer_id": "c_586487b9-973",
+   "tools": [
+    "schedule_callback",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-02",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {},
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [
+     {
+      "date": "2026-10-15",
+      "time": "11:00"
+     }
+    ],
+    "transfers": [],
+    "outcome": "not_reached",
+    "reason": "callback",
+    "failures": {
+     "schedule_callback": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "schedule_callback",
+      "args": {
+       "date": "2026-10-15",
+       "time": "11:00"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     },
+     {
+      "n": 2,
+      "tool": "close_call",
+      "args": {
+       "reason": "callback",
+       "outcome": "not_reached"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686172167
+   }
+  },
+  {
+   "key": "PUB-03#r3",
+   "id": "PUB-03",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "2d55a758-28a8-46fb-9b4a-0b528e655a16",
+   "customer_id": "c_2b770300-63b",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "verify_identity",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-03",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {},
+    "wrong": 3,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "not_verified",
+    "reason": "failed",
+    "failures": {
+     "verify_identity": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1991-07-12"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 2,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1992-08-21"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 1,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 3,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1990-07-21"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": false,
+       "wrong_answers_left": 0,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "reason": "failed",
+       "outcome": "not_verified"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686232532
+   }
+  },
+  {
+   "key": "PUB-04#r3",
+   "id": "PUB-04",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "d8bcfbc7-ef7c-42dc-acce-e774b59d0383",
+   "customer_id": "c_f0b378df-4e6",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-04",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "car_loan",
+      "amount": 1250,
+      "date": "2026-10-23"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1984-01-30"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "2219"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "car_loan",
+         "past_due": 1250,
+         "days_late": 14,
+         "instalment_amount": 400
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-23",
+       "amount": 1250,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686255508
+   }
+  },
+  {
+   "key": "PUB-05#r3",
+   "id": "PUB-05",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "f659c02f-2883-4bcf-aa5b-1275c0fc4e09",
+   "customer_id": "c_7dd7d40c-159",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-05",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "no_promise",
+    "reason": "hardship",
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1990-09-09"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "8846"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 780,
+         "days_late": 21,
+         "instalment_amount": 260
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "reason": "hardship",
+       "outcome": "no_promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686258269
+   }
+  },
+  {
+   "key": "PUB-06#r3",
+   "id": "PUB-06",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "3fd928b5-1ba8-4dee-8997-9f6607b413de",
+   "customer_id": "c_b66acd76-d0f",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-06",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 637.5,
+      "date": "2026-10-16"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1986-05-17"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "1502"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "1903",
+         "past_due": 2125.1,
+         "days_late": 12,
+         "minimum_payment": 637.5
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 637.5,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686011711
+   }
+  },
+  {
+   "key": "PUB-07#r3",
+   "id": "PUB-07",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "d6d7368b-cd2c-40a4-914b-85d55b27c08a",
+   "customer_id": "c_fe91ba38-465",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-07",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "personal_loan",
+      "amount": 540,
+      "date": "2026-10-27"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1975-12-05"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "7093"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 540,
+         "days_late": 5,
+         "instalment_amount": 180
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-27",
+       "amount": 540,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686274213
+   }
+  },
+  {
+   "key": "PUB-08#r3",
+   "id": "PUB-08",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "a5f87eb2-e715-4cfb-ac82-12665a1110ee",
+   "customer_id": "c_3676ac69-534",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-08",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "paid",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1993-04-28"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "3317"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "5512",
+         "past_due": 180,
+         "days_late": 5,
+         "minimum_payment": 54
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "close_call",
+      "args": {
+       "outcome": "paid"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686001691
+   }
+  },
+  {
+   "key": "PUB-09#r3",
+   "id": "PUB-09",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "f4699687-44e2-4869-b211-1252463dd56f",
+   "customer_id": "c_02096070-94a",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "transfer_to_agent",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-09",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [
+     {
+      "queue": "restructuring"
+     }
+    ],
+    "outcome": "transferred",
+    "reason": "restructuring",
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "transfer_to_agent": 0,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1981-08-11"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "5560"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "personal_loan",
+         "past_due": 2100,
+         "days_late": 28,
+         "instalment_amount": 700
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "transfer_to_agent",
+      "args": {
+       "queue": "restructuring"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     },
+     {
+      "n": 5,
+      "tool": "close_call",
+      "args": {
+       "reason": "restructuring",
+       "outcome": "transferred"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686009074
+   }
+  },
+  {
+   "key": "PUB-10#r3",
+   "id": "PUB-10",
+   "rep": 3,
+   "style": null,
+   "now": "2026-10-14T11:00",
+   "pass": true,
+   "failed": [],
+   "call_id": "5d735f26-a7e7-47de-85b0-b9ea35bc4315",
+   "customer_id": "c_0f3f35b3-29c",
+   "tools": [
+    "verify_identity",
+    "verify_identity",
+    "get_account",
+    "create_promise",
+    "create_promise",
+    "close_call"
+   ],
+   "ledger": {
+    "ok": true,
+    "case": "PUB-10",
+    "team": "113891798f302f6493888f40",
+    "now": "2026-10-14T11:00",
+    "verified": {
+     "date_of_birth": true,
+     "phone_last4": true
+    },
+    "wrong": 0,
+    "hinted": false,
+    "promises": [
+     {
+      "promise_id": "pr1",
+      "product_id": "p1",
+      "type": "credit_card",
+      "amount": 365,
+      "date": "2026-10-16"
+     }
+    ],
+    "notes": [],
+    "callbacks": [],
+    "transfers": [],
+    "outcome": "promise",
+    "reason": null,
+    "failures": {
+     "verify_identity": 0,
+     "get_account": 0,
+     "create_promise": 1,
+     "close_call": 0
+    },
+    "calls": [
+     {
+      "n": 1,
+      "tool": "verify_identity",
+      "args": {
+       "field": "date_of_birth",
+       "answer": "1989-02-23"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": false
+      }
+     },
+     {
+      "n": 2,
+      "tool": "verify_identity",
+      "args": {
+       "field": "phone_last4",
+       "answer": "9904"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "verified": true,
+       "wrong_answers_left": 3,
+       "all_verified": true
+      }
+     },
+     {
+      "n": 3,
+      "tool": "get_account",
+      "args": {},
+      "status": 200,
+      "result": {
+       "ok": true,
+       "products": [
+        {
+         "product_id": "p1",
+         "type": "credit_card",
+         "card_last4": "7740",
+         "past_due": 365,
+         "days_late": 8,
+         "minimum_payment": 109.5
+        }
+       ]
+      }
+     },
+     {
+      "n": 4,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 365,
+       "product_id": "p1"
+      },
+      "status": 500,
+      "result": {
+       "ok": false,
+       "error": "service unavailable, nothing was recorded"
+      }
+     },
+     {
+      "n": 5,
+      "tool": "create_promise",
+      "args": {
+       "date": "2026-10-16",
+       "amount": 365,
+       "product_id": "p1"
+      },
+      "status": 200,
+      "result": {
+       "ok": true,
+       "promise_id": "pr1"
+      }
+     },
+     {
+      "n": 6,
+      "tool": "close_call",
+      "args": {
+       "outcome": "promise"
+      },
+      "status": 200,
+      "result": {
+       "ok": true
+      }
+     }
+    ],
+    "last_at": 1791686275452
+   }
+  }
+ ]
+}
