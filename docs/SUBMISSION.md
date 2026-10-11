@@ -46,6 +46,12 @@ sh devtools/final_run.sh --commit briefs/hidden-1.md briefs/hidden-1.openapi.jso
 (Use the hidden files' real names; the trace/export names follow the brief file names.) Without `--commit` it stops after the checks and
 prints the exact `git add`/`git commit`/`verify_submission.py` commands. Then step 5 (push + form) is manual.
 
+Pre-final checklist (from docs/RESOURCE_AUDIT.md):
+- Kit still current: the official page / organiser email names kit VERSION 3 (README L3: "when we update the kit, the number goes up"),
+  and `(cd kit && shasum -a 256 -c ../kit.sha256)` prints OK for all 16 files. A newer kit (changed freya.py) must be reviewed before the run.
+- Run from the repo root (kit/freya.py keeps `.freya-agents.json` relative to the working directory).
+- `FREYA_AGENT_PROVIDER` / `FREYA_AGENT_MODEL` unset in our shell (the build trace records them; only organisers may set them).
+
 Manual equivalent:
 1. Freeze: `git status` clean (tracked files), all offline tests pass, commit C = the builder to submit. Note C.
 2. For each hidden brief N (names as delivered, e.g. hidden-1): from the repo root, with FREYA_API_KEY set and the Claude Code login active:
