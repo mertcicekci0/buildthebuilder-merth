@@ -20,12 +20,17 @@ are still required, trace content rules ("Remove API keys"), "nothing from the f
 whether manual input conversion (e.g. PDF to text) is allowed, and whether the mock itself is submitted or graded.
 
 ## 2. Selected preparation candidate and its limits
-- **Prepare on `prep/final`** (at least a449a91 / ae42a67). Builder = C14 (dev/c10 8cb1932, tree f956041a) + final-shape changes
+- **Prepare on `prep/final` at bf732d7** (or later). Builder = C14 (dev/c10 8cb1932, tree f956041a) + final-shape changes
   (072e517: bundle inputs, explicit --tool-map, test-only base URL, URL checks). Compiled output for a single text brief is unchanged:
   the kit golden test passes. 127 offline tests pass.
 - Why C14 and not C5: for an unknown contract, the review measured 5 contract variants. C14 compiled all 5; C5 got KeyErrors on 3 (a
   'disposition' outcome field, a nested products array, renamed product fields), failed lint on 1, and on 1 compiled cleanly but reads
   fixed verify-response names, so it would fail silently at runtime. Both share the hard limits listed in section 3.
+- An independent adversarial review of the new code found 4 major and about 20 minor defects; all were fixed with tests
+  (afecfd9 inputs/tool map, c8cbd36 shell, 8dcea8d mock, bf732d7 rehearse.sh refuses an existing directory). Shell behaviour was
+  stub-tested under dash in a throwaway worktree. 134 offline tests pass.
+- **End-to-end rehearsal of bf732d7** (evidence/rehearsal-final-shape-bf732d7): fresh clone, test gate 134 passed, one zip in the
+  final's shape, real extraction, 147 s, verify 0 problems, 0 exact IR differences.
 - Evidence of the submission path: clean-checkout rehearsals of C14 (evidence/rehearsal-c14: brief-a 114 s, brief-ab 137 s) and of
   prep/final in the final's shape (evidence/rehearsal-final-shape: one zip with documents + contract, 146 s, test gate ran in the fresh
   clone, verify 0 problems, 0 exact IR differences).
@@ -52,10 +57,12 @@ whether manual input conversion (e.g. PDF to text) is allowed, and whether the m
 | test_variables with Brief A's sample person | applies only if their harness omits call variables | after mail: check the case's call-variable names |
 
 ## 4. Our own bank mock (prepared, not deployed)
-`devtools/mock_service.py` (stdlib + the locked jsonschema; 10 tests):
+`devtools/mock_service.py` (stdlib + the locked jsonschema; 14 tests):
 - serves every operation of an OpenAPI JSON contract;
 - validates requests against the contract (required, types, enums; its own date/time/date-time checks);
-- per-session state and ledger (the session key comes from a header or body field);
+- per-session state and ledger (the session key comes from a header, a query, a path or a body field; reset markers go in the
+  ledger file);
+- OpenAPI 3.0 conversions (nullable, boolean exclusive bounds); path parameters; concrete paths match before templated ones;
 - answers from a hand-written behaviour file (rules matched on request fields and state: status, body templates, state set/append,
   record flag, `fail_first` injected 500s that record nothing);
 - refuses off-contract responses (HTTP 500 'mock misconfigured', and at `check` time);
