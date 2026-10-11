@@ -5,6 +5,7 @@ Passes (each one model call through llm.ask_json, traced):
   2. audit    - independent re-read of the brief against the IR: omissions, wrong values, wrong precedence.
                Returns the corrected IR and a change list (source quotes for every change).
   3. repair   - only if deterministic checks (policy_schema.check) still fail; at most `max_repairs` times.
+               Check warnings (e.g. a holiday written in a form the check cannot read) are traced, never repaired.
 Nothing from any specific brief is written here: the guide below describes the IR's meaning, not a bank's rules.
 """
 import json
@@ -90,8 +91,12 @@ def extract(llm, brief_text, api, roles, trace, max_repairs=2):
     trace.step(f"audit pass: {len(changes)} change(s)", changes=changes)
     ir = audit.get("ir") or ir
     for attempt in range(max_repairs + 1):
-        problems = ps.check(ir, api, roles, brief_text)
-        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems)
+        check_warnings = []
+        problems = ps.check(ir, api, roles, brief_text, warnings=check_warnings)
+        trace.test(f"policy checks (round {attempt + 1})", "pass" if not problems else f"{len(problems)} problem(s)", problems=problems,
+                   warnings=check_warnings)
+        for w in check_warnings:
+            trace.warn("policy check: " + w)
         if not problems or attempt == max_repairs:
             return ir, problems, changes
         try:

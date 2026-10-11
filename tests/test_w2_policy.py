@@ -120,3 +120,27 @@ def test_empty_or_unknown_transfer_queue_drops_only_that_path():
     assert len([x for x in w if x.startswith("transfer queue")]) == 3
     assert not any(t["function"]["name"] == "transfer_to_agent" for n in wf["nodes"].values() for t in n.get("tools") or [])
     assert "transfer_human" not in wf["nodes"]
+
+
+def test_holiday_mentions_in_many_written_forms():
+    from builder import policy_schema as ps
+    for text in ["25 Dec", "Dec 25", "Dec. 25", "25th December", "December 25th", "the 25th of December", "24–26 December", "24-26 Dec",
+                 "24 to 26 December", "December 24-26", "Friday 25 December", "12/25/2026", "25-12-2026", "25.12.2026", "25/12", "25.12.",
+                 "**25 December**", "2026-12-25", "December 25, 2026"]:
+        assert ps._date_mentioned("2026-12-25", "Closed on " + text + " for the holiday."), text
+    for text in ["26 to 28 December", "December 2026", "1-7 days late", "12/24/2026", "25.12.2025", "Dec 2", "125 December", "1.5 hours"]:
+        assert not ps._date_mentioned("2026-12-25", "Closed on " + text + "."), text
+    assert ps._date_mentioned("2026-05-01", "1 May") and not ps._date_mentioned("2026-05-01", "1.5 times")
+    assert ps._date_mentioned("2026-09-14", "Sept 14")
+
+
+def test_unmentioned_holiday_is_a_warning_not_a_problem():
+    from builder import policy_schema as ps
+    api = ot.load(KIT); roles, _ = ot.infer_roles(api)
+    ir = copy.deepcopy(IR); ir["evidence"] = []
+    ir["calendar"]["holidays"] = ["2026-12-25", "2026-11-11"]
+    brief = "Branches are closed on Christmas Day (Dec 25)."
+    w = []
+    assert ps.check(ir, api, roles, brief, warnings=w) == []
+    assert w == ["holiday 2026-11-11 was not found written in the brief (kept; check it)"]
+    assert ps.check(ir, api, roles, brief) == []   # old call form: never a problem
