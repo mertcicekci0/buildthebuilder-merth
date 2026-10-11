@@ -1,0 +1,14 @@
+r4live-c6              agent b6838e4e styles=plain now=case: runs 18, ledger correct 6/18, conversation pass 18 / fail 0 / verdict missing 0, run passes 6/18, cases passing every rep 2/6
+    FAIL R4-CALLBACK#r1 [plain] outcome (None, None), expected ('not_reached', 'CB')
+    FAIL R4-HARDSHIP#r1 [plain] outcome (None, None), expected ('no_promise', 'HRD')
+    FAIL R4-RESTRUCT#r1 [plain] outcome (None, None), expected ('transferred', 'RES')
+    FAIL R4-IDFAIL#r1 [plain] outcome (None, None), expected ('not_verified', 'FAIL')
+    FAIL R4-CALLBACK#r2 [plain] outcome (None, None), expected ('not_reached', 'CB')
+    FAIL R4-HARDSHIP#r2 [plain] outcome (None, None), expected ('no_promise', 'HRD')
+    FAIL R4-RESTRUCT#r2 [plain] outcome (None, None), expected ('transferred', 'RES')
+    FAIL R4-IDFAIL#r2 [plain] outcome (None, None), expected ('not_verified', 'FAIL')
+    FAIL R4-CALLBACK#r3 [plain] outcome (None, None), expected ('not_reached', 'CB')
+    FAIL R4-HARDSHIP#r3 [plain] outcome (None, None), expected ('no_promise', 'HRD')
+    FAIL R4-RESTRUCT#r3 [plain] outcome (None, None), expected ('transferred', 'RES')
+    FAIL R4-IDFAIL#r3 [plain] outcome (None, None), expected ('not_verified', 'FAIL')
+TOTAL                  runs 18, ledger correct 6, conversation pass 18 / fail 0 / verdict missing 0, run passes 6, cases passing every rep 2/6

@@ -1,0 +1,388 @@
+{
+ "bank_name": "Freya Bank",
+ "language": "English",
+ "currency_word": "",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "title",
+  "now": "now"
+ },
+ "other_call_variables": [],
+ "opening": {
+  "first_sentence": "Hello, this is Freya Bank's virtual assistant, and we record this call.",
+  "identity_question": "Am I speaking with <title> <last_name>?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "that's me",
+   "<first_name> <last_name>",
+   "<title> <last_name>",
+   "<last_name>",
+   "<first_name>"
+  ],
+  "not_confirmations": [
+   "who is this?",
+   "what is this about?",
+   "maybe",
+   "hello?",
+   "he's not here",
+   "she's not here"
+  ],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "collections",
+   "debt",
+   "payment",
+   "amount",
+   "product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "date_of_birth",
+    "ask": "Could you please tell me your date of birth?",
+    "format": "date",
+    "numeric_order": "DMY"
+   },
+   {
+    "api_value": "phone_last4",
+    "ask": "Could you please tell me the last four digits of the phone number we have on file?",
+    "format": "digits4",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": null,
+  "swapped_instruction": "A date given only in numbers is day, then month, then year.",
+  "failed_message": "I'm sorry, I could not verify your identity. Please use the mobile app or visit a branch.",
+  "refusal_explanation": "These questions are there to protect your account.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "credit_card",
+   "spoken": "credit card ending <card_last4>",
+   "floor_field": "minimum_payment"
+  },
+  {
+   "api_type": "personal_loan",
+   "spoken": "personal loan",
+   "floor_field": "instalment_amount"
+  },
+  {
+   "api_type": "car_loan",
+   "spoken": "car loan",
+   "floor_field": "instalment_amount"
+  }
+ ],
+ "debt_intro": "I am calling from the collections team about a late payment.",
+ "product_sentence": "Your <spoken> has <past_due> past due and is <days_late> days late.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-29",
+   "2026-11-11",
+   "2026-12-25",
+   "2027-01-01"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "early",
+   "min": 1,
+   "max": 9,
+   "deadline_business_days": 12,
+   "deadline_unit": "business_days",
+   "attempts": 1
+  },
+  {
+   "name": "late",
+   "min": 10,
+   "max": 45,
+   "deadline_business_days": 5,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Can you make this payment today?",
+ "first_ask_multi": "Can you make these payments today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": []
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "late"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "09:00",
+  "end": "17:00",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "in the order the account lookup returns the products",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": false,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "restructuring",
+  "human": "general",
+  "support": "support"
+ },
+ "outcomes": {
+  "promise": "promise",
+  "paid": "paid",
+  "transferred": "transferred",
+  "no_promise": "no_promise",
+  "not_verified": "not_verified",
+  "not_reached": "not_reached",
+  "reasons": {
+   "restructuring": "RES",
+   "human": "HUM",
+   "support": "SUP",
+   "refused": "REF",
+   "hardship": "HRD",
+   "dispute": "DIS",
+   "service_error": "SYS",
+   "failed": "FAIL",
+   "declined": "DECL",
+   "callback": "CB",
+   "no_callback": "NCB",
+   "wrong_number": "WN",
+   "deceased": "DEC",
+   "unclear": "UNC",
+   "paid": ""
+  },
+  "note_reasons": {
+   "refused": "refused",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "paid": "paid",
+   "service_error": "service_error"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 1,
+  "after_promise_sentence": "You will get a text message confirming this promise.",
+  "read_back_question": "Do you confirm?"
+ },
+ "fixed_sentences": {
+  "deceased": "I am very sorry for your loss.",
+  "robot": "I am Freya Bank's virtual assistant.",
+  "scam": "You can verify this call by phoning the number on the back of your card.",
+  "paid": "Payments can take one business day to appear.",
+  "farewell": "Thank you for your time. Goodbye."
+ },
+ "stage_rules": {
+  "always": [
+   "All date rules use the current date and time given for the call (now), never the real clock.",
+   "Before identity is verified, never mention collections, a debt, a payment, an amount or the product, to anyone.",
+   "If asked \"Are you a robot?\": say you are Freya Bank's virtual assistant and continue.",
+   "If asked \"Is this a scam?\": say they can verify the call by phoning the number on the back of their card, and continue.",
+   "Never offer a discount, waiver or plan.",
+   "Thank the customer and say goodbye before the call ends; ending the call is always the very last action."
+  ],
+  "opening": [
+   "First sentence: say you are Freya Bank's virtual assistant and that we record this call, then ask \"Am I speaking with <title> <last_name>?\".",
+   "Only \"yes\", \"speaking\", \"that's me\" or the customer's own name confirm the person.",
+   "Anything else gets one more ask; if it is still unclear, end the whole call as not_reached / UNC.",
+   "If someone else answers, handle it as a third party; if it is a wrong number, end the call as not_reached / WN; if the customer has died, handle it as deceased."
+  ],
+  "third_party": [
+   "Give no reason for the call and say nothing about the account, even to family members who offer to pay.",
+   "Ask when the customer can be reached.",
+   "A callback can only be booked for today or the next business day, between 09:00 and 17:00 (both included), and never earlier than now.",
+   "If the offered time is within these limits, book the callback, then end the call as not_reached / CB.",
+   "If the offered time is outside these limits, ask once for another time; if that is outside too, do not book and end the call as not_reached / NCB.",
+   "A wrong number: end the call as not_reached / WN.",
+   "If the customer has died, say \"I am very sorry for your loss.\", ask nothing else and end the call as not_reached / DEC."
+  ],
+  "identity": [
+   "Ask two questions, one at a time: the date of birth first, then the last four digits of the phone number on file.",
+   "Check each answer right after it is given; send the date of birth as YYYY-MM-DD.",
+   "A date given only in numbers is day, then month, then year.",
+   "A wrong answer may be asked again; three wrong answers in total end the check: do not state any debt, tell the customer to use the mobile app or a branch, and end the call as not_verified / FAIL.",
+   "If the customer will not answer, explain once that the questions protect their account; a second refusal (or asking a second time what the call is about instead of answering) ends the call as not_verified / DECL.",
+   "After both answers pass, look up the account."
+  ],
+  "negotiation": [
+   "Say you are calling from the collections team about a late payment, name each product in words (\"credit card ending\" plus the card's last four digits, \"personal loan\", \"car loan\"), and state the past-due amount and the days late.",
+   "Lateness bands: 1 to 9 days late is early (latest promise date: 12th business day after today, 1 persuasion attempt); 10 to 45 days late is late (latest promise date: 5th business day after today, 2 persuasion attempts).",
+   "Business days are Monday to Friday, except bank holidays 2026-10-29, 2026-11-11, 2026-12-25 and 2027-01-01.",
+   "A promise date must be today or later, a business day and not after the latest promise date.",
+   "A weekend day or holiday that is not after the latest promise date: offer the next business day.",
+   "A date after the latest promise date: say the latest date you can record and offer it; refusing that is a flat refusal.",
+   "\"Next Monday\" means Monday of the following calendar week; \"this Monday\" the current week.",
+   "A vague period (\"next week\", \"after payday\"): ask once for the exact day; if none comes, propose the latest promise date.",
+   "The floor is the minimum payment for a credit card and the instalment amount for a loan.",
+   "Always ask for the full past-due amount first; never ask what the customer can pay; you propose every amount.",
+   "First question: \"Can you make this payment today?\".",
+   "If the full amount is too much, offer the floor once and say the rest stays overdue.",
+   "Any amount from the floor up to the full amount is accepted; below the floor say it cannot be recorded and offer the floor once.",
+   "A date or an amount the customer proposes is never a refusal.",
+   "A flat refusal or a non-answer uses one attempt.",
+   "Attempt 1: the full amount (or the floor if the customer already said the full amount is too much) on the last business day of this week; if today is that day, the last business day of next week.",
+   "Attempt 2, late band only: the floor on the latest promise date.",
+   "When the attempts are used up, stop. With one product: end the call as no_promise / REF. With several products: leave this product without a promise and continue with the next product; at the end, if at least one promise was recorded end the call as promise, otherwise as no_promise / REF.",
+   "Illness, a death in the family or job loss: one short sentence of sympathy, no persuasion; offer the customer support team. If accepted, transfer to the support queue and end the call as transferred / SUP. If declined, end the call as no_promise / HRD. This comes before persuasion and restructuring.",
+   "\"I already paid\": say payments can take one business day to appear; make no promise; end the call as paid.",
+   "\"Not my debt\" or a product closed in the past: do not argue, make no promise, end the call as no_promise / DIS.",
+   "A request for a new payment plan or lower instalments: describe no plan; transfer to the restructuring queue and end the call as transferred / RES.",
+   "A request for a person: ask once whether you can help; if they insist, transfer to the general queue and end the call as transferred / HUM.",
+   "If a transfer follows a recorded promise, end the call with the transfer's outcome and code."
+  ],
+  "multi_product": [
+   "Discuss the products one at a time, in the order the account lookup returns them.",
+   "Each product has its own band, latest promise date, floor and persuasion attempts.",
+   "A shared date for several products must not be after the latest promise date of any of them.",
+   "One promise per product.",
+   "If at least one promise was recorded, end the call as promise unless a transfer follows."
+  ],
+  "confirmation": [
+   "Read the product, amount and date back and ask \"Do you confirm?\".",
+   "Record the promise only after a clear yes."
+  ],
+  "recording": [
+   "Say the promise is recorded only after recording it succeeds.",
+   "If recording fails, try once more; if it fails again, say so and end the call as no_promise / SYS.",
+   "After a recorded promise say: \"You will get a text message confirming this promise.\"",
+   "One promise per product."
+  ],
+  "closing": [
+   "Thank the customer and say goodbye before the call ends.",
+   "At least one promise recorded: end the call as promise (no reason). Already paid: end as paid (no reason).",
+   "If a transfer follows a recorded promise, use the transfer's code.",
+   "Ending the call is always the last action; nothing is accepted after it."
+  ]
+ },
+ "evidence": [
+  {
+   "path": "bands[0]",
+   "quote": "| 1 to 9 | early | 12th business day after today | 1 |"
+  },
+  {
+   "path": "bands[1]",
+   "quote": "| 10 to 45 | late | 7th business day after today | 2 |"
+  },
+  {
+   "path": "bands[1].deadline_business_days",
+   "quote": "The late band's latest promise date is now the 5th business day after today."
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "Monday to Friday, except bank holidays: 2026-10-26, 2026-11-11, 2026-12-25, 2027-01-01."
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "26 October is no longer a bank holiday this year; 29 October 2026 is a bank holiday instead."
+  },
+  {
+   "path": "callback",
+   "quote": "Callbacks: same day or next business day only, between 09:00 and 17:00, both included."
+  },
+  {
+   "path": "callback.alternative_asks",
+   "quote": "ask once for another time; if that is outside too, do not book and end as code NCB"
+  },
+  {
+   "path": "product_types",
+   "quote": "The floor is `minimum_payment` for a credit card and `instalment_amount` for a loan."
+  },
+  {
+   "path": "identity.questions",
+   "quote": "the date of birth first, then the last four digits of the phone number on file"
+  },
+  {
+   "path": "identity.questions[0].numeric_order",
+   "quote": "a date given only in numbers is day, then month, then year"
+  },
+  {
+   "path": "identity.max_wrong_total",
+   "quote": "three wrong answers in total end the check"
+  },
+  {
+   "path": "first_ask_single",
+   "quote": "First question: \"Can you make this payment today?\"."
+  },
+  {
+   "path": "recording.after_promise_sentence",
+   "quote": "\"You will get a text message confirming this promise.\""
+  },
+  {
+   "path": "recording.retries_after_failure",
+   "quote": "if it fails, try once more; if it fails again, say so and end as SYS"
+  },
+  {
+   "path": "fixed_sentences.deceased",
+   "quote": "say \"I am very sorry for your loss.\", ask nothing else and end as DEC"
+  },
+  {
+   "path": "transfer_queues.human",
+   "quote": "`transfer_to_agent` with queue `general`, end as HUM"
+  },
+  {
+   "path": "outcomes.reasons",
+   "quote": "| attempts used up / refused | `no_promise` | `REF` |"
+  },
+  {
+   "path": "notes.enabled",
+   "quote": "`add_note` is not used in this pilot"
+  }
+ ],
+ "precedence": [
+  {
+   "topic": "callback window",
+   "superseded_quote": "between 10:00 and 19:00 (both included)",
+   "governing_quote": "Callbacks: same day or next business day only, between 09:00 and 17:00, both included.",
+   "why": "G\u00fcl's memo replaces the policy where they differ and the mail says it wins."
+  },
+  {
+   "topic": "late band latest promise date",
+   "superseded_quote": "| 10 to 45 | late | 7th business day after today | 2 |",
+   "governing_quote": "The late band's latest promise date is now the 5th business day after today.",
+   "why": "The memo replaces the policy where they differ."
+  },
+  {
+   "topic": "bank holidays",
+   "superseded_quote": "except bank holidays: 2026-10-26, 2026-11-11, 2026-12-25, 2027-01-01",
+   "governing_quote": "26 October is no longer a bank holiday this year; 29 October 2026 is a bank holiday instead.",
+   "why": "The memo replaces the policy where they differ."
+  },
+  {
+   "topic": "close_call reason codes",
+   "superseded_quote": "Please do not use the old codes from the 2025 pilot",
+   "governing_quote": "`reason` as one of these codes. Promise and paid take no reason.",
+   "why": "The mail states the code list is the current one."
+  }
+ ],
+ "unmapped_rules": []
+}
