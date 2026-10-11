@@ -1,0 +1,40 @@
+## R4b raw material, kit API (codes mapped to system values)
+EXACT  identity.swapped_hint_value
+   got: null
+   ref: "day_month_swapped"
+EXACT  multi_product.enabled
+   got: true
+   ref: false
+TEXT   first_ask_multi
+   got: Can you make these payments today?
+   ref: Can you pay all of them today?
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+2 exact difference(s), 2 text difference(s)
+
+## R5 adversarial raw material (independent author)
+TEXT   opening.identity_question
+   got: Could I speak with <honorific> <surname>, please?
+   ref: Could I speak with <title> <last_name>, please?
+TEXT   fixed_sentences.farewell
+   got: Thank you for your time. Goodbye.
+   ref: 
+0 exact difference(s), 2 text difference(s)
+
+## R6 clean spec, car finance (independent author)
+EXACT  identity.max_wrong_total
+   got: 3
+   ref: 4
+EXACT  callback.after_now
+   got: false
+   ref: true
+2 exact difference(s), 0 text difference(s)
+
+Assessment (2026-10-11 ~09:10 Istanbul, builder = C5 extraction):
+- R4b: 2 defensible differences (brief silent on the swap hint and on a one-product limit); all reason codes mapped to system values.
+- R5: 0 exact differences despite out-of-order memos, partial reversals, product-scoped and not-yet-effective memos and retired codes.
+- R6: max_wrong_total 3 vs 4 ("up to three wrong answers allowed; the fourth ends the check" — the field is unused by code, the bank
+  enforces the limit, the brief's wording reaches the agent via stage rules); callback.after_now false vs true (harmless: "never today").
+- BOTH R5 and R6 builds then CRASHED in compile (KeyError verify_answer / close_outcome): role inference does not recognise
+  answer_text/given_answer, disposition, product_code/agreement_type. Being fixed by worker W1 (enum/structure fallbacks).
