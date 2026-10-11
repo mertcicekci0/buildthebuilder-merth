@@ -1,0 +1,30 @@
+r2-a-plain             agent c215da13 styles=plain now=case: runs 30, ledger correct 29/30, conversation checks 26/30, run passes 26/30, cases passing every rep 7/10
+    FAIL PUB-06#r1 [plain] conversation: The agent failed the requirement to offer the minimum payment only once, as it made the offer in Message 8 and repeated it in Message 10. Furthermore, the second offer in Message 10 did not include the nece
+    FAIL PUB-10#r1 [plain] conversation: The conversation failed on one of the success criteria. Although the agent correctly handled the API failure and retry logic—resulting in exactly one promise being recorded in the ledger (as shown in the sy
+    FAIL PUB-03#r2 [plain] outcome ('not_verified', 'declined'), expected ('not_verified', 'failed')
+    FAIL PUB-03#r2 [plain] conversation: The assistant failed to satisfy the requirement of telling the customer to use the app or visit a branch. After the user provided a third incorrect date of birth in [Message 7], the assistant eventually end
+    FAIL PUB-10#r3 [plain] conversation: - The agent said the word 'recorded' in Message 0 ('this call is recorded'), which occurred before the successful API call to record the promise. This violates the criterion 'agent does not say recorded bef
+r2-b-plain             agent ef2c68a2 styles=plain now=case: runs 9, ledger correct 9/9, conversation checks 9/9, run passes 9/9, cases passing every rep 3/3
+r2-b-styled            agent ef2c68a2 styles=asks_back,talkative now=case: runs 18, ledger correct 15/18, conversation checks 16/18, run passes 15/18, cases passing every rep 1/3
+    FAIL PUB-13#r4 [talkative] outcome (None, None), expected ('promise', None)
+    FAIL PUB-13#r4 [talkative] promises [], expected [('p1', 300.0, '2026-10-30'), ('p2', 900.0, '2026-10-23')]
+    FAIL PUB-13#r4 [talkative] conversation: The call failed to meet all success criteria. First, no payments were actually recorded; the assistant stated it was experiencing a technical issue and could not schedule the payment (Message 50), which is 
+    FAIL PUB-12#r5 [asks_back] notes [], expected [('p2', 'refused'), ('p3', 'refused')]
+    FAIL PUB-13#r6 [talkative] outcome ('no_promise', 'refused'), expected ('promise', None)
+    FAIL PUB-13#r6 [talkative] promises [], expected [('p1', 300.0, '2026-10-30'), ('p2', 900.0, '2026-10-23')]
+    FAIL PUB-13#r6 [talkative] conversation: The assistant failed all specific success criteria. 1) No credit card payment was recorded for 30 October; the assistant only ever offered 16 October. 2) No payment for the personal loan was recorded for 23
+r2-a-styled            agent c215da13 styles=asks_back,talkative,in_words now=case: runs 30, ledger correct 30/30, conversation checks 24/30, run passes 24/30, cases passing every rep 6/10
+    FAIL PUB-06#r1 [asks_back] conversation: The agent failed to meet the success criteria because the minimum payment was offered twice (Message 8 and Message 10), whereas the criteria specified it should be offered only once. While the agent did inc
+    FAIL PUB-10#r1 [asks_back] conversation: The agent used the word 'recorded' in Message 0 ('this call is recorded'), which occurred before the successful API call to record the promise. While this is part of a standard legal disclaimer, the success
+    FAIL PUB-05#r2 [talkative] conversation: The call failed two of the success criteria: 1. The agent offered the support team three separate times (Messages 12, 16, and 20), whereas the criteria mandated it be offered only once. 2. The agent provide
+    FAIL PUB-10#r2 [talkative] conversation: The conversation failed because the agent said the word 'recorded' before the successful API call to create the promise. The successful API call (the retry) occurred after Message 11, but the agent said 'th
+    FAIL PUB-07#r3 [in_words] conversation: The agent failed to meet the first criterion as it never asked the user to provide an exact day; instead, it interpreted a vague timeframe ("the week after next") as October 26th and proposed a different da
+    FAIL PUB-10#r3 [in_words] conversation: The conversation failed to meet the success criteria because the agent said the word 'recorded' in Message 0 ('this call is recorded') before any successful API calls (such as identity verification or promi
+r2-a-cal               agent c215da13 styles=plain now=case: runs 9, ledger correct 7/9, conversation checks 7/9, run passes 7/9, cases passing every rep 2/3
+    FAIL CAL-XMAS#r1 [plain] promises [('p1', 637.5, '2026-12-24')], expected [('p1', 637.5, '2026-12-31')]
+    FAIL CAL-XMAS#r1 [plain] conversation: The agent failed to propose the required date of Thursday 31 December. In messages 10 and 12, the agent proposed and confirmed Thursday 24 December instead. The agent did correctly offer the minimum payment
+    FAIL CAL-XMAS#r3 [plain] promises [('p1', 637.5, '2026-12-24')], expected [('p1', 637.5, '2026-12-31')]
+    FAIL CAL-XMAS#r3 [plain] conversation: The agent failed to meet the date requirement. While it correctly offered the minimum payment and stated the rest would remain overdue, and avoided asking the customer how much they could pay, it proposed '
+r2-b-cal               agent ef2c68a2 styles=plain,pieces,corrects now=case: runs 3, ledger correct 3/3, conversation checks 3/3, run passes 3/3, cases passing every rep 1/1
+TOTAL                  runs 99, ledger correct 93, conversation checks 85, run passes 84, cases passing every rep 20/30
+REGRESS_DONE
