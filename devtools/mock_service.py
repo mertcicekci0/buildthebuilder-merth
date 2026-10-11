@@ -34,7 +34,26 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+import datetime
+
 import jsonschema
+
+FORMATS = jsonschema.FormatChecker(formats=())   # own checks: jsonschema 4.26 rejects HH:MM as 'time' and never checks 'date-time'
+
+
+@FORMATS.checks("date", raises=ValueError)
+def _date(v):
+    return not isinstance(v, str) or bool(datetime.date.fromisoformat(v)) and len(v) == 10
+
+
+@FORMATS.checks("time", raises=ValueError)
+def _time(v):
+    return not isinstance(v, str) or bool(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?", v))
+
+
+@FORMATS.checks("date-time", raises=ValueError)
+def _datetime(v):
+    return not isinstance(v, str) or bool(datetime.datetime.fromisoformat(v.replace("Z", "+00:00")))
 
 METHODS = ("get", "post", "put", "patch", "delete")
 
@@ -181,7 +200,7 @@ class Mock:
             s = self._session(sid)
             entry = {"op": key, "method": method, "path": path, "body": body, "session": sid}
             if op["request_schema"] is not None:
-                errors = sorted(jsonschema.Draft202012Validator(op["request_schema"], format_checker=jsonschema.FormatChecker())
+                errors = sorted(jsonschema.Draft202012Validator(op["request_schema"], format_checker=FORMATS)
                                 .iter_errors(body if body is not None else {}), key=lambda e: list(e.path))
                 if errors:
                     msg = "; ".join(f"{'/'.join(map(str, e.path)) or '(body)'}: {e.message}" for e in errors[:5])

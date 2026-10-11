@@ -124,14 +124,23 @@ def _response_schema(op):
     return {}
 
 
-def load(path_or_dict):
+def load(path_or_dict, tool_map=None, base_url=None):
+    """tool_map: {canonical tool name: operationId or "METHOD /path"} for contracts that name operations differently (explicit,
+    traced; never guessed). base_url: replaces servers[0].url (test builds against our own mock only)."""
     spec = path_or_dict if isinstance(path_or_dict, dict) else json.load(open(path_or_dict))
     if not str(spec.get("openapi", spec.get("swagger", ""))).startswith(("3", "2")):
         raise OpenAPIError("not an OpenAPI document")
     servers = spec.get("servers") or []
-    base = (servers[0].get("url") if servers else "").rstrip("/")
+    base = (base_url or (servers[0].get("url") if servers else "")).rstrip("/")
     if not base:
         raise OpenAPIError("no servers[0].url: cannot know where the bank API lives")
+    if not re.match(r"^https?://[^/{}]+", base) or "{" in base:
+        raise OpenAPIError(f"servers[0].url {base!r} is not an absolute URL without variables: tool calls need one")
+    alias = {}
+    for canon, ref in (tool_map or {}).items():
+        if canon not in TOOL_NAMES:
+            raise OpenAPIError(f"tool map: {canon!r} is not one of {TOOL_NAMES}")
+        alias[str(ref).strip()] = canon
     contracts, unknown = {}, []
     for path, item in (spec.get("paths") or {}).items():
         item = _resolve(spec, item)
@@ -140,6 +149,7 @@ def load(path_or_dict):
                 continue
             name = op.get("operationId") or path.strip("/").split("/")[-1]
             name = name if name in TOOL_NAMES else path.strip("/").split("/")[-1]
+            name = alias.get(op.get("operationId") or "", alias.get(f"{method.upper()} {path}", name))
             body = _json_body_schema(op)
             req = body.get("required", [])
             fields = [_field(k, v, req) for k, v in (body.get("properties") or {}).items()]

@@ -27,7 +27,8 @@ PY=python3
 STEMS=""
 i=1
 for f in "$@"; do
-  [ -f "$f" ] || { echo "ABORT: input file not found: $f"; exit 2; }
+  [ -e "$f" ] || { echo "ABORT: input not found: $f"; exit 2; }   # a file, or a folder/zip bundle (builder/inputs.py)
+  case "$f" in *" "*) echo "ABORT: input path contains a space: '$f'; copy it to e.g. briefs/final.zip"; exit 2;; esac
   if [ $(( i % 2 )) -eq 1 ]; then b=$(basename "$f"); b=${b%.*}
     case " $STEMS " in *" $b "*) echo "ABORT: two briefs share the name '$b'; copy them to distinct names (e.g. briefs/hidden-1.md, briefs/hidden-2.md)"; exit 2;; esac
     STEMS="$STEMS $b"
@@ -35,6 +36,7 @@ for f in "$@"; do
   i=$((i + 1))
 done
 git diff --cached --quiet || { echo "ABORT: files are staged in the index; unstage them (git restore --staged <paths>) so the artefact commit stays clean"; exit 1; }
+[ -z "${BUILDER_BASE_URL_OVERRIDE:-}" ] || { echo "ABORT: BUILDER_BASE_URL_OVERRIDE is set (test builds against our mock only); unset it"; exit 1; }
 if [ -n "${FREYA_AGENT_PROVIDER:-}${FREYA_AGENT_MODEL:-}" ]; then
   echo "ABORT: FREYA_AGENT_PROVIDER/FREYA_AGENT_MODEL are set in this shell; unset them (the submission must use the event's model)"; exit 1
 fi
@@ -82,13 +84,13 @@ done
 $PY devtools/secret_scan.py submission traces || { echo "[final] secret scan found something: do not commit"; FAIL=1; }
 if [ "$FAIL" != "0" ]; then echo "[final] problems found; nothing committed"; exit 1; fi
 FILES=""
-for n in $NAMES; do FILES="$FILES submission/$n.workflow.json traces/$n.log traces/$n.jsonl"; done
+for n in $NAMES; do FILES="$FILES submission/$n.workflow.json traces/$n.log traces/$n.jsonl"; [ -s "out/$n.policy.json" ] && FILES="$FILES out/$n.policy.json"; done
 if [ "$COMMIT" = "1" ]; then
-  git add $FILES && git commit -q -m "Final-run artefacts for$NAMES (code commit $C)" -- $FILES || exit 1
+  git add -f $FILES && git commit -q -m "Final-run artefacts for$NAMES (code commit $C)" -- $FILES || exit 1
   echo "[final] artefact commit S=$(git rev-parse HEAD)"
   $PY devtools/verify_submission.py $NAMES || exit 1
 else
   echo "[final] OK. To commit only the artefacts:"
-  echo "  git add$FILES && git commit -m \"Final-run artefacts for$NAMES (code commit $C)\" --$FILES"
+  echo "  git add -f$FILES && git commit -m \"Final-run artefacts for$NAMES (code commit $C)\" --$FILES"
   echo "  $PY devtools/verify_submission.py$NAMES"
 fi

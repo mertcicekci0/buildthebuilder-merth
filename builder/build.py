@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "kit"))
 
 from builder import compile_workflow as cw  # noqa: E402
+from builder import inputs as bi  # noqa: E402
 from builder import local_exec as le  # noqa: E402
 from builder import openapi_tools as ot  # noqa: E402
 from builder import policy_schema as ps  # noqa: E402
@@ -205,18 +206,23 @@ def main():
     ap.add_argument("--slot", help="Freya slot name (default: brief file name without extension)")
     ap.add_argument("--ir", help="use this policy IR instead of extracting one (no model call)")
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--tool-map", help="JSON file {canonical tool: operationId or 'METHOD /path'} for a contract with other operation names")
     a = ap.parse_args()
+    mock_base = os.environ.get("BUILDER_BASE_URL_OVERRIDE", "").strip()   # test builds against our own mock: never a submission
     arm_watchdog()
     if not a.ir and os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk") == "agent_sdk":
         ensure_model_runtime()
     slot = a.slot or pathlib.Path(a.brief_path).stem
+    if mock_base and not slot.endswith("-mock"):
+        slot += "-mock"
     for d in ("out", "submission", "traces"):
         (ROOT / d).mkdir(exist_ok=True)
     trace_dir = ROOT / os.environ.get("BUILDER_TRACE_DIR", "traces")   # development runs use traces/dev (ignored)
     trace_dir.mkdir(parents=True, exist_ok=True)
     trace = Trace(trace_dir / f"{slot}.jsonl", t0=T0)
     deadline = T0 + DEADLINE_MIN * 60
-    trace.start(brief=a.brief_path, brief_sha=sha(a.brief_path), tool_api=a.tool_api_path, api_sha=sha(a.tool_api_path), slot=slot,
+    trace.start(brief=a.brief_path, brief_sha=bi.sha_path(a.brief_path), tool_api=a.tool_api_path, api_sha=bi.sha_path(a.tool_api_path), slot=slot,
+                tool_map=a.tool_map and json.load(open(a.tool_map)), base_url_override=mock_base or None,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
                 python=sys.version.split()[0], agent_sdk=_sdk_version(), commit=_git_commit(), started_before_s=round(time.time() - T0, 1))
     # the phone-agent model is the event's (kit/freya.py AGENT_LLM); organisers may override it by env, so it is traced, never changed
@@ -228,8 +234,12 @@ def main():
         trace.end("failed", error="FREYA_API_KEY is not set")
         raise SystemExit("FREYA_API_KEY is not set (source env.sh); nothing was built")
     try:
-        brief = pathlib.Path(a.brief_path).read_text(encoding="utf-8", errors="replace")
-        api = ot.load(a.tool_api_path)
+        contract = bi.find_contract(a.tool_api_path, ROOT / "out" / "inputs" / f"{slot}-contract")
+        brief, files = bi.read_brief(a.brief_path, ROOT / "out" / "inputs" / slot, exclude=[contract])
+        trace.step(f"inputs read: {len(files)} file(s), brief text {len(brief)} chars, contract {contract.name}", files=files)
+        api = ot.load(str(contract), tool_map=a.tool_map and json.load(open(a.tool_map)), base_url=mock_base or None)
+        if api["unknown_operations"]:
+            trace.warn("contract operations not used by the builder: " + ", ".join(api["unknown_operations"]))
         roles, role_problems = ot.infer_roles(api)
         trace.step(f"tool API parsed: {len(api['tools'])} tools at {api['base_url']}", roles=roles, problems=role_problems)
         if api["missing_tools"]:
@@ -282,7 +292,7 @@ def main():
         vs = freya.api("GET", f"/api/v2/versions/workflow/{res['workflow_id']}", workspaceId=freya.workspace_id())["versions"]
         newest = max(vs, key=lambda x: x["versionNumber"])
         trace.test("published version is the newest", "pass" if newest.get("isPublished") else "FAIL", version=newest["versionNumber"])
-        out = ROOT / "submission" / f"{slot}.workflow.json"
+        out = ROOT / ("out" if mock_base else "submission") / f"{slot}.workflow.json"   # a mock-URL build is never a submission
         freya.export_workflow(res["workflow_id"], str(out))
         trace.created(f"exported to {out.relative_to(ROOT)} sha={sha(out)}")
         status = "ok" if not (fails or missing or lost_tools) else "ok with warnings"

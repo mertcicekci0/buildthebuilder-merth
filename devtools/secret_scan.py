@@ -26,10 +26,10 @@ def secret_values():
     env_file = ROOT / "env.sh"
     if env_file.exists():
         for line in env_file.read_text().splitlines():
-            m = re.match(r"\s*export\s+(" + "|".join(NAMES) + r")=(\S+)", line)
+            m = re.match(r"\s*export\s+(" + "|".join(NAMES) + r"|[A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD)?)[A-Z0-9_]*)=['\"]?([^'\"\s]+)", line)
             if m and len(m.group(2)) >= 8:
                 vals[m.group(1)] = m.group(2)
-    for k in NAMES:
+    for k in list(NAMES) + [n for n in os.environ if re.search(r"(KEY|TOKEN|SECRET|PASS)", n) and n not in NAMES]:
         v = os.environ.get(k)
         if v and len(v) >= 8:
             vals[k] = v

@@ -102,3 +102,19 @@ def test_http_server_end_to_end():
         assert call("/__mock/reset", {"session": "c9"})[0] == 200 and call("/__mock/ledger?session=c9")[1]["ledger"] == []
     finally:
         srv.shutdown()
+
+
+def test_date_and_time_formats_are_checked_by_the_mock_itself():
+    from mock_service import FORMATS
+    assert FORMATS.conforms("14:30", "time") and FORMATS.conforms("2026-10-20", "date")
+    assert not FORMATS.conforms("25:00", "time") and not FORMATS.conforms("2026-13-01", "date")
+    assert not FORMATS.conforms("garbage", "date-time") and FORMATS.conforms("2026-10-20T11:00", "date-time")
+    m = mock()
+    assert m.handle("POST", "/create_promise", {}, {"customer_id": "c1", "product_id": "p1", "amount": 1, "date": "2026-02-30"})[0] == 422
+
+
+def test_an_injected_failure_records_nothing_and_changes_no_state():
+    m = mock()
+    req = {"customer_id": "c1", "product_id": "fail", "amount": 100, "date": "2026-10-20"}
+    m.handle("POST", "/create_promise", {}, req)
+    assert m.sessions["c1"]["state"]["promises"] == [] and not any(e.get("recorded") for e in m.ledger("c1"))
