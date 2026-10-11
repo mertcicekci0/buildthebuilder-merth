@@ -144,3 +144,28 @@ def test_unmentioned_holiday_is_a_warning_not_a_problem():
     assert ps.check(ir, api, roles, brief, warnings=w) == []
     assert w == ["holiday 2026-11-11 was not found written in the brief (kept; check it)"]
     assert ps.check(ir, api, roles, brief) == []   # old call form: never a problem
+
+
+def test_next_weekday_meaning_follows_the_ir():
+    import datetime as dt
+    from builder import policy_schema as ps, runtime_src as rt
+    assert ps.schema()["properties"]["calendar"]["properties"]["next_weekday"]["enum"] == ["following_week", "next_occurrence"]
+    cfg = json.load(open(ROOT / "tests/fixtures/runtime_cfg_public_ab.json"))
+    D = dt.date.fromisoformat
+    wed, fri, sun = D("2026-10-14"), D("2026-10-16"), D("2026-10-18")
+    for mode in (None, "following_week"):
+        c = copy.deepcopy(cfg)
+        if mode:
+            c["calendar"]["next_weekday"] = mode
+        assert rt.resolve_day_words("next Friday", wed, c) == (D("2026-10-23"), "next_weekday")
+        assert rt.resolve_day_words("next Friday", fri, c) == (D("2026-10-23"), "next_weekday")
+    c = copy.deepcopy(cfg); c["calendar"]["next_weekday"] = "next_occurrence"
+    assert rt.resolve_day_words("next Friday", wed, c) == (D("2026-10-16"), "next_weekday")
+    assert rt.resolve_day_words("next Friday", fri, c) == (D("2026-10-23"), "next_weekday")    # never today
+    assert rt.resolve_day_words("next Monday", sun, c) == (D("2026-10-19"), "next_weekday")
+    assert rt.resolve_day_words("this Friday", wed, c) == (D("2026-10-16"), "this_weekday")
+    assert "next friday = Friday 16 October" in rt.relative_dates_text(wed, c)
+    assert "next friday = Friday 23 October" in rt.relative_dates_text(wed, cfg)
+    ir = copy.deepcopy(IR); ir["calendar"]["next_weekday"] = "next_occurrence"
+    _, _, wf = build(ir)
+    assert '"next_weekday":"next_occurrence"' in wf["nodes"]["init"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]

@@ -92,6 +92,14 @@ def weekday_in_week(today, wd, weeks_ahead, cfg):
     return start + datetime.timedelta(days=7 * weeks_ahead + off)
 
 
+def next_weekday_date(today, wd, cfg):
+    """"next <weekday>": calendar.next_weekday "following_week" (default) = that weekday in the following calendar week;
+    "next_occurrence" = the first such weekday after today."""
+    if (cfg.get("calendar") or {}).get("next_weekday") == "next_occurrence":
+        return today + datetime.timedelta(days=(wd - today.weekday() - 1) % 7 + 1)
+    return weekday_in_week(today, wd, 1, cfg)
+
+
 def band_for(days_late, cfg):
     """The band containing days_late. Outside every band a product still gets a band, so it always has a deadline:
     below the lowest band -> the lowest band; above the highest band (or in a gap between bands) -> the highest band
@@ -250,7 +258,7 @@ def relative_dates_text(today, cfg):
     lines = []
     for wd in range(7):
         this_d = weekday_in_week(today, wd, 0, cfg)
-        next_d = weekday_in_week(today, wd, 1, cfg)
+        next_d = next_weekday_date(today, wd, cfg)
         name = WEEKDAYS[wd]
         lines.append("this " + name + " = " + spoken_date(this_d) + (" (already past)" if this_d < today else "") +
                      "; next " + name + " = " + spoken_date(next_d))
@@ -445,7 +453,7 @@ def resolve_day_words(words, today, cfg):
                 return d, "explicit"
     if wd is not None:
         if " next " in w:
-            return weekday_in_week(today, wd, 1, cfg), "next_weekday"
+            return next_weekday_date(today, wd, cfg), "next_weekday"
         d = weekday_in_week(today, wd, 0, cfg)
         if " this " in w or d >= today:
             return d, "this_weekday"

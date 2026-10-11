@@ -95,7 +95,8 @@
    "2026-12-26",
    "2027-01-01"
   ],
-  "week_start": 0
+  "week_start": 0,
+  "next_weekday": "following_week"
  },
  "bands": [
   {

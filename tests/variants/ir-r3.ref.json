@@ -90,7 +90,8 @@
    "2026-12-25",
    "2026-12-31"
   ],
-  "week_start": 0
+  "week_start": 0,
+  "next_weekday": "following_week"
  },
  "bands": [
   {
