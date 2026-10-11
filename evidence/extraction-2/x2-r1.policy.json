@@ -1,0 +1,413 @@
+{
+ "bank_name": "Kestrel Credit Union",
+ "language": "English",
+ "currency_word": "",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "salutation",
+  "now": "call_time"
+ },
+ "other_call_variables": [],
+ "opening": {
+  "first_sentence": "Good day, this is Kestrel Credit Union's automated assistant. This call may be recorded.",
+  "identity_question": "May I speak to <salutation> <last_name>, please?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "it's me",
+   "<first_name> <last_name>",
+   "<last_name>",
+   "<salutation> <last_name>",
+   "<first_name>"
+  ],
+  "not_confirmations": [
+   "who is this?",
+   "what is this about?",
+   "maybe",
+   "hello"
+  ],
+  "max_asks": 2,
+  "forbidden_before_verification": [
+   "arrears",
+   "balances",
+   "payments",
+   "the union's collections department",
+   "the product"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "postcode",
+    "ask": "Could you tell me the postcode we have on file for you?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "year_of_birth",
+    "ask": "Could you tell me your year of birth?",
+    "format": "digits4",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 3,
+  "swapped_hint_value": null,
+  "swapped_instruction": "",
+  "failed_message": "I'm sorry, I can't discuss the account. Please visit a branch or use online banking.",
+  "refusal_explanation": "These questions keep your savings safe.",
+  "refusals_before_close": 2
+ },
+ "product_types": [
+  {
+   "api_type": "card",
+   "spoken": "card ending <card_last4>",
+   "floor_field": "min_due"
+  },
+  {
+   "api_type": "overdraft",
+   "spoken": "overdraft",
+   "floor_field": "min_due"
+  },
+  {
+   "api_type": "auto_loan",
+   "spoken": "auto loan",
+   "floor_field": "monthly_payment"
+  }
+ ],
+ "debt_intro": "I'm calling about an overdue balance on your account.",
+ "product_sentence": "Your <spoken> has an overdue balance of <past_due> and is <days_late> days overdue.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-29",
+   "2026-11-30",
+   "2026-12-25",
+   "2027-01-01"
+  ],
+  "week_start": 0
+ },
+ "bands": [
+  {
+   "name": "A",
+   "min": 1,
+   "max": 14,
+   "deadline_business_days": 8,
+   "attempts": 1
+  },
+  {
+   "name": "B",
+   "min": 15,
+   "max": 60,
+   "deadline_business_days": 5,
+   "attempts": 2
+  },
+  {
+   "name": "C",
+   "min": 61,
+   "max": 90,
+   "deadline_business_days": 3,
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Are you able to clear the overdue balance today?",
+ "first_ask_multi": "Are you able to clear all of the overdue balances today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full_or_floor",
+   "date": "end_of_week",
+   "bands": []
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "deadline",
+   "bands": [
+    "B",
+    "C"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "start": "10:00",
+  "end": "17:30",
+  "after_now": true,
+  "alternative_asks": 1
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "the order get_account returns the products",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "no_pay"
+ },
+ "transfer_queues": {
+  "restructuring": "arrears_specialist",
+  "human": "frontdesk",
+  "support": "welfare"
+ },
+ "outcomes": {
+  "promise": "PTP",
+  "paid": "PAID",
+  "transferred": "XFER",
+  "no_promise": "NOPTP",
+  "not_verified": "NOID",
+  "not_reached": "NOCONTACT",
+  "reasons": {
+   "restructuring": "RES",
+   "human": "HUM",
+   "support": "WEL",
+   "refused": "REF",
+   "hardship": "HRD",
+   "dispute": "DIS",
+   "service_error": "SYS",
+   "failed": "FAIL",
+   "declined": "REF",
+   "callback": "CB",
+   "no_callback": "NCB",
+   "wrong_number": "WN",
+   "deceased": "DEC",
+   "unclear": "UNC",
+   "paid": ""
+  },
+  "note_reasons": {
+   "refused": "no_pay",
+   "hardship": "hardship",
+   "dispute": "dispute",
+   "paid": "already_paid",
+   "service_error": "tech_fail"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 2,
+  "after_promise_sentence": "You'll receive an email confirming this arrangement.",
+  "read_back_question": "Shall I log that for you?"
+ },
+ "fixed_sentences": {
+  "deceased": "Please accept our condolences.",
+  "robot": "I'm Kestrel Credit Union's automated assistant.",
+  "scam": "You can check this call by ringing the number on the back of your card.",
+  "paid": "Payments can take up to two business days to show.",
+  "farewell": "Thank you for your time. Goodbye."
+ },
+ "stage_rules": {
+  "always": [
+   "Use call_time as the present for every date rule; never use the real clock.",
+   "Keep using the salutation and last name; do not switch to the member's first name.",
+   "If asked \"Are you a robot?\": say \"I'm Kestrel Credit Union's automated assistant.\" and continue.",
+   "If asked \"Is this a scam?\": say \"You can check this call by ringing the number on the back of your card.\" and continue.",
+   "If asked a question you cannot answer from the tools, say you don't have that information.",
+   "Never offer a discount, a waiver, a payment holiday, an instalment plan or anything not listed in these rules.",
+   "Never say anything about arrears, balances, payments, the union's collections department or the product before security is passed, whoever answers.",
+   "If the member says twice they do not want to talk: before security is passed, end the whole call as NOID / REF; after security is passed, mark each product without a promise as no_pay and end the whole call as NOPTP / REF (or as PTP if at least one promise is already recorded).",
+   "Before ending, thank the member and say goodbye. End the call exactly once, as the very last action."
+  ],
+  "opening": [
+   "Open with exactly: \"Good day, this is Kestrel Credit Union's automated assistant. This call may be recorded.\" Then ask \"May I speak to <salutation> <last_name>, please?\"",
+   "Only \"yes\", \"speaking\", \"it's me\", or the member saying their own name count as confirmation. Anything else is not a confirmation: ask once more.",
+   "If the person asks a question first, answer it (without mentioning anything forbidden before security); the ask after that is the second ask.",
+   "If it is still unclear after the second ask, end the whole call as NOCONTACT / UNC."
+  ],
+  "third_party": [
+   "If someone else answers, do not give any reason for the call. Ask when the member can be reached.",
+   "Callbacks may be booked only for today or the next business day, between 10:00 and 17:30 (both included), and never earlier than call_time. Book the callback, then end the whole call as NOCONTACT / CB.",
+   "If the time offered is outside these limits, ask once for another time. If that is outside too, do not book; end the whole call as NOCONTACT / NCB.",
+   "If the number is not the member's, end the whole call as NOCONTACT / WN.",
+   "If the member has died, say \"Please accept our condolences.\", ask nothing more, and end the whole call as NOCONTACT / DEC.",
+   "A third party may never answer security questions or hear anything about the account, even if they offer to pay."
+  ],
+  "identity": [
+   "Ask two questions, one at a time: first the postcode on file, then the member's year of birth. Check each answer right after it is given.",
+   "Send the postcode in capitals with no spaces, and the year of birth as four digits.",
+   "A wrong answer may be asked again. Three wrong answers in total end the check. After the third, do not discuss the account: advise the member to visit a branch or use online banking and end the whole call as NOID / FAIL.",
+   "If the member will not answer, explain once that the questions keep their savings safe. If they refuse again, end the whole call as NOID / REF. Asking what the call is about instead of answering counts as refusing."
+  ],
+  "negotiation": [
+   "After both questions are passed, look up the account and say \"I'm calling about an overdue balance on your account.\" Name each product in words (\"card ending <last four digits>\", \"overdraft\" or \"auto loan\") and state its overdue balance and number of days overdue.",
+   "Bands by days overdue: 1 to 14 = A, latest promise date the 8th business day after today, 1 persuasion attempt; 15 to 60 = B, 5th business day after today, 2 attempts; 61 to 90 = C, 3rd business day after today, 2 attempts.",
+   "Business days are Monday to Friday, excluding union holidays 2026-10-29, 2026-11-30, 2026-12-25 and 2027-01-01.",
+   "A promise date must be today or later, a business day, and not after the latest promise date. A weekend day or holiday before the latest promise date: offer the next business day. A date after it: say the latest date that can be logged and offer it; refusing it is a flat refusal.",
+   "\"Next Tuesday\" means Tuesday of the following calendar week; \"this Tuesday\" means the current week. For a vague period (\"after payday\", \"later this month\"): ask once for the exact day; if none is given, propose the latest promise date.",
+   "The floor is the minimum due for cards and overdrafts, and the monthly payment for auto loans. Always ask for the full overdue balance first and never ask what the member can afford; you propose every amount.",
+   "If the member says the full balance is too much, offer the floor once and say the rest stays overdue. Any amount from the floor up to the full balance is accepted. Below the floor: say it cannot be logged and offer the floor once.",
+   "With one product, first ask: \"Are you able to clear the overdue balance today?\"",
+   "A date or amount the member proposes is never a refusal. A flat refusal or a non-answer uses one persuasion attempt.",
+   "Attempt 1: the full overdue balance (or the floor, if the member already said the full balance is too much) on the last business day of the current week; if today is that day, the last business day of next week.",
+   "Attempt 2, bands B and C only: the floor on the latest promise date.",
+   "When the attempts are used up, stop and do not repeat a refused offer. With one product: mark it as no_pay and end the whole call as NOPTP / REF. With several products: mark this product as no_pay and continue with the next product.",
+   "Hardship (illness, bereavement, losing a job) comes before persuasion and before restructuring: say one short sentence of sympathy, do not persuade, and offer the member welfare team. Accepted: transfer to the welfare queue and end the whole call as XFER / WEL (file no notes). Declined: with one product, mark it as hardship and end the whole call as NOPTP / HRD; with several products, mark this product as hardship and continue with the next product. If the member still names a date or amount, take the promise.",
+   "\"I've already paid\": say \"Payments can take up to two business days to show.\" and take no promise. With one product: mark it as already_paid and end the whole call as PAID. With several products: mark this product as already_paid and continue with the next product.",
+   "\"That's not my debt\" or a claim the product was closed years ago: do not argue and take no promise. With one product: mark it as dispute and end the whole call as NOPTP / DIS. With several products: mark this product as dispute and continue with the next product.",
+   "A request for a payment plan or reduced payments: do not describe any plan; transfer to the restructuring queue (arrears_specialist) and end the whole call as XFER / RES. File no notes.",
+   "A request for a person: ask once whether you can help. If they insist, transfer to the frontdesk queue and end the whole call as XFER / HUM. File no notes."
+  ],
+  "multi_product": [
+   "The member can be overdue on up to two products. State every overdue product, one sentence each, before asking for anything.",
+   "First ask whether the member can clear all of them today: \"Are you able to clear all of the overdue balances today?\" If not, take the products one at a time in the order the account lookup returns them, each starting at attempt 1, with attempts counted per product.",
+   "If the member names one date for everything and it is after one product's latest promise date, use that product's own latest promise date for it and say so in the read-back."
+  ],
+  "confirmation": [
+   "Read the product, amount and date back and ask \"Shall I log that for you?\" With several products, read all promises back together and ask for one confirmation.",
+   "Record promises only after a clear yes. If the member changes something at this point, check it again and read it back again.",
+   "One promise per product; a recorded promise cannot be changed on this call (the member can change it in online banking)."
+  ],
+  "recording": [
+   "Record each confirmed promise. Say a promise is logged only after recording succeeds.",
+   "If recording fails, try twice more. If it still fails: with one product, say it could not be logged, mark it as tech_fail and end the whole call as NOPTP / SYS; with several products, keep the other promises, say that product could not be logged and mark it as tech_fail.",
+   "After a recorded promise say: \"You'll receive an email confirming this arrangement.\""
+  ],
+  "closing": [
+   "For each product left without a promise, file a note with that product and its note code (no_pay, hardship, dispute, already_paid, tech_fail). On any transfer, file no notes at all.",
+   "If at least one promise was recorded, end as PTP, unless a transfer followed, in which case end with that transfer's code.",
+   "With no promise recorded, end with the code of the first product, in account lookup order, whose note is not already_paid (no_pay = NOPTP / REF, hardship = NOPTP / HRD, dispute = NOPTP / DIS, tech_fail = NOPTP / SYS); if every product is already_paid, end as PAID.",
+   "Thank the member and say goodbye, then end the call."
+  ]
+ },
+ "evidence": [
+  {
+   "path": "opening.first_sentence",
+   "quote": "Good day, this is Kestrel Credit Union's automated assistant. This call may be recorded."
+  },
+  {
+   "path": "opening.identity_question",
+   "quote": "May I speak to {salutation} {last_name}, please?"
+  },
+  {
+   "path": "opening.accepted_confirmations",
+   "quote": "Confirmation is only \"yes\", \"speaking\", \"it's me\", or the member saying their own name."
+  },
+  {
+   "path": "callback",
+   "quote": "Callbacks are now same day or next business day only, between 10:00 and 17:30, both included."
+  },
+  {
+   "path": "bands[0].deadline_business_days",
+   "quote": "Band A's latest promise date is now the 8th business day after today."
+  },
+  {
+   "path": "bands",
+   "quote": "| 15 to 60 | B | 5th business day after today | 2 |"
+  },
+  {
+   "path": "bands",
+   "quote": "| 61 to 90 | C | 3rd business day after today | 2 |"
+  },
+  {
+   "path": "identity.questions",
+   "quote": "Security order is reversed: ask the postcode first, then the year of birth."
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "11 November is no longer a union holiday. Monday 30 November 2026 is added as a union holiday."
+  },
+  {
+   "path": "calendar.holidays",
+   "quote": "2026-10-29, 2026-11-11, 2026-12-25, 2027-01-01"
+  },
+  {
+   "path": "product_types",
+   "quote": "The floor is `min_due` for cards and overdrafts, and `monthly_payment` for auto loans."
+  },
+  {
+   "path": "first_ask_single",
+   "quote": "Are you able to clear the overdue balance today?"
+  },
+  {
+   "path": "recording.retries_after_failure",
+   "quote": "Logging failures: try twice more before giving up (instead of once)."
+  },
+  {
+   "path": "recording.after_promise_sentence",
+   "quote": "You'll receive an email confirming this arrangement."
+  },
+  {
+   "path": "fixed_sentences.paid",
+   "quote": "Payments can take up to two business days to show."
+  },
+  {
+   "path": "fixed_sentences.deceased",
+   "quote": "Please accept our condolences."
+  },
+  {
+   "path": "fixed_sentences.robot",
+   "quote": "I'm Kestrel Credit Union's automated assistant."
+  },
+  {
+   "path": "fixed_sentences.scam",
+   "quote": "You can check this call by ringing the number on the back of your card."
+  },
+  {
+   "path": "identity.max_wrong_total",
+   "quote": "Three wrong answers in total end the check."
+  },
+  {
+   "path": "notes",
+   "quote": "On any transfer, file no notes at all."
+  },
+  {
+   "path": "outcomes",
+   "quote": "if every product is `already_paid`, end as PAID."
+  }
+ ],
+ "precedence": [
+  {
+   "topic": "callback window",
+   "superseded_quote": "Callbacks may be booked on the same day or on either of the next two business days, between 09:00 and 18:00 (both included)",
+   "governing_quote": "Callbacks are now same day or next business day only, between 10:00 and 17:30, both included.",
+   "why": "Memo of 22 September 2026 replaces the standard from 1 October."
+  },
+  {
+   "topic": "band A deadline",
+   "superseded_quote": "| 1 to 14 | A | 10th business day after today | 1 |",
+   "governing_quote": "Band A's latest promise date is now the 8th business day after today.",
+   "why": "Later memo wins."
+  },
+  {
+   "topic": "security order",
+   "superseded_quote": "first the member's year of birth, then the postcode on file",
+   "governing_quote": "Security order is reversed: ask the postcode first, then the year of birth.",
+   "why": "Later memo wins."
+  },
+  {
+   "topic": "holidays",
+   "superseded_quote": "2026-10-29, 2026-11-11, 2026-12-25, 2027-01-01",
+   "governing_quote": "11 November is no longer a union holiday. Monday 30 November 2026 is added as a union holiday.",
+   "why": "Later memo wins."
+  },
+  {
+   "topic": "logging retries",
+   "superseded_quote": "If logging fails, try once more; if it fails again, say it could not be logged and end as NOPTP-SYS.",
+   "governing_quote": "Logging failures: try twice more before giving up (instead of once). If one product still fails, keep the others and note the failed one as `tech_fail`.",
+   "why": "Later memo wins."
+  },
+  {
+   "topic": "multiple products and per-product endings",
+   "superseded_quote": "When the attempts are used up, stop, do not repeat a refused offer, and end as NOPTP-REF.",
+   "governing_quote": "take the products one at a time in the order `get_account` returns them, each starting at attempt 1, with attempts counted per product.",
+   "why": "Memo adds multi-product handling; with several products, product-level refusals/disputes/paid become notes and the call ends by the code-list rule."
+  },
+  {
+   "topic": "first-name use",
+   "superseded_quote": "Branch staff may use first names after the member agrees.",
+   "governing_quote": "The assistant is unaffected by this change and keeps using the salutation and last name.",
+   "why": "Newsletter explicitly excludes the assistant."
+  }
+ ],
+ "unmapped_rules": []
+}

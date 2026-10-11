@@ -1,0 +1,13 @@
+[2026-10-11T01:25:48+00:00 +   0.0s] START    builder run started brief=tests/variants/brief-r2.md brief_sha=35f41b86a9502725 tool_api=tests/variants/api-r2.json api_sha=c5d703e9fb88b0bd slot=x-r2 builder_model=claude-opus-5-5 llm_backend=agent_sdk python=3.12.6 agent_sdk=0.2.165 commit=c070eda+dirty started_before_s=0.5
+[2026-10-11T01:25:48+00:00 +   0.0s] STEP     tool API parsed: 7 tools at https://r2.example.test/api
+[2026-10-11T01:26:48+00:00 +  60.1s] MODEL    model=claude-opus-5-5 purpose="extract the policy IR from the brief and the tool API" status=success input_tokens=2 output_tokens=8235 backend=agent_sdk seconds=60.1
+[2026-10-11T01:26:48+00:00 +  60.1s] STEP     extraction pass returned
+[2026-10-11T01:27:47+00:00 + 119.0s] MODEL    model=claude-opus-5-5 purpose="audit the IR against the brief for omissions, wrong values and precedence" status=success input_tokens=2 output_tokens=8102 backend=agent_sdk seconds=58.9
+[2026-10-11T01:27:47+00:00 + 119.0s] STEP     audit pass: 0 change(s)
+[2026-10-11T01:27:47+00:00 + 119.0s] TEST     policy checks (round 1): pass
+[2026-10-11T01:27:47+00:00 + 119.1s] TEST     workflow lint: pass
+[2026-10-11T01:27:47+00:00 + 119.1s] STEP     workflow compiled: 25 steps, 25 tools, 229408 bytes
+[2026-10-11T01:27:47+00:00 + 119.1s] TEST     local: init + account facts on synthetic products: pass
+[2026-10-11T01:27:47+00:00 + 119.1s] TEST     local: guarded promise on the deadline is sent; close outcome = promise: pass
+[2026-10-11T01:27:47+00:00 + 119.1s] TEST     local: promise after the deadline is blocked before sending: pass
+[2026-10-11T01:27:47+00:00 + 119.1s] END      builder run ended status=compiled (not saved) duration_s=119 model_calls=2

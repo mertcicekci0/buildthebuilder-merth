@@ -1,0 +1,13 @@
+[2026-10-11T00:58:44+00:00 +   0.0s] START    builder run started brief=tests/variants/brief-r1.md brief_sha=a1d39e2ba6b798e5 tool_api=tests/variants/api-r1.json api_sha=9d8816d7ddf8aa94 slot=x2-r1 builder_model=claude-opus-5-5 llm_backend=agent_sdk
+[2026-10-11T00:58:44+00:00 +   0.0s] STEP     tool API parsed: 7 tools at https://kcu-arrears.example.test/api/v2
+[2026-10-11T00:59:45+00:00 +  60.7s] MODEL    model=claude-opus-5-5 purpose="extract the policy IR from the brief and the tool API" status=success input_tokens=2 output_tokens=8256 backend=agent_sdk seconds=60.7
+[2026-10-11T00:59:45+00:00 +  60.7s] STEP     extraction pass returned
+[2026-10-11T01:01:49+00:00 + 185.0s] MODEL    model=claude-opus-5-5 purpose="audit the IR against the brief for omissions, wrong values and precedence" status=success input_tokens=2 output_tokens=9059 backend=agent_sdk seconds=124.3
+[2026-10-11T01:01:49+00:00 + 185.0s] STEP     audit pass: 4 change(s)
+[2026-10-11T01:01:49+00:00 + 185.0s] TEST     policy checks (round 1): pass
+[2026-10-11T01:01:49+00:00 + 185.0s] TEST     workflow lint: pass
+[2026-10-11T01:01:49+00:00 + 185.0s] STEP     workflow compiled: 26 steps, 26 tools, 213526 bytes
+[2026-10-11T01:01:49+00:00 + 185.0s] TEST     local: init + account facts on synthetic products: pass
+[2026-10-11T01:01:49+00:00 + 185.0s] TEST     local: guarded promise on the deadline is sent; close outcome = promise: pass
+[2026-10-11T01:01:49+00:00 + 185.0s] TEST     local: promise after the deadline is blocked before sending: pass
+[2026-10-11T01:01:49+00:00 + 185.0s] END      builder run ended status=compiled (not saved) duration_s=185 model_calls=2

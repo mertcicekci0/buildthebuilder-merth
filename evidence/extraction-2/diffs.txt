@@ -1,0 +1,69 @@
+## A+B (guide v2)
+TEXT   opening.first_sentence
+   got: Hello, this is the digital assistant calling from Freya Bank, and this call is recorded.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   first_ask_multi
+   got: Can you make all of these payments today?
+   ref: Can you pay all of them today?
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I am unable to verify your identity, so please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 4 text difference(s)
+## R1 (guide v2)
+TEXT   opening.identity_question
+   got: May I speak to <salutation> <last_name>, please?
+   ref: May I speak to <title> <last_name>, please?
+TEXT   fixed_sentences.farewell
+   got: Thank you for your time. Goodbye.
+   ref: 
+TEXT   first_ask_multi
+   got: Are you able to clear all of the overdue balances today?
+   ref: Are you able to clear all of them today?
+TEXT   identity.failed_message
+   got: I'm sorry, I can't discuss the account. Please visit a branch or use online banking.
+   ref: I'm sorry, I can't continue. Please visit a branch or use online banking.
+0 exact difference(s), 4 text difference(s)
+## R2 independent SME brief
+EXACT  callback.after_now
+   got: false
+   ref: true
+TEXT   debt_intro
+   got: I am calling about arrears on <company_name>'s account.
+   ref: I'm calling about arrears on <company_name>'s account.
+1 exact difference(s), 1 text difference(s)
+## cand-a (C2)
+TEXT   opening.first_sentence
+   got: Hello, I am a digital assistant calling from Freya Bank, and this call is recorded.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I am unable to verify your identity. Please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 3 text difference(s)
+## cand-ab (C2)
+TEXT   opening.first_sentence
+   got: Hello, I am a digital assistant calling from Freya Bank, and this call is recorded.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I could not verify your identity. Please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 3 text difference(s)
+## rehearsal-1
+TEXT   opening.first_sentence
+   got: Hello, I am a digital assistant calling from Freya Bank, and this call is recorded.
+   ref: Hello, this is the digital assistant of Freya Bank calling. This call is recorded.
+TEXT   debt_intro
+   got: I am calling from the collections team about a late payment.
+   ref: I'm calling from the collections team about a late payment.
+TEXT   identity.failed_message
+   got: I could not verify your identity. Please use the mobile app or visit a branch.
+   ref: I'm sorry, I can't continue without verifying your identity. Please use the mobile app or visit a branch.
+0 exact difference(s), 3 text difference(s)
