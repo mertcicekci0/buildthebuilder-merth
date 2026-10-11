@@ -1,0 +1,9 @@
+403e1f5c222f5339  submission/c9-a.workflow.json
+68a74103287d23a8  submission/c9-ab.workflow.json
+c08d6f4f00e85a98  out/c9-a.policy.json
+5acca92e969c3fd0  out/c9-ab.policy.json
+11c85955229b7177  traces/dev/c9-a.jsonl
+9489dd11b7304244  traces/dev/c9-ab.jsonl
+a562e7c6671f9731  out/runs/c9-a.log
+4558187b1b433312  out/runs/c9-ab.log
+C9 builder commit 3f3784b (dev/c9 at 0c72b0c); c9-a v1 25401ac1/agent 5572dc68, c9-ab v1 7224b4ef/agent 97399644

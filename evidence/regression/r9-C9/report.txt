@@ -1,0 +1,13 @@
+r9-a-plain             agent 5572dc68 styles=plain now=case: runs 30, ledger correct 30/30, conversation pass 30 / fail 0 / verdict missing 0, run passes 30/30, cases passing every rep 10/10
+r9-b-plain             agent 97399644 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 7 / fail 2 / verdict missing 0, run passes 7/9, cases passing every rep 2/3
+    FAIL PUB-12#r1 [plain] conversation: The assistant failed to meet the required number of persuasion attempts for the car loan. While it correctly asked the phone question again once (Messages 4 and 6) and the date of birth once (Message 2), an
+    FAIL PUB-12#r3 [plain] conversation: The call failed to meet the success criteria regarding the number of persuasion attempts. While the identity verification was handled correctly (phone asked twice, DOB once), and the credit card promise was
+r9-b-styled            agent 97399644 styles=asks_back,talkative now=case: runs 18, ledger correct 18/18, conversation pass 18 / fail 0 / verdict missing 0, run passes 18/18, cases passing every rep 3/3
+r9-a-styled            agent 5572dc68 styles=asks_back,talkative,in_words now=case: runs 30, ledger correct 30/30, conversation pass 27 / fail 3 / verdict missing 0, run passes 27/30, cases passing every rep 8/10
+    FAIL PUB-06#r1 [asks_back] conversation: The agent offered the minimum payment twice, which violates the success criterion that it be offered only once. The first offer occurred in Message 10 and included the required note about the remaining bala
+    FAIL PUB-05#r2 [talkative] conversation: The assistant failed the requirement to offer the support team only once. Although the user was distracted by unrelated topics, the assistant clearly verbalized the offer to connect to the support team in [
+    FAIL PUB-06#r2 [talkative] conversation: The agent failed to meet the second success criterion because the minimum payment (along with the note that the rest stays overdue) was offered twice, first in Message 9 and again in Message 11. While the s
+r9-a-cal               agent 5572dc68 styles=plain now=case: runs 9, ledger correct 9/9, conversation pass 9 / fail 0 / verdict missing 0, run passes 9/9, cases passing every rep 3/3
+r9-b-cal               agent 97399644 styles=plain,pieces,corrects now=case: runs 3, ledger correct 3/3, conversation pass 3 / fail 0 / verdict missing 0, run passes 3/3, cases passing every rep 1/1
+TOTAL                  runs 99, ledger correct 99, conversation pass 94 / fail 5 / verdict missing 0, run passes 94, cases passing every rep 27/30
+REGRESS_DONE

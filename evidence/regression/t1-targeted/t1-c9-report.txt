@@ -1,0 +1,12 @@
+t1-c9-a                agent 5572dc68 styles=talkative,in_words,asks_back,pieces,corrects,plain now=case: runs 48, ledger correct 44/48, conversation pass 46 / fail 2 / verdict missing 0, run passes 43/48, cases passing every rep 4/8
+    FAIL PUB-03#r1 [talkative] outcome ('not_verified', 'declined'), expected ('not_verified', 'failed')
+    FAIL PUB-03#r1 [talkative] conversation: The call failed to meet several success criteria. First, only two wrong answers were provided (Messages 3 and 5), but the system event 'max_turns_exceeded' indicates the call ended because the turn limit wa
+    FAIL PUB-06#r1 [talkative] conversation: The agent failed to meet the success criteria because the minimum payment was offered eleven times (Messages 8, 14, 16, 22, 28, 34, 40, 46, 52, 58, and 64) instead of only once. While the agent correctly av
+    FAIL CAL-XMAS#r1 [talkative] outcome ('no_promise', 'refused'), expected ('promise', None)
+    FAIL CAL-XMAS#r1 [talkative] promises [], expected [('p1', 637.5, '2026-12-31')]
+    FAIL PUB-10#r2 [in_words] outcome (None, None), expected ('promise', None)
+    FAIL PUB-10#r2 [in_words] the call was not closed with close_call
+    FAIL CAL-XMAS#r3 [asks_back] promises [('p1', 637.5, '2026-12-30')], expected [('p1', 637.5, '2026-12-31')]
+t1-c9-b                agent 97399644 styles=talkative,asks_back,in_words,pieces,corrects,plain now=case: runs 18, ledger correct 18/18, conversation pass 17 / fail 1 / verdict missing 0, run passes 17/18, cases passing every rep 2/3
+    FAIL PUB-12#r4 [pieces] conversation: The assistant failed to meet the requirement for two attempts on the personal loan. While the product is in the late band, the assistant only made one persuasion offer (Message 18) after the initial refusal
+TOTAL                  runs 66, ledger correct 62, conversation pass 63 / fail 3 / verdict missing 0, run passes 60, cases passing every rep 6/11

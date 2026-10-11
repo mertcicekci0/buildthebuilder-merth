@@ -1,0 +1,6 @@
+r4b-live-c9            agent bc3b5f7a styles=plain now=case: runs 18, ledger correct 17/18, conversation pass 17 / fail 1 / verdict missing 0, run passes 17/18, cases passing every rep 5/6
+    FAIL R4B-HOLIDAY#r2 [plain] outcome (None, None), expected ('promise', None)
+    FAIL R4B-HOLIDAY#r2 [plain] promises [], expected [('p1', 540.0, '2026-10-26')]
+    FAIL R4B-HOLIDAY#r2 [plain] the call was not closed with close_call
+    FAIL R4B-HOLIDAY#r2 [plain] conversation: The agent failed to record the promise for Monday 26 October. While the agent correctly asked for the exact day and the check_date tool verified that Monday 26 October was an allowed business day, all subse
+TOTAL                  runs 18, ledger correct 17, conversation pass 17 / fail 1 / verdict missing 0, run passes 17, cases passing every rep 5/6
