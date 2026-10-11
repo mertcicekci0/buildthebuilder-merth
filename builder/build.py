@@ -208,6 +208,10 @@ def main():
     ap.add_argument("--no-save", action="store_true")
     ap.add_argument("--tool-map", help="JSON file {canonical tool: operationId or 'METHOD /path'} for a contract with other operation names")
     a = ap.parse_args()
+    try:
+        tool_map = json.load(open(a.tool_map)) if a.tool_map else None
+    except (OSError, ValueError) as e:
+        raise SystemExit(f"cannot read the tool map {a.tool_map}: {e}")
     mock_base = os.environ.get("BUILDER_BASE_URL_OVERRIDE", "").strip()   # test builds against our own mock: never a submission
     arm_watchdog()
     if not a.ir and os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk") == "agent_sdk":
@@ -222,7 +226,7 @@ def main():
     trace = Trace(trace_dir / f"{slot}.jsonl", t0=T0)
     deadline = T0 + DEADLINE_MIN * 60
     trace.start(brief=a.brief_path, brief_sha=bi.sha_path(a.brief_path), tool_api=a.tool_api_path, api_sha=bi.sha_path(a.tool_api_path), slot=slot,
-                tool_map=a.tool_map and json.load(open(a.tool_map)), base_url_override=mock_base or None,
+                tool_map=tool_map, base_url_override=mock_base or None,
                 builder_model=os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), llm_backend=os.environ.get("BUILDER_LLM_BACKEND", "agent_sdk"),
                 python=sys.version.split()[0], agent_sdk=_sdk_version(), commit=_git_commit(), started_before_s=round(time.time() - T0, 1))
     # the phone-agent model is the event's (kit/freya.py AGENT_LLM); organisers may override it by env, so it is traced, never changed
@@ -237,9 +241,11 @@ def main():
         contract = bi.find_contract(a.tool_api_path, ROOT / "out" / "inputs" / f"{slot}-contract")
         brief, files = bi.read_brief(a.brief_path, ROOT / "out" / "inputs" / slot, exclude=[contract])
         trace.step(f"inputs read: {len(files)} file(s), brief text {len(brief)} chars, contract {contract.name}", files=files)
-        api = ot.load(str(contract), tool_map=a.tool_map and json.load(open(a.tool_map)), base_url=mock_base or None)
+        api = ot.load(str(contract), tool_map=tool_map, base_url=mock_base or None)
         if api["unknown_operations"]:
             trace.warn("contract operations not used by the builder: " + ", ".join(api["unknown_operations"]))
+        if api["absent_optional"]:
+            trace.warn("optional tools absent from the contract (their paths are dropped): " + ", ".join(api["absent_optional"]))
         roles, role_problems = ot.infer_roles(api)
         trace.step(f"tool API parsed: {len(api['tools'])} tools at {api['base_url']}", roles=roles, problems=role_problems)
         if api["missing_tools"]:

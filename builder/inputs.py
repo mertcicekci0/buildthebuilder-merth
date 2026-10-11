@@ -45,10 +45,17 @@ def unpack(path, dest):
         shutil.rmtree(dest)
     dest.mkdir(parents=True)
     with zipfile.ZipFile(p) as z:
+        seen = {}
         for m in z.infolist():
             target = (dest / m.filename).resolve()
             if not str(target).startswith(str(dest.resolve()) + "/") and target != dest.resolve():
                 raise InputError(f"zip member escapes the folder: {m.filename}")
+            if (m.external_attr >> 16) & 0o170000 == 0o120000:
+                raise InputError(f"zip member is a symbolic link: {m.filename}")
+            key = m.filename.rstrip("/").casefold()
+            if not m.is_dir() and key in seen:   # duplicates or case-only differences would overwrite each other on macOS
+                raise InputError(f"zip members collide: {seen[key]!r} and {m.filename!r}")
+            seen[key] = m.filename
         z.extractall(dest)
     return dest
 
@@ -56,11 +63,29 @@ def unpack(path, dest):
 def _docx_text(f):
     with zipfile.ZipFile(f) as z:
         xml = z.read("word/document.xml")
-    ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-    paras = []
-    for para in ElementTree.fromstring(xml).iter(ns + "p"):
-        paras.append("".join(t.text or "" for t in para.iter(ns + "t")))
-    return "\n".join(paras)
+    root = ElementTree.fromstring(xml)
+    ns = "{" + root.tag[1:].split("}")[0] + "}" if root.tag.startswith("{") else ""   # transitional or strict namespace
+
+    def para_text(p):
+        out = []
+        for el in p.iter():
+            if el.tag == ns + "t":
+                out.append(el.text or "")
+            elif el.tag == ns + "tab":
+                out.append("\t")
+            elif el.tag in (ns + "br", ns + "cr"):
+                out.append("\n")
+        return "".join(out)
+
+    lines = []
+    body = root.find(ns + "body")
+    for block in (body if body is not None else root):
+        if block.tag == ns + "tbl":   # one line per table row, cells separated by ' | '
+            for tr in block.iter(ns + "tr"):
+                lines.append(" | ".join(" ".join(para_text(p) for p in tc.iter(ns + "p")).strip() for tc in tr.iter(ns + "tc")))
+        elif block.tag == ns + "p":
+            lines.append(para_text(block))
+    return "\n".join(lines)
 
 
 def _xlsx_text(f):
@@ -70,19 +95,36 @@ def _xlsx_text(f):
         if "xl/sharedStrings.xml" in z.namelist():
             shared = ["".join(t.text or "" for t in si.iter(ns + "t")) for si in ElementTree.fromstring(z.read("xl/sharedStrings.xml")).iter(ns + "si")]
         out = []
-        for name in sorted(n for n in z.namelist() if re.match(r"xl/worksheets/sheet\d+\.xml$", n)):
+        sheets = [n for n in z.namelist() if re.match(r"xl/worksheets/sheet\d+\.xml$", n)]
+        for name in sorted(sheets, key=lambda n: int(re.search(r"(\d+)\.xml$", n).group(1))):
             out.append(f"[sheet {name.rsplit('/', 1)[-1][:-4]}]")
             for row in ElementTree.fromstring(z.read(name)).iter(ns + "row"):
-                cells = []
-                for c in row.iter(ns + "c"):
+                cells = {}
+                for i, c in enumerate(row.iter(ns + "c")):
+                    m = re.match(r"([A-Z]+)", c.get("r") or "")
+                    col = (sum((ord(ch) - 64) * 26 ** k for k, ch in enumerate(reversed(m.group(1)))) - 1) if m else i
                     v = c.find(ns + "v")
                     t = c.find(f"{ns}is/{ns}t")
                     val = t.text if t is not None else (v.text if v is not None else "")
                     if c.get("t") == "s" and val and val.isdigit() and int(val) < len(shared):
                         val = shared[int(val)]
-                    cells.append(val or "")
-                out.append("\t".join(cells))
+                    cells[col] = val or ""
+                if cells:   # empty cells are padded so values stay under their column; numbers (incl. dates) stay as stored
+                    out.append("\t".join(cells.get(k, "") for k in range(max(cells) + 1)))
     return "\n".join(out)
+
+
+def _read_document(f, rel):
+    ext = f.suffix.lower()
+    if ext not in (".docx", ".xlsx"):
+        raise InputError(f"cannot read {rel} as text (no converter installed); provide a text version or extend builder/inputs.py")
+    try:
+        text = _docx_text(f) if ext == ".docx" else _xlsx_text(f)
+    except (zipfile.BadZipFile, KeyError, ElementTree.ParseError, ValueError) as e:
+        raise InputError(f"cannot read {rel} as {ext}: {type(e).__name__}: {e}")
+    if not text.strip():
+        raise InputError(f"{rel}: no text found in the {ext} file")
+    return text, ext[1:] + " xml"
 
 
 def is_contract(f):
@@ -110,6 +152,10 @@ def find_contract(path, dest):
 def read_brief(path, dest, exclude=()):
     """(brief text, files) where files = [{path, sha, bytes, read_as}]. A single text file is read exactly as before."""
     p = pathlib.Path(path)
+    if p.is_file() and (p.suffix.lower() in (".docx", ".xlsx", ".pdf")
+                        or (not zipfile.is_zipfile(p) and b"\x00" in p.read_bytes()[:8192])):   # binary: never fed to the model as text
+        text, how = _read_document(p, p.name)   # a single office document (or an unreadable binary: clear stop)
+        return text, [{"path": p.name, "sha": sha_path(p), "bytes": p.stat().st_size, "read_as": how}]
     if p.is_file() and not zipfile.is_zipfile(p):
         return p.read_text(encoding="utf-8", errors="replace"), [{"path": p.name, "sha": sha_path(p), "bytes": p.stat().st_size, "read_as": "text"}]
     folder = unpack(p, dest)
@@ -128,10 +174,8 @@ def read_brief(path, dest, exclude=()):
             continue
         if ext in TEXT_EXT:
             text, how = f.read_text(encoding="utf-8", errors="replace"), "text"
-        elif ext == ".docx":
-            text, how = _docx_text(f), "docx xml"
-        elif ext == ".xlsx":
-            text, how = _xlsx_text(f), "xlsx xml"
+        elif ext in (".docx", ".xlsx"):
+            text, how = _read_document(f, rel)
         elif (f.parent, f.stem) in stems_with_text:
             meta.append({**entry, "read_as": "skipped: a text version with the same name is read instead"})
             continue

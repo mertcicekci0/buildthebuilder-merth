@@ -147,3 +147,59 @@ def test_mock_url_build_is_marked_and_never_a_submission(tmp_path):
     urls = set(__import__("re").findall(r'https?://[^"\\ ]+', text))
     assert urls and all(u.startswith("https://mock.example.test/v1/") for u in urls) and "freya-bank-mock" not in text
     assert not (ROOT / "submission/mocktest-mock.workflow.json").exists()
+
+
+def test_review_fixes_inputs(tmp_path):
+    # a text brief with an unusual extension is still read as text; a binary or pdf brief stops clearly
+    (tmp_path / "brief.case").write_text("Policy text")
+    assert bi.read_brief(tmp_path / "brief.case", tmp_path / "o")[0] == "Policy text"
+    (tmp_path / "b.pdf").write_bytes(b"%PDF-1.4\x00\x01")
+    with pytest.raises(bi.InputError, match="b.pdf"):
+        bi.read_brief(tmp_path / "b.pdf", tmp_path / "o")
+    # zip members colliding by case are refused
+    z = tmp_path / "c.zip"
+    with zipfile.ZipFile(z, "w") as zz:
+        zz.writestr("docs/Policy.md", "FLOOR 50")
+        zz.writestr("docs/policy.md", "memo")
+    with pytest.raises(bi.InputError, match="collide"):
+        bi.read_brief(z, tmp_path / "o2")
+    # a broken docx names the file
+    d = tmp_path / "case"
+    d.mkdir()
+    (d / "a.md").write_text("x")
+    (d / "annex.docx").write_bytes(b"notazip")
+    with pytest.raises(bi.InputError, match="annex.docx"):
+        bi.read_brief(d, tmp_path / "o3")
+
+
+def test_review_fixes_xlsx_alignment_and_docx_structure(tmp_path):
+    s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    d = tmp_path / "case"
+    d.mkdir()
+    sheet = (f'<worksheet xmlns="{s}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Code</t></is></c><c r="B1" t="inlineStr"><is><t>Fee</t></is></c>'
+             f'<c r="C1" t="inlineStr"><is><t>Queue</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>HARD</t></is></c>'
+             f'<c r="C2" t="inlineStr"><is><t>hardship</t></is></c></row></sheetData></worksheet>')
+    with zipfile.ZipFile(d / "codes.xlsx", "w") as z:
+        z.writestr("xl/worksheets/sheet10.xml", f'<worksheet xmlns="{s}"><sheetData><row r="1"><c r="A1"><v>10</v></c></row></sheetData></worksheet>')
+        z.writestr("xl/worksheets/sheet2.xml", sheet)
+    with zipfile.ZipFile(d / "letter.docx", "w") as z:
+        z.writestr("word/document.xml", f'<w:document xmlns:w="{w}"><w:body><w:p><w:r><w:t>Fee:</w:t><w:tab/><w:t>25</w:t><w:br/><w:t>Waived.</w:t></w:r></w:p>'
+                   f'<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Band</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Floor</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>')
+    text, _ = bi.read_brief(d, tmp_path / "o")
+    assert "HARD\t\thardship" in text and text.index("[sheet sheet2]") < text.index("[sheet sheet10]")
+    assert "Fee:\t25\nWaived." in text and "Band | Floor" in text
+
+
+def test_review_fixes_tool_map_is_checked():
+    s = renamed_contract()
+    with pytest.raises(ot.OpenAPIError, match="match no operation"):
+        ot.load(copy.deepcopy(s), tool_map={"verify_identity": "verifyCustomr", "get_account": "POST /accounts/lookup"})
+    with pytest.raises(ot.OpenAPIError, match="both point"):
+        ot.load(copy.deepcopy(s), tool_map={"verify_identity": "verifyCustomer", "get_account": "verifyCustomer"})
+    api = ot.load(copy.deepcopy(s), tool_map={"verify_identity": "verifyCustomer", "get_account": "post /accounts/lookup"})
+    assert api["missing_tools"] == []
+    s2 = renamed_contract()
+    s2["paths"]["/legacy/get_account"] = copy.deepcopy(s2["paths"]["/accounts/lookup"])   # an automatically named twin
+    api = ot.load(s2, tool_map={"verify_identity": "verifyCustomer", "get_account": "POST /accounts/lookup"})
+    assert api["tools"]["get_account"]["url"].endswith("/accounts/lookup")

@@ -140,7 +140,13 @@ def load(path_or_dict, tool_map=None, base_url=None):
     for canon, ref in (tool_map or {}).items():
         if canon not in TOOL_NAMES:
             raise OpenAPIError(f"tool map: {canon!r} is not one of {TOOL_NAMES}")
-        alias[str(ref).strip()] = canon
+        ref = str(ref).strip()
+        m = re.match(r"^([A-Za-z]+)\s+(/.*)$", ref)
+        ref = f"{m.group(1).upper()} {m.group(2)}" if m else ref
+        if ref in alias:
+            raise OpenAPIError(f"tool map: {alias[ref]!r} and {canon!r} both point at {ref!r}")
+        alias[ref] = canon
+    used = set()
     contracts, unknown = {}, []
     for path, item in (spec.get("paths") or {}).items():
         item = _resolve(spec, item)
@@ -149,7 +155,12 @@ def load(path_or_dict, tool_map=None, base_url=None):
                 continue
             name = op.get("operationId") or path.strip("/").split("/")[-1]
             name = name if name in TOOL_NAMES else path.strip("/").split("/")[-1]
-            name = alias.get(op.get("operationId") or "", alias.get(f"{method.upper()} {path}", name))
+            ref = next((r for r in (op.get("operationId") or "", f"{method.upper()} {path}") if r in alias), None)
+            if ref:
+                name = alias[ref]
+                used.add(ref)
+            elif name in alias.values():
+                name = f"{method.upper()} {path}"   # a tool named by the map is never taken over by an automatically named operation
             body = _json_body_schema(op)
             req = body.get("required", [])
             fields = [_field(k, v, req) for k, v in (body.get("properties") or {}).items()]
@@ -162,6 +173,9 @@ def load(path_or_dict, tool_map=None, base_url=None):
                 contracts[name] = c
             else:
                 unknown.append(name)
+    unmatched = [r for r in alias if r not in used]
+    if unmatched:
+        raise OpenAPIError(f"tool map entries match no operation in the contract: {unmatched}")
     missing = [t for t in REQUIRED_TOOLS if t not in contracts]
     info = spec.get("info") or {}
     return {"base_url": base, "title": info.get("title", ""), "api_description": info.get("description", ""),
