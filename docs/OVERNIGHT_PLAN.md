@@ -60,6 +60,12 @@ Stop early if these are met, included usage runs out, or progress needs unavaila
 | fc352c5, 3060a20, 7b8f74a | code-review fixes, placeholders, optional tools, R2 variant | verified offline (44 tests) |
 | 603b2a8 + 3f0b05c | C3 template changes + calendar case fix | experimental until r3 completes |
 | 93fa477 | submission doc, trace ignore rules | done |
+| bd59251 (tag cand/C4) | C4 compliance + identity | measured r4: ledger 97, conv 93/6/0, runs 92, groups 23/30 |
+| f72a3e0 (tag cand/C5) | C5 review fixes | measured r5: ledger 97, conv 93/6/0, runs 93, groups 27/30 — SELECTED |
+| 6b709f5 (tag cand/C6) | floor-note sentence | measured r6: ledger 96, conv 92/5/2 missing, runs 92, groups 23/30 — not promoted |
+| 5ff498a (tag cand/C7) | small-talk / complete-date rules | measured r7: ledger 95, conv 85/7/7 missing, runs 85, groups 18/30 — not promoted |
+| 5d721a2 | builder restored to C5 | offline tests pass; rehearsal-3 passed (ebc2d9c) |
+| 4574196 (branch exp/c8-truncated-day) | C8 experiment | unbuilt, unmeasured |
 
 - 05:26 RESUME (new /goal from Mert): deadline changed 09:43 -> 11:00 Istanbul (08:00 UTC) by explicit instruction; original start 03:43 kept.
   Recovered: HEAD d1c5cae on dev/overnight, tree clean except untracked dev exports in submission/. No local process running.
@@ -76,3 +82,9 @@ Stop early if these are met, included usage runs out, or progress needs unavaila
 - 07:05 r6 (C6, cand-a v4 / cand-ab v5) partial: A plain ledger 30/30, conv 28/0/2 missing; B plain 9/9; B styled 16/18 (PUB-13 talkative truncation; PUB-12 talkative: re-asks/explanation on cut-off chatter -> C7).
 - 07:05 R4-live (raw material on the kit API: mail + policy + memo + reason codes; 6 live cases with recomputed expectations) built with the C6 builder: slot r4live (27deb038…, agent b6838e4e…); extraction: memo/codes exact, 2 defensible differences. Live run queued after r6.
 - 07:08 C7 = 05ccb43 (small talk/cut-offs never trigger re-asks or the refusal explanation) built into c7-a (3b0d1e7d…, agent 1b3adbd5…) / c7-ab (cd41c6cf…, agent b10b1109…), extraction exact; r7 queued after R4-live.
+- 06:50-07:15 (resumed session) r6 (C6) complete: ledger 96, conv 92/5/2 missing, runs 92, groups 23/30 -> not promoted. R4-live built (C6 builder) and run (sim ee8fff11…): conversation 18/18, promise dates per memo 6/6, non-promise closes rejected by the mock's public reason list (test-design limit). C7 = 05ccb43 + 5ff498a built (c7-* v2).
+- 07:34 (new /goal, same 11:00 deadline) r7 confirmed running on c7-a/c7-ab v2 (Freya: v2 the only published version); C7 v2 artefacts snapshotted to results/r7-artifacts-c7v2-20261011T043437Z with MANIFEST (results/r7-artifacts = unmeasured v1, preserved). r6 and R4-live evidence committed (626fde5). r6 missing verdicts re-collected read-only: still missing (pending).
+- 07:40 C8 experiment (cut-off number rule, r6 PUB-04 r3) committed on branch exp/c8-truncated-day (4574196), unbuilt/unmeasured.
+- 08:02 r7 (C7) complete: ledger 95, conv 85/7/7 missing (re-collect: still missing), runs 85, groups 18/30 -> not promoted; evidence 05c4b0f. Tags cand/C6, cand/C7 added.
+- 08:05 builder restored to C5 via new commit 5d721a2 (no history rewrite; deps/lock unchanged); 50 offline tests pass. Rehearsal-3 on 5d721a2: 110 s / 147 s, verify_submission 0 problems (ebc2d9c). Deadline guard stopped (r7 done); no owned waiters or simulations remain.
+- 08:15 morning report finalised; work complete before the 11:00 deadline. Selected candidate: C5 builder at 5d721a2 (= f72a3e0).
