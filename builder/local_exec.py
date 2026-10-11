@@ -56,6 +56,15 @@ def flatten_products(prefix, products):
     return out
 
 
+def success_reply(roles, tool, extra=None):
+    """A successful response in the API's own shape: its success flag set to true (the kit's 'ok' when roles predate
+    response roles), or only the extra fields when the API has no success flag."""
+    names = (roles.get("responses") or {}).get(tool) if "responses" in roles else {"ok": "ok"}
+    out = {names["ok"]: True} if (names or {}).get("ok") else {}
+    out.update(extra or {})
+    return out
+
+
 def smoke(wf, roles, products, now="2026-10-14T11:00", promise=None, now_var="now"):
     """Drive init -> account -> one guarded promise -> wrap-up -> close on synthetic data. Returns a report dict.
     `products` are dicts with the API's own field names; `promise` = (product_id, amount, date) to try."""
@@ -70,7 +79,12 @@ def smoke(wf, roles, products, now="2026-10-14T11:00", promise=None, now_var="no
         tool = _tool(wf, "negotiate", "save_promises")
         plan = "; ".join(f"{pid} {amt} {d}" for pid, amt, d in (promise if isinstance(promise, list) else [promise]))
         try:
-            run_pre(tool, vars, {"plan": plan})
+            try:
+                run_pre(tool, vars, {"plan": plan})
+            except Blocked as first:
+                if not str(first).startswith("BLOCKED, nothing was recorded yet"):
+                    raise
+                run_pre(tool, vars, {"plan": plan})   # partial plan while other products are open: confirmed by repeating the call
             report["promise_blocked"] = "pre-hook did not raise"
         except Blocked as b:
             msg = str(b)
@@ -86,12 +100,15 @@ def smoke(wf, roles, products, now="2026-10-14T11:00", promise=None, now_var="no
                     body = {k: (vars.get(v["default"][2:-2]) if isinstance(v.get("default"), str) and v["default"].startswith("{{") else v.get("default"))
                             for k, v in rec["function"]["parameters"]["properties"]["body"]["properties"].items()}
                     sent.append(body)
-                    run_post(rec, vars, {"ok": True, "promise_id": f"pr{len(sent)}"})
+                    run_post(rec, vars, success_reply(roles, "create_promise", {"promise_id": f"pr{len(sent)}"}))
                 report["promise_sent"] = sent[0] if len(sent) == 1 else sent
                 report["record_summary"] = vars.get("record_summary")
     run_code_node(wf, "wrap_up", vars)
     report["notes_pending"] = vars.get("notes_pending")
     close = wf["tools"][0]
-    report["close_body"] = run_pre(close, vars, {roles["customer_id"]: "c_local", roles["close_outcome"]: vars.get("close_outcome"), roles["close_reason"]: ""})
+    body = {roles["customer_id"]: "c_local", roles["close_outcome"]: vars.get("close_outcome")}
+    if roles.get("close_reason"):
+        body[roles["close_reason"]] = ""
+    report["close_body"] = run_pre(close, vars, body)
     report["state"] = json.loads(vars["st_json"])
     return report

@@ -190,3 +190,64 @@ def test_attempt_one_date_never_after_a_short_deadline():
     prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1", "past_due": 300, "days_late": 4, "minimum_payment": 90}]
     p = le.smoke(wf, roles, prods)["state"]["products"]["p1"]     # Wed 14 Oct: deadline Thu 15, end of week Fri 16
     assert p["deadline"] == "2026-10-15" and p["attempt1_date"] == "2026-10-15"
+
+
+def test_c9_ported_rules_are_in_the_prompts():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    verify, neg = wf["nodes"]["verify"]["task_message"], wf["nodes"]["negotiate"]["task_message"]
+    assert "the words after it were cut off: call verify_identity" in verify and "A wrong answer that you do not send" in verify
+    # fragments: re-ask the pending question at once (practice-call study: better than backchannels), never a backchannel
+    assert "reply at once by asking the pending question again in one short, slightly rephrased sentence" in verify
+    assert "never add the refusal explanation to this re-ask" in verify and "Never invent or complete digits" in verify
+    assert "asking them to say it again" in neg and "never restate an offer you already made" in neg and "do not repeat an offer you already made" in neg
+    assert "Go on." not in verify + neg and "Take your time." not in verify + neg and "two such replies" not in verify + neg
+    assert "join everything the customer said since you last asked" in verify
+    assert "never complete it yourself" in neg and "everything the rules attach to a floor offer" in neg
+    assert "including products you already marked as refused" in neg
+
+
+def test_undescribed_hint_is_not_reported_as_a_wrong_answer():
+    ir = copy.deepcopy(IR)
+    ir["identity"]["swapped_hint_value"] = None                     # brief silent about the swap rule
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), ir)
+    tool = le._tool(wf, "verify", "verify_identity")
+    vars = {}
+    le.run_pre(tool, vars, {"customer_id": "c", "field": "date_of_birth", "answer": "1988-14-03".replace("14-03", "03-14")})
+    out = le.run_post(tool, vars, {"ok": True, "verified": False, "wrong_answers_left": 3, "hint": "day_month_swapped"})
+    assert vars["id_state"] == "hint" and "not counted" in out["what_to_do_next"] and "wrong" not in out["what_to_do_next"].split("not counted")[0]
+
+
+def test_bare_tens_day_words_are_never_completed():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    vars = _negotiation_vars(wf, TWO[:1])
+    for words in ("I can pay that on the thirty", "the twenty", "on the thirty."):
+        msg = _oracle(wf, "negotiate", "check_date", vars, {"product_id": "p1", "customer_words": words, "date": "2026-10-30"})
+        assert "may have been cut off" in msg and "30 October is" not in msg
+    ok = _oracle(wf, "negotiate", "check_date", vars, {"product_id": "p1", "customer_words": "the thirtieth", "date": "2026-10-30"})
+    assert "cut off" not in ok
+
+
+def test_lint_flags_control_characters_in_generated_code():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    assert v.lint(wf, api) == []
+    tool = le._tool(wf, "negotiate", "check_date")
+    tool["pre_process_code"] = tool["pre_process_code"].replace("import re", "import re\nx = '\b'", 1)
+    assert any("control character" in p for p in v.lint(wf, api))
+
+
+def test_partial_plan_blocked_once_while_other_products_are_open():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    prods = TWO + [{"product_id": "p3", "type": "car_loan", "past_due": 140, "days_late": 7, "instalment_amount": 46}]
+    vars = _negotiation_vars(wf, prods)
+    first = _oracle(wf, "negotiate", "save_promises", vars, {"plan": "p1 300 2026-10-16"})
+    assert first.startswith("BLOCKED, nothing was recorded yet") and "p2, p3" in first and vars.get("plan_ready") != "yes"
+    again = _oracle(wf, "negotiate", "save_promises", vars, {"plan": "p1 300 2026-10-16"})
+    assert again.startswith("ACCEPTED") and vars["plan_ready"] == "yes"
+    vars2 = _negotiation_vars(wf, prods)
+    vars2["oc__p2"] = "refused"; vars2["oc__p3"] = "refused"
+    assert _oracle(wf, "negotiate", "save_promises", vars2, {"plan": "p1 300 2026-10-16"}).startswith("ACCEPTED")
+
+
+def test_numbers_in_two_parts_are_joined_before_judging():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    assert "join the parts before you check or judge it" in wf["nodes"]["negotiate"]["task_message"]

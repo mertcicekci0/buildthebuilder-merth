@@ -3,6 +3,7 @@
 Each check comes from a documented or verified platform rule (docs/*.md, probes/README.md).
 """
 import json
+import re
 
 
 def _walk(x, path=""):
@@ -45,7 +46,12 @@ def lint(wf, api=None):
     for path, v in _walk(wf):
         if v is None:
             problems.append(f"null value at {path}")
-    targets_ok = set(nodes) | {"__previous__"}
+    targets_ok = set(nodes)   # __previous__ only in global nodes (kit docs/workflow-format.md transition table)
+    for name, n in list(nodes.items()) + [(k, g) for k, g in (wf.get("global_nodes") or {}).items()]:
+        tg = [tr.get("target_node") for tr in n.get("transitions", [])]
+        dup = sorted({x for x in tg if tg.count(x) > 1})
+        if dup:   # the engine ORs same-target transitions at load time (workflow-format.md, routing step 2)
+            problems.append(f"{name}: several transitions to {dup} are merged into one by the engine")
     for name, n in nodes.items():
         t = n.get("node_type")
         if n.get("name") != name:
@@ -106,6 +112,8 @@ def lint(wf, api=None):
             compile(src, where, "exec")
         except SyntaxError as e:
             problems.append(f"{where}: syntax error {e}")
+        if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", src):   # an escape lost in a non-raw template (e.g. a regex \b became a backspace)
+            problems.append(f"{where}: control character in generated code")
     if api:
         problems += contract_problems(wf, api)
     return problems
