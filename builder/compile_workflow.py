@@ -74,8 +74,21 @@ def _fill(template, mapping):
     return out
 
 
+# A non-English brief (CFG has "locale"): dates and amounts are formatted, and customer day words read, in its language.
+LOCALE_PRELUDE = "spoken_date = lambda d: loc_spoken_date(d, CFG)\nmoney = lambda x: loc_money(x, CFG)\n"
+
+
+def _localize_entry(cfg, entry):
+    if not cfg.get("locale"):
+        return entry
+    entry = entry.replace("resolve_day_words(words, today, CFG)", "loc_resolve_day_words(words, today, CFG)")
+    entry = re.sub(r"\bnormalize_answer\((fmt, raw, [^\n]*'DMY')\)", r"loc_normalize_answer(\1, CFG)", entry)
+    return LOCALE_PRELUDE + entry
+
+
 def _code(cfg, entry):
     text = json.dumps(cfg, sort_keys=True, separators=(",", ":")).replace("{{", "{ {").replace("}}", "} }").replace("}}", "} }")
+    entry = _localize_entry(cfg, entry)
     src = _runtime_for(entry) + "\nCFG = json.loads(" + repr(text) + ")\n" + entry
     if "{{" in src or "}}" in src:
         raise CompileError("generated code contains a double brace")
@@ -215,6 +228,33 @@ def var_names(ir):
     return out
 
 
+PHRASE_DEFAULTS = {"verified": "Thank you, you are verified.", "promise_recorded": "Your promise is recorded: <list>.",
+                   "promises_recorded": "Your promises are recorded: <list>.", "promise_item": "<amount> for your <product> on <date>",
+                   "record_failed_for": "I am sorry, I could not record the promise for your <products>.", "and": "and",
+                   "record_failed": "I could not record the promise.", "connecting": "I am connecting you now.", "goodbye": "Goodbye."}
+
+
+def is_english(ir):
+    lang = str(ir.get("language") or "English").strip().lower()
+    return lang == "" or lang.startswith("en")
+
+
+def phrases(ir):
+    """The system's own spoken sentences: English defaults; for a non-English brief, the IR's phrases where given."""
+    out = dict(PHRASE_DEFAULTS)
+    if not is_english(ir):
+        out.update({k: str(v).strip() for k, v in (ir.get("phrases") or {}).items() if k in out and str(v or "").strip()})
+    return out
+
+
+def locale(ir):
+    """Locale data for runtime formatting and parsing, or None (English brief, or none given): the English code paths stay unchanged."""
+    if is_english(ir):
+        return None
+    loc = {k: v for k, v in (ir.get("locale") or {}).items() if v}
+    return loc or None
+
+
 def semantic_note_reason(value, outcomes):
     """Notes are stored as semantic keys; accept an API/brief value from the IR and map it back."""
     v = str(value or "").strip()
@@ -254,7 +294,7 @@ def runtime_config(ir, api, roles):
         reasons["paid"] = ""
     notes = dict(ir.get("notes") or {"enabled": False})
     notes["default_reason"] = semantic_note_reason(notes.get("default_reason"), o)
-    return {
+    cfg = {
         "now_var": clean_var((ir.get("call_variables") or {}).get("now"), "now"),
         "var_names": var_names(ir),
         "calendar": ir["calendar"], "bands": ir["bands"], "table_days": 45,
@@ -274,6 +314,10 @@ def runtime_config(ir, api, roles):
                   "currency": ir.get("currency_word", "")},
         "roles": {k: v for k, v in roles.items() if isinstance(v, str)},
     }
+    if not is_english(ir):   # a non-English brief: formatting, parsing and spoken system sentences in its language
+        cfg["phrases"] = phrases(ir)
+        cfg["locale"] = locale(ir) or {}
+    return cfg
 
 
 # ------------------------------------------------------------------ code entries (run inside Freya)
@@ -656,6 +700,45 @@ except Exception as e:
     vars['record_error'] = str(e)[:200]
 """
 
+# the same, speaking the IR's phrases (CFG["phrases"], present only for a non-English brief); amounts carry the currency word
+ENTRY_RECORD_NEXT_LOCALIZED = """
+PH = CFG['phrases']
+CUR = (' ' + CFG['texts']['currency']) if CFG['texts'].get('currency') else ''
+try:
+    plan = json.loads(vars.get('plan_json') or '[]')
+    vars['plan_ready'] = 'no'
+    if plan:
+        pid, amount, date = plan.pop(0)
+        vars['plan_json'] = json.dumps(plan)
+        vars['cur_pid'], vars['cur_amount'], vars['cur_date'] = pid, amount, date
+        vars['rec_go'] = 'yes'
+    else:
+        vars['rec_go'] = 'no'
+        st = get_state(vars)
+        ok, bad = [], []
+        for pid in st.get('order', []):
+            p = st['products'].get(pid, {})
+            if pid in st.get('promises', {}):
+                amount, date = st['promises'][pid]
+                ok.append(PH['promise_item'].replace('<amount>', money(amount) + CUR).replace('<product>', p.get('spoken', pid)).replace('<date>', spoken_date(datetime.date.fromisoformat(date))))
+            elif str(vars.get('oc__' + pid) or '') == 'service_error' and pid in (vars.get('rec_attempted') or ''):
+                bad.append(p.get('spoken', pid))
+        text = ''
+        if ok:
+            after = CFG['texts'].get('after_promise') or ''
+            for k, name in (CFG.get('var_names') or {}).items():
+                if vars.get(name):
+                    after = after.replace('<' + k + '>', str(vars.get(name)))
+            text += PH['promises_recorded' if len(ok) > 1 else 'promise_recorded'].replace('<list>', '; '.join(ok)) + ' ' + after
+        if bad:
+            text += ' ' + PH['record_failed_for'].replace('<products>', (' ' + PH['and'] + ' ').join(bad))
+        vars['record_summary'] = text.strip() or PH['record_failed']
+except Exception as e:
+    vars['rec_go'] = 'no'
+    vars['record_summary'] = PH['record_failed']
+    vars['record_error'] = str(e)[:200]
+"""
+
 HOOK_RECORD_POST = """
 try:
     d = result.get('data') if isinstance(result, dict) else None
@@ -1028,6 +1111,7 @@ def _compile(ir, api, roles, warnings=None):
     multi = bool(ir.get("multi_product", {}).get("enabled"))
     notes_on = bool(ir.get("notes", {}).get("enabled"))
     fs = ir.get("fixed_sentences", {})
+    ph = phrases(ir)
     idn = ir["identity"]
     rec = ir.get("recording", {})
     verify_values = ot.enum_of(api, "verify_identity", roles["verify_field"])
@@ -1074,7 +1158,11 @@ def _compile(ir, api, roles, warnings=None):
         "Never claim anything is done unless a tool result confirms it. A tool result that starts with BLOCKED means nothing was sent: follow its instruction.\n"
         "After every tool result, speak to the customer or call the next tool. Never end a turn with nothing.\n"
         "Today is {{today_spoken}} (" + "{{" + cv.get("now", "now") + "}}" + ").\n"
-        "Rules that always apply:\n" + _rules(ir, "always"))
+        + ("" if is_english(ir) else
+           f"Always speak {ir.get('language')} to the customer, in every turn, even though these instructions are written in English. "
+           f"Any example sentence quoted in the instructions or in a tool result is a meaning to say in {ir.get('language')}, never English words to read out; "
+           f"say dates and amounts the way {ir.get('language')} speakers say them.\n")
+        + "Rules that always apply:\n" + _rules(ir, "always"))
 
     nodes = {}
     # ---- init
@@ -1255,7 +1343,7 @@ def _compile(ir, api, roles, warnings=None):
     neg_rules = _rules(ir, "negotiation") + ("\n" + _rules(ir, "multi_product") if multi else "") + "\n" + _rules(ir, "confirmation") + "\n" + _rules(ir, "recording")
     nodes["negotiate"] = {
         "name": "negotiate", "node_type": "conversation",
-        "on_enter": {"type": "tts", "text": "Thank you, you are verified. " + after_verified + "{{debt_statement}} {{first_ask}}"}, "on_enter_first_entry_only": True,
+        "on_enter": {"type": "tts", "text": ph["verified"] + " " + after_verified + "{{debt_statement}} {{first_ask}}"}, "on_enter_first_entry_only": True,
         "task_message": (
             "The customer is verified. You have stated the debt and asked the first question.\n"
             "PRODUCTS (amounts, floors, deadlines and persuasion steps are computed; use them exactly):\n{{facts_text}}\n\n"
@@ -1288,7 +1376,7 @@ def _compile(ir, api, roles, warnings=None):
                         _when("transfer_done", "yes", "goodbye_transfer", "transfer done"),
                         _when("wrap_req", "yes", "wrap_up", "the conversation is finished")]}
     # ---- sequential recording (no model involvement, verified: re-entry re-bakes values; engine retries HTTP 500)
-    nodes["record_next"] = _code_node("record_next", cfg, ENTRY_RECORD_NEXT, [_when("rec_go", "yes", "write_promise", "record one promise"), _always("post_record")])
+    nodes["record_next"] = _code_node("record_next", cfg, ENTRY_RECORD_NEXT_LOCALIZED if cfg.get("phrases") else ENTRY_RECORD_NEXT, [_when("rec_go", "yes", "write_promise", "record one promise"), _always("post_record")])
     rec_body = {roles["customer_id"]: cust, roles["promise_product"]: "{{cur_pid}}", roles["promise_amount"]: "{{cur_amount}}", roles["promise_date"]: "{{cur_date}}"}
     rec_tool = api_tool(api, "create_promise", rec_body, max_retries=int(rec.get("retries_after_failure", 1)), post=_hook(cfg, response_hook(HOOK_RECORD_POST, "create_promise", roles)))
     for f in api["tools"]["create_promise"]["fields"]:
@@ -1344,8 +1432,8 @@ def _compile(ir, api, roles, warnings=None):
     nodes["goodbye_promise"] = _end_node("goodbye_promise", "ended_promise", farewell)
     nodes["goodbye_plain"] = _end_node("goodbye_plain", "ended_no_promise", farewell)
     nodes["goodbye_failed"] = _end_node("goodbye_failed", "ended_not_verified", (idn.get("failed_message", "") + " " + farewell).strip())
-    nodes["goodbye_deceased"] = _end_node("goodbye_deceased", "ended_deceased", (fs.get("deceased", "") + " Goodbye.").strip())
-    nodes["goodbye_transfer"] = _end_node("goodbye_transfer", "ended_transferred", "I am connecting you now. " + farewell)
+    nodes["goodbye_deceased"] = _end_node("goodbye_deceased", "ended_deceased", (fs.get("deceased", "") + " " + ph["goodbye"]).strip())
+    nodes["goodbye_transfer"] = _end_node("goodbye_transfer", "ended_transferred", ph["connecting"] + " " + farewell)
 
     close_body = {roles["customer_id"]: cust, roles["close_outcome"]: "{{close_outcome}}"}
     if roles.get("close_reason"):

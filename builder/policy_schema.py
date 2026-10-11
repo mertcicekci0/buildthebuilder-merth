@@ -26,6 +26,9 @@ STAGES = ["always", "opening", "third_party", "identity", "negotiation", "multi_
 REASON_KEYS = ["restructuring", "human", "support", "refused", "hardship", "dispute", "service_error", "failed", "declined",
                "callback", "no_callback", "wrong_number", "deceased", "unclear", "paid"]
 NOTE_KEYS = ["refused", "hardship", "dispute", "paid", "service_error"]
+# sentences the system itself speaks verbatim (English defaults in compile_workflow.PHRASE_DEFAULTS)
+PHRASE_KEYS = ["verified", "promise_recorded", "promises_recorded", "promise_item", "record_failed_for", "and", "record_failed",
+               "connecting", "goodbye"]
 
 
 def schema():
@@ -56,6 +59,9 @@ def schema():
                         "by_reason": _o({k: S for k in REASON_KEYS})}),
         "recording": _o({"retries_after_failure": I, "after_promise_sentence": S, "read_back_question": S}),
         "fixed_sentences": _o({k: S for k in ("deceased", "robot", "scam", "paid", "farewell")}),
+        "phrases": _o({k: S for k in PHRASE_KEYS}),
+        "locale": _o({"month_names": SL, "weekday_names": SL, "date_pattern": S, "decimal_separator": S, "thousands_separator": S,
+                      "today_words": SL, "tomorrow_words": SL, "day_after_tomorrow_words": SL, "next_words": SL, "this_words": SL, "vague_words": SL}),
         "stage_rules": _o({k: SL for k in STAGES}),
         "evidence": {"type": "array", "items": _o({"path": S, "quote": S})},
         "precedence": {"type": "array", "items": _o({"topic": S, "superseded_quote": S, "governing_quote": S, "why": S})},
@@ -142,6 +148,10 @@ def check(ir, api, roles, brief_text="", warnings=None):
     for d in ir["callback"]["days"]:
         if d not in ("today", "next_business_day") and not re.fullmatch(r"within_business_days:\d+", d):
             p.append(f"callback.days value {d!r} must be today, next_business_day or within_business_days:N")
+    loc = ir.get("locale") or {}
+    for k, n in (("month_names", 12), ("weekday_names", 7)):
+        if loc.get(k) and len(loc[k]) != n:
+            p.append(f"locale.{k} must have {n} names (or be empty), not {len(loc[k])}")
     if brief_text:
         nb = _norm(brief_text)
         for i, e in enumerate(ir.get("evidence", [])):
@@ -150,7 +160,7 @@ def check(ir, api, roles, brief_text="", warnings=None):
                 p.append(f"evidence[{i}] ({e['path']}) quote is not in the brief verbatim: {e['quote'][:80]!r}")
         for h in ir["calendar"]["holidays"]:
             try:
-                mentioned = _date_mentioned(h, brief_text)
+                mentioned = _date_mentioned(h, brief_text, loc.get("month_names"))
             except ValueError:
                 continue   # a non-ISO holiday is already a problem above
             if not mentioned and warnings is not None:
@@ -163,12 +173,14 @@ _ORD = r"(?:st|nd|rd|th)?"
 _RANGE = r"(?:\s*(?:-|\u2013|\u2014|to|through|thru|until|till|and|&)\s*(\d{1,2})" + _ORD + r")?"
 
 
-def _month_re(month):
+def _month_re(month, extra_months=None):
     names = {_MONTHS[month - 1], _MONTHS[month - 1][:3]} | ({"sept"} if month == 9 else set())
+    if extra_months and len(extra_months) == 12 and str(extra_months[month - 1]).strip():
+        names.add(re.escape(str(extra_months[month - 1]).strip().lower()))   # the brief's language (IR locale)
     return r"\b(?:" + "|".join(sorted(names, key=len, reverse=True)) + r")\b\.?"
 
 
-def _date_mentioned(iso_date, text):
+def _date_mentioned(iso_date, text, extra_months=None):
     """Is this date written in the text? Reads ISO, day-month and month-day with full or short month names and ordinals
     ("25 Dec", "December 25th", "the 25th of December", "Friday 25 December"), day ranges ("24-26 December",
     "24 to 26 December", "December 24-26") and numeric dates ("25.12.2026", "25-12-2026", "12/25/2026", "25/12", "25.12.")."""
@@ -176,7 +188,7 @@ def _date_mentioned(iso_date, text):
     t = re.sub(r"\s+", " ", re.sub(r"[*_`]", "", str(text).lower().replace("\u00a0", " ")))
     if iso_date in t:
         return True
-    mon = _month_re(d.month)
+    mon = _month_re(d.month, extra_months)
 
     def within(lo, hi):
         lo = int(lo)

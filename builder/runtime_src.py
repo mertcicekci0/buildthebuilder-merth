@@ -265,6 +265,75 @@ def relative_dates_text(today, cfg):
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------- locale (used only when CFG has "locale": a non-English brief)
+def loc_spoken_date(d, cfg):
+    loc = cfg.get("locale") or {}
+    wd = loc.get("weekday_names") or []
+    mo = loc.get("month_names") or []
+    wd = wd[d.weekday()] if len(wd) == 7 else WEEKDAYS[d.weekday()].capitalize()
+    mo = mo[d.month - 1] if len(mo) == 12 else MONTHS[d.month - 1].capitalize()
+    pat = loc.get("date_pattern") or "<weekday> <day> <month>"
+    return pat.replace("<weekday>", str(wd)).replace("<day>", str(d.day)).replace("<month>", str(mo)).strip()
+
+
+def loc_money(x, cfg):
+    loc = cfg.get("locale") or {}
+    try:
+        v = round(float(x), 2)
+    except (TypeError, ValueError):
+        return str(x)
+    s = "%.2f" % abs(v)
+    whole, frac = s.split(".")
+    sep = loc.get("thousands_separator") or ""
+    if sep:
+        groups = []
+        while len(whole) > 3:
+            groups.insert(0, whole[-3:])
+            whole = whole[:-3]
+        whole = sep.join([whole] + groups)
+    out = whole if frac == "00" else whole + (loc.get("decimal_separator") or ".") + frac
+    return ("-" if v < 0 else "") + out
+
+
+_FOLD_FROM = "\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5\u0101\u0103\u0105\u00e7\u0107\u010d\u00e8\u00e9\u00ea\u00eb\u0113\u0117\u0119\u011b\u011f\u00ec\u00ed\u00ee\u00ef\u0131\u012b\u0142\u00f1\u0144\u0148\u00f2\u00f3\u00f4\u00f5\u00f6\u00f8\u014d\u0151\u0159\u015b\u015f\u0161\u0163\u0165\u00f9\u00fa\u00fb\u00fc\u016b\u016f\u0171\u00fd\u00ff\u017a\u017c\u017e"
+_FOLD_TO = "aaaaaaaaaccceeeeeeeegiiiiiilnnnoooooooorsssttuuuuuuuyyzzz"
+
+
+def fold(text):
+    """Lowercase without diacritics, so a transcript with or without accents (and either dotted or dotless i) matches."""
+    s = str(text).replace("\u0130", "i").lower().replace("\u0307", "")
+    return s.translate(str.maketrans(_FOLD_FROM, _FOLD_TO))
+
+
+def loc_words(text, cfg):
+    """Customer words in the brief's language -> the English tokens the parsers read (month, weekday and relative-day words)."""
+    loc = cfg.get("locale") or {}
+    s = " " + fold(text) + " "
+    pairs = []
+    for key, eng in (("month_names", MONTHS), ("weekday_names", WEEKDAYS)):
+        names = loc.get(key) or []
+        if len(names) == len(eng):
+            pairs += [(fold(n).strip(), eng[i]) for i, n in enumerate(names)]
+    for key, eng in (("day_after_tomorrow_words", "day after tomorrow"), ("today_words", "today"), ("tomorrow_words", "tomorrow"),
+                     ("next_words", "next"), ("this_words", "this"), ("vague_words", "soon")):
+        pairs += [(fold(n).strip(), eng) for n in (loc.get(key) or [])]
+    for name, eng in sorted(pairs, key=lambda x: -len(x[0])):
+        if name:
+            tail = r"\w*" if len(name) >= 4 else r"(?!\w)"   # long names keep suffixes ("cumaya"); short words match whole
+            s = re.sub(r"(?<!\w)" + re.escape(name) + tail, " " + eng + " ", s)
+    return re.sub(r"\s+", " ", s)
+
+
+def loc_resolve_day_words(words, today, cfg):
+    return resolve_day_words(loc_words(words, cfg), today, cfg)
+
+
+def loc_normalize_answer(fmt, text, order="DMY", cfg=None):
+    if fmt == "date" and cfg:
+        return normalize_answer(fmt, loc_words(text, cfg).strip(), order)
+    return normalize_answer(fmt, text, order)
+
+
 def callback_check(date_iso, time_hhmm, now, cfg):
     cb = cfg.get("callback") or {}
     try:
