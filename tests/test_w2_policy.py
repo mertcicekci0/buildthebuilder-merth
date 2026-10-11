@@ -195,3 +195,78 @@ def test_llm_entered_steps_always_speak_first():
     lines = wf["nodes"]["someone_else"]["task_message"].split("\n")
     assert lines[1] == cw.SPEAK_ON_ENTRY["someone_else"]
     assert "repeat that question in one short sentence" in lines[1]
+
+
+# ---------------------------------------------------------------- kit golden: only documented changes since 4baeea6
+GOLDEN = ROOT / "tests/fixtures/golden_w2_kit_workflow.json"
+# prompt text: (node, old text in the golden, new text); the old text must occur exactly once
+TEXT_EDITS = {
+    "someone_else": [("never mention any account detail, even if they offer to pay.\n",
+                      "never mention any account detail, even if they offer to pay.\n" + cw.SPEAK_ON_ENTRY["someone_else"] + "\n")],
+    "verify": [
+        ("call verify_identity with 1980-06-05 now, never \"Go on.\". ", "call verify_identity with 1980-06-05 now, never ask for it again. "),
+        ("(also one before a \"Go on.\" or a complaint)", "(also one before a cut-off or a complaint)"),
+        ("do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, "
+         "ask the question again in one short sentence. Right after you gave the explanation below or answered their question, a message without an answer gets "
+         "the question again in one short sentence instead.\n",
+         "reply at once by asking the pending question again in one short, slightly rephrased sentence (for a partial answer, ask only for the missing part, "
+         "such as the year or the remaining digits); call no tool and never add the refusal explanation to this re-ask. Never invent or complete digits or a year yourself.\n")],
+    "negotiate": [
+        ("A message that stops mid-sentence or is only small talk is not a refusal and not a non-answer: reply with two or three words such as \"Take your time.\" "
+         "or \"Go on.\", call no tool and make no new offer; after two such replies, repeat your last question. ",
+         "A message with no answer yet (only small talk, or cut off mid-sentence before the answer) is not a refusal and not a non-answer: reply at once by asking "
+         "your pending question again in one short, slightly rephrased sentence; call no tool and make no new offer. ")],
+}
+# embedded runtime: top-level definitions that may differ (band clamp, next_weekday option)
+RUNTIME_CHANGED = {"band_for", "next_weekday_date", "relative_dates_text", "resolve_day_words"}
+CFG_MARK = "\nCFG = json.loads("
+
+
+def _split_code(src):
+    import ast
+    i = src.index(CFG_MARK)
+    j = src.index("\n", i + 1)
+    cfg = json.loads(ast.parse(src[i + 1:j]).body[0].value.args[0].value)
+    defs = {}
+    for node in ast.parse(src[:i]).body:
+        name = getattr(node, "name", None) or ast.unparse(node)
+        defs[name] = ast.unparse(node)
+    return defs, cfg, src[j + 1:]
+
+
+def _same_code(old, new, where):
+    od, ocfg, oentry = _split_code(old)
+    nd, ncfg, nentry = _split_code(new)
+    assert nentry == oentry, f"{where}: entry code changed"
+    ocfg["calendar"]["next_weekday"] = "following_week"
+    assert ncfg == ocfg, f"{where}: CFG changed beyond calendar.next_weekday"
+    assert set(od) <= set(nd), f"{where}: runtime definitions removed {set(od) - set(nd)}"
+    changed = {k for k in nd if od.get(k) != nd[k]}
+    assert changed <= RUNTIME_CHANGED, f"{where}: undocumented runtime change in {changed - RUNTIME_CHANGED}"
+
+
+def _compare(old, new, where, node=None):
+    assert type(old) is type(new), where
+    if isinstance(old, dict):
+        assert set(old) == set(new), f"{where}: keys {set(old) ^ set(new)}"
+        node = old.get("name", node) if "node_type" in old else node
+        for k in old:
+            _compare(old[k], new[k], f"{where}.{k}", node)
+    elif isinstance(old, list):
+        assert len(old) == len(new), where
+        for i, (a, b) in enumerate(zip(old, new)):
+            _compare(a, b, f"{where}[{i}]", node)
+    elif isinstance(old, str) and CFG_MARK in old:
+        _same_code(old, new, where)
+    elif isinstance(old, str) and where.endswith(".task_message") and node in TEXT_EDITS:
+        for a, b in TEXT_EDITS[node]:
+            assert old.count(a) == 1, (where, a)
+            old = old.replace(a, b)
+        assert new == old, f"{where}: text differs beyond the documented edits"
+    else:
+        assert new == old, where
+
+
+def test_kit_workflow_differs_from_the_golden_only_as_documented():
+    _, _, wf = build(IR)
+    _compare(json.load(open(GOLDEN)), json.loads(json.dumps(wf)), "wf")
