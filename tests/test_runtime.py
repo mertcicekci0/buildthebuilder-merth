@@ -78,7 +78,7 @@ def test_outcome_fold():
     o = lambda **st: rt.outcome_fold(dict({"products": {}, "promises": {}, "notes": {}, "transfer": "", "verified": "", "contact": "customer"}, **st), CFG)
     assert o(promises={"p1": 1}) == ("promise", "")
     assert o(promises={"p1": 1}, transfer="general") == ("transferred", "human")
-    assert o(notes={"p1": "paid", "p2": "paid"}, order=["p1", "p2"]) == ("paid", "")
+    assert o(notes={"p1": "paid", "p2": "paid"}, order=["p1", "p2"]) == ("paid", "paid")   # semantic; the close hook maps it ("" -> no reason sent)
     assert o(notes={"p1": "paid", "p2": "dispute", "p3": "refused"}, order=["p1", "p2", "p3"]) == ("no_promise", "dispute")
     assert o(contact="callback") == ("not_reached", "callback")
     assert o(verified="failed") == ("not_verified", "failed")

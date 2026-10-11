@@ -36,3 +36,7 @@ Stop early if these are met, included usage runs out, or progress needs unavaila
 ## Progress log
 (append-only; newest last)
 - 03:43 started; deadline recorded.
+- 03:45 baseline committed (a0e7f68, tag baseline-v4) on master; dev branch `dev/overnight`. Baseline exports in checkpoints/baseline-v4/. Raw results archived to archive/ (ignored). tests/test_devtools.py left untracked: the pre-commit secret scan flags its fake key strings and the auto-mode classifier refused editing them; needs Mert's decision.
+- 03:52 first genuine extraction runs (Agent SDK, Team login): brief A 94 s, A+B 108 s, R1 raw material (memo + code list, mutated API) 106 s; 2 model calls each, policy checks pass first round. ir_diff: 0 exact differences vs hand-written references for all three. Evidence: evidence/extraction-1/.
+- 04:00 generality fixes committed (16c2fb8): now-variable from IR, single reason mapping, placeholder robustness, postcode words, no hard-coded mobile-app sentence. 30 offline tests.
+- Running: subagent extraction rule-level review (A, A+B), subagent identity-failure diagnosis (v4 transcripts).

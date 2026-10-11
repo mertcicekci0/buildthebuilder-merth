@@ -456,7 +456,7 @@ def outcome_fold(st, cfg):
     order = st.get("order") or sorted(st.get("notes", {}))
     reasons = [st.get("notes", {}).get(pid) for pid in order if st.get("notes", {}).get(pid)]
     if reasons and all(r == o.get("paid_note", "paid") for r in reasons):
-        return o["paid"], ""
+        return o["paid"], "paid"   # mapped by the close hook; most briefs list no reason for paid ("" -> none sent)
     for r in reasons:
         if r != o.get("paid_note", "paid"):
             return o["no_promise"], r

@@ -45,3 +45,13 @@ def test_ir_with_value_not_in_api_is_rejected():
         cw.compile_workflow(ir, api, roles); assert False
     except cw.CompileError:
         pass
+
+
+def test_public_close_sends_no_reason_for_paid_and_maps_transfers():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    base = {"products": {}, "promises": {}, "notes": {}, "order": ["p1", "p2"], "transfer": "", "verified": "yes", "contact": "customer"}
+    close = lambda st: le.run_pre(wf["tools"][0], {"st_json": json.dumps({**base, **st})}, {"customer_id": "c1", "outcome": "", "reason": ""})
+    assert close({"notes": {"p1": "paid", "p2": "paid"}}) == {"customer_id": "c1", "outcome": "paid"}
+    assert close({"notes": {"p1": "paid", "p2": "refused"}}) == {"customer_id": "c1", "outcome": "no_promise", "reason": "refused"}
+    assert close({"promises": {"p1": {}}, "transfer": "human"}) == {"customer_id": "c1", "outcome": "transferred", "reason": "human"}
+    assert close({"verified": "declined"}) == {"customer_id": "c1", "outcome": "not_verified", "reason": "declined"}

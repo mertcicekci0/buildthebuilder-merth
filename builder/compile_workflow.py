@@ -746,8 +746,12 @@ def compile_workflow(ir, api, roles):
             "The customer confirmed their name. Verify identity before anything else. Still do not say why you are calling.\n"
             "Security questions, one at a time, in this order:\n" + qlist + "\n"
             "Rules:\n" + _rules(ir, "identity") + "\n"
-            "Call verify_identity after each answer and follow the what_to_do_next in its result. If an answer comes in pieces, wait until it is complete.\n"
-            f"If the customer refuses: say once \"{idn.get('refusal_explanation', '')}\". "
+            "Call verify_identity after each answer and follow the what_to_do_next in its result. Never call it with a partial answer.\n"
+            "If the customer's message holds no answer yet (small talk, or it stops mid-sentence or mid-number), it is not a refusal: do not repeat the question; "
+            "reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence.\n"
+            f"If the customer refuses, or asks a question back instead of answering (why, which account, what this is about): say once \"{idn.get('refusal_explanation', '')}\" "
+            "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
+            "If their next message neither answers nor refuses, ask the question once more. "
             "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined.\n"
             "If they insist on a human after you asked once whether you can help, call transition_to_transfer_human."),
         "tools": [verify_tool], "max_node_turns": 30, "max_turn_transition": "close_declined",
