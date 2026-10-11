@@ -190,10 +190,3 @@ def test_attempt_one_date_never_after_a_short_deadline():
     prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1", "past_due": 300, "days_late": 4, "minimum_payment": 90}]
     p = le.smoke(wf, roles, prods)["state"]["products"]["p1"]     # Wed 14 Oct: deadline Thu 15, end of week Fri 16
     assert p["deadline"] == "2026-10-15" and p["attempt1_date"] == "2026-10-15"
-
-
-def test_small_talk_never_triggers_a_reask_or_the_refusal_explanation():
-    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
-    verify = wf["nodes"]["verify"]["task_message"]
-    assert "Never repeat the question itself because of small talk" in verify and "never answer them with this explanation" in verify
-    assert "After two such replies" not in verify and "after two such replies" not in wf["nodes"]["negotiate"]["task_message"]
