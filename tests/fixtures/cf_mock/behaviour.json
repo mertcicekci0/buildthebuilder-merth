@@ -1,0 +1,36 @@
+{
+ "_comment": "TEST ONLY: sample behaviour for the kit stand-in contract (kit/tools/openapi.json). Nothing here comes from a final case.",
+ "session_key": {"body": "customer_id"},
+ "fixtures": {
+  "*": {"strikes": 0, "dob_ok": false, "phone_ok": false, "promises": [], "notes": [], "products": []},
+  "C1": {"strikes": 0, "dob_ok": false, "phone_ok": false, "promises": [], "notes": [],
+         "products": [{"product_id": "CC-1", "type": "credit_card", "card_last4": "4242", "past_due": 1200.5, "days_late": 35, "minimum_payment": 300}]}
+ },
+ "operations": {
+  "POST /verify_identity": [
+   {"when": {"$state.strikes": 3}, "status": 200, "body": {"ok": false, "error": "locked", "wrong_answers_left": 0}},
+   {"when": {"customer_id": "C1", "field": "date_of_birth", "answer": "1980-05-14"}, "status": 200,
+    "body": {"ok": true, "verified": true, "all_verified": "{{state.phone_ok}}"}, "set": {"dob_ok": true}, "record": true},
+   {"when": {"customer_id": "C1", "field": "phone_last4", "answer": "0042"}, "status": 200,
+    "body": {"ok": true, "verified": true, "all_verified": "{{state.dob_ok}}"}, "set": {"phone_ok": true}, "record": true},
+   {"when": {"$state.strikes": 0}, "body": {"ok": true, "verified": false, "wrong_answers_left": 2}, "set": {"strikes": 1}, "record": true},
+   {"when": {"$state.strikes": 1}, "body": {"ok": true, "verified": false, "wrong_answers_left": 1}, "set": {"strikes": 2}, "record": true},
+   {"when": {"$state.strikes": 2}, "body": {"ok": true, "verified": false, "wrong_answers_left": 0}, "set": {"strikes": 3}, "record": true}
+  ],
+  "POST /get_account": [
+   {"when": {"$state.dob_ok": true, "$state.phone_ok": true}, "body": {"ok": true, "products": "{{state.products}}"}},
+   {"body": {"ok": false, "error": "not verified"}}
+  ],
+  "POST /create_promise": [
+   {"when": {"product_id": "flaky"}, "fail_first": 2, "body": {"ok": true, "promise_id": "PR-{{body.product_id}}"}, "append": {"promises": "{{body}}"}, "record": true},
+   {"when": {"$state.closed": {"in": ["promise", "paid", "transferred", "no_promise", "not_verified", "not_reached"]}}, "body": {"ok": false, "error": "call closed"}},
+   {"body": {"ok": true, "promise_id": "PR-{{session}}-{{body.product_id}}"}, "append": {"promises": "{{body}}"}, "record": true}
+  ],
+  "POST /add_note": [{"body": {"ok": true}, "append": {"notes": {"product": "{{body.product_id}}", "reason": "{{body.reason}}"}}, "record": true}],
+  "POST /schedule_callback": [{"body": {"ok": true}, "set": {"callback": "{{body.date}} {{body.time}}"}, "record": true}],
+  "POST /close_call": [
+   {"when": {"$state.closed": null}, "body": {"ok": true}, "set": {"closed": "{{body.outcome}}"}, "record": true},
+   {"body": {"ok": false, "error": "call already closed"}}
+  ]
+ }
+}
