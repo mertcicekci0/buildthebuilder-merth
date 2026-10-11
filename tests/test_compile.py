@@ -199,3 +199,14 @@ def test_c9_ported_rules_are_in_the_prompts():
     assert "After two such replies in a row, ask the question again" in verify          # C5 behaviour kept (C7 removed it and regressed)
     assert "never complete it yourself" in neg and "everything the rules attach to a floor offer" in neg
     assert "including products you already marked as refused" in neg
+
+
+def test_undescribed_hint_is_not_reported_as_a_wrong_answer():
+    ir = copy.deepcopy(IR)
+    ir["identity"]["swapped_hint_value"] = None                     # brief silent about the swap rule
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), ir)
+    tool = le._tool(wf, "verify", "verify_identity")
+    vars = {}
+    le.run_pre(tool, vars, {"customer_id": "c", "field": "date_of_birth", "answer": "1988-14-03".replace("14-03", "03-14")})
+    out = le.run_post(tool, vars, {"ok": True, "verified": False, "wrong_answers_left": 3, "hint": "day_month_swapped"})
+    assert vars["id_state"] == "hint" and "not counted" in out["what_to_do_next"] and "wrong" not in out["what_to_do_next"].split("not counted")[0]

@@ -419,6 +419,11 @@ try:
     elif SWAPPED and str(d.get('hint')) == SWAPPED:
         vars['id_state'] = 'swapped'
         msg = 'Not verified yet. ' + SWAPPED_INSTRUCTION
+    elif d.get('hint') and not true(d.get('verified')) and str(left) not in ('0', '0.0'):
+        # a hint the brief does not describe (e.g. day and month swapped): the service did not count it; never report it as wrong
+        vars['id_state'] = 'hint'
+        msg = ('Not verified yet, and not counted as a wrong answer: the service says "' + str(d.get('hint')).replace('_', ' ') +
+               '". Ask for the same answer again in a way that removes the doubt (for a date: the month as a word).')
     elif str(left) in ('0', '0.0') or 'over' in str(d.get('error', '')):
         vars['id_state'] = 'locked'
         msg = 'Too many wrong answers. Do not state any debt. Say: ' + FAILED_MESSAGE

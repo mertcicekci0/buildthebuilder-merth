@@ -1,0 +1,256 @@
+{
+ "_note": "Hand-written reference IR for tests/variants/brief-r6.md + api-r6.json (our own generalisation test, written independently: car finance, clean specification, up to three agreements). Distinctive: renamed call variables plus inbound_number used inside fixed sentences; three identity questions with month-first dates (MDY), fourth wrong answer ends the check, the first refusal closes; Mon-Sat business days, holidays given with weekday names, week runs Sunday-Saturday (week_start 6); three bands, Reminder in calendar days with 0 attempts; ladder inverted vs the kit (attempt 1 full on the deadline, attempt 2 floor at end of week, clipped to the deadline); callback within the next 3 business days, never today, two alternative asks; two create_promise retries; hyphenated close codes vs underscore note categories; a distinct paid disposition that DOES carry a reason (reported-paid / paid-before-call). stage_rules are left empty (free text, ignored by ir_diff).",
+ "bank_name": "Halberd Motor Finance",
+ "language": "English",
+ "currency_word": "pounds",
+ "call_variables": {
+  "customer_id": "customer_id",
+  "first_name": "forename",
+  "last_name": "surname",
+  "title": "honorific",
+  "now": "call_datetime"
+ },
+ "other_call_variables": [
+  "inbound_number"
+ ],
+ "opening": {
+  "first_sentence": "Hello, this is Halberd Motor Finance's automated assistant. This call is recorded.",
+  "identity_question": "Am I speaking to <honorific> <surname>?",
+  "accepted_confirmations": [
+   "yes",
+   "speaking",
+   "it's me",
+   "the customer's own surname"
+  ],
+  "not_confirmations": [
+   "hello",
+   "who's calling?",
+   "what's this about?",
+   "mm-hm",
+   "silence"
+  ],
+  "max_asks": 3,
+  "forbidden_before_verification": [
+   "arrears",
+   "overdue",
+   "debt",
+   "payment",
+   "the type of an agreement",
+   "a registration number"
+  ]
+ },
+ "identity": {
+  "questions": [
+   {
+    "api_value": "birth_date",
+    "ask": "Could you tell me your date of birth?",
+    "format": "date",
+    "numeric_order": "MDY"
+   },
+   {
+    "api_value": "postcode",
+    "ask": "Thank you. What is the postcode of your home address?",
+    "format": "upper_nospace",
+    "numeric_order": ""
+   },
+   {
+    "api_value": "customer_ref_last3",
+    "ask": "And what are the last three digits of the customer reference number on your statements?",
+    "format": "digits3",
+    "numeric_order": ""
+   }
+  ],
+  "max_wrong_total": 4,
+  "swapped_hint_value": "date_order_suspect",
+  "swapped_instruction": "Ask the customer to say the date of birth again with the month as a word. That retry is not a wrong answer.",
+  "failed_message": "I'm sorry, I can't go any further on this call. Please call us on <inbound_number>.",
+  "refusal_explanation": "These checks make sure I only discuss the account with its holder.",
+  "refusals_before_close": 1
+ },
+ "product_types": [
+  {
+   "api_type": "hire_purchase",
+   "spoken": "hire purchase agreement for <registration>",
+   "floor_field": "monthly_payment"
+  },
+  {
+   "api_type": "pcp",
+   "spoken": "personal contract purchase agreement for <registration>",
+   "floor_field": "monthly_payment"
+  },
+  {
+   "api_type": "service_plan",
+   "spoken": "service plan",
+   "floor_field": "minimum_due"
+  }
+ ],
+ "debt_intro": "I'm calling from Halberd's customer accounts team because payments on your account are overdue.",
+ "product_sentence": "Your <spoken> is <arrears> pounds in arrears and <days_in_arrears> days overdue.",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "holidays": [
+   "2026-11-02",
+   "2026-11-14",
+   "2026-12-25",
+   "2026-12-26",
+   "2026-12-28",
+   "2027-01-01",
+   "2027-01-02"
+  ],
+  "week_start": 6
+ },
+ "bands": [
+  {
+   "name": "Reminder",
+   "min": 1,
+   "max": 9,
+   "deadline_business_days": 12,
+   "deadline_unit": "calendar_days",
+   "attempts": 0
+  },
+  {
+   "name": "Arrears",
+   "min": 10,
+   "max": 35,
+   "deadline_business_days": 9,
+   "deadline_unit": "business_days",
+   "attempts": 1
+  },
+  {
+   "name": "Pre-default",
+   "min": 36,
+   "max": 75,
+   "deadline_business_days": 4,
+   "deadline_unit": "business_days",
+   "attempts": 2
+  }
+ ],
+ "first_ask_single": "Are you able to pay the full arrears today?",
+ "first_ask_multi": "Are you able to pay all of these in full today?",
+ "ladder": [
+  {
+   "attempt": 1,
+   "amount": "full",
+   "date": "deadline",
+   "bands": [
+    "Arrears",
+    "Pre-default"
+   ]
+  },
+  {
+   "attempt": 2,
+   "amount": "floor",
+   "date": "end_of_week",
+   "bands": [
+    "Pre-default"
+   ]
+  }
+ ],
+ "callback": {
+  "days": [
+   "within_business_days:3"
+  ],
+  "start": "09:00",
+  "end": "19:30",
+  "after_now": true,
+  "alternative_asks": 2
+ },
+ "multi_product": {
+  "enabled": true,
+  "per_product_order": "as returned",
+  "one_confirmation": true,
+  "clip_shared_date_to_deadline": true
+ },
+ "notes": {
+  "enabled": true,
+  "skip_on_any_transfer": true,
+  "default_reason": "refused"
+ },
+ "transfer_queues": {
+  "restructuring": "payment_solutions",
+  "human": "customer_relations",
+  "support": "wellbeing_team"
+ },
+ "outcomes": {
+  "promise": "promise-to-pay",
+  "paid": "reported-paid",
+  "transferred": "handed-off",
+  "no_promise": "no-promise",
+  "not_verified": "id-not-confirmed",
+  "not_reached": "not-contacted",
+  "reasons": {
+   "restructuring": "wants-new-terms",
+   "human": "asked-for-person",
+   "support": "wellbeing-referral",
+   "refused": "will-not-pay",
+   "hardship": "financial-difficulty",
+   "dispute": "disputes-debt",
+   "service_error": "system-fault",
+   "failed": "checks-failed",
+   "declined": "checks-refused",
+   "callback": "callback-booked",
+   "no_callback": "no-suitable-time",
+   "wrong_number": "wrong-number",
+   "deceased": "customer-deceased",
+   "unclear": "not-confirmed",
+   "paid": "paid-before-call"
+  },
+  "note_reasons": {
+   "refused": "will_not_pay",
+   "hardship": "financial_difficulty",
+   "dispute": "disputes_debt",
+   "paid": "says_paid",
+   "service_error": "tool_failure"
+  }
+ },
+ "recording": {
+  "retries_after_failure": 2,
+  "after_promise_sentence": "You will receive an email confirming this arrangement today.",
+  "read_back_question": "Is that all correct?"
+ },
+ "fixed_sentences": {
+  "deceased": "I'm very sorry to hear that. I won't take up any more of your time.",
+  "robot": "Yes, I'm an automated assistant working for Halberd Motor Finance.",
+  "scam": "You can check this call is genuine by hanging up and calling us on <inbound_number>.",
+  "paid": "Thank you. Payments can take up to three business days to reach your agreement.",
+  "farewell": "Thank you for your time today. Goodbye."
+ },
+ "stage_rules": {
+  "always": [],
+  "opening": [],
+  "third_party": [],
+  "identity": [],
+  "negotiation": [],
+  "multi_product": [],
+  "confirmation": [],
+  "recording": [],
+  "closing": []
+ },
+ "evidence": [
+  {"path": "calendar.week_start", "quote": "Halberd's week runs from Sunday to Saturday."},
+  {"path": "calendar.business_weekdays", "quote": "business days are Monday to Saturday. Sunday is never a business day."},
+  {"path": "bands[0]", "quote": "12 calendar days after today; if that day is not a business day, the last business day before it"},
+  {"path": "identity.questions[0].numeric_order", "quote": "a date of birth said only in numbers (\"four, seven, ninety\", \"04/07/1990\") is month, then day, then year"},
+  {"path": "identity.max_wrong_total", "quote": "Up to three wrong answers in total are allowed across the three questions; the fourth ends the check"},
+  {"path": "identity.refusals_before_close", "quote": "There is no second chance"},
+  {"path": "callback.days", "quote": "one of the next three business days after today; never today"},
+  {"path": "callback.alternative_asks", "quote": "asks for another time, at most twice"},
+  {"path": "ladder[0]", "quote": "| 1 | Arrears, Pre-default | the full arrears | the agreement's deadline |"},
+  {"path": "ladder[1]", "quote": "| 2 | Pre-default | the floor | the end of this week; if today is that day, the end of next week; if that date is after the deadline, the deadline |"},
+  {"path": "recording.retries_after_failure", "quote": "A failed call is tried again, up to two more times."},
+  {"path": "outcomes.reasons.paid", "quote": "| `reported-paid` | `paid-before-call` |"}
+ ],
+ "precedence": [],
+ "unmapped_rules": [
+  "After get_account and before stating the arrears, say word for word: \"Before we go on, free and impartial debt advice is available from independent charities, and using it will not change how we treat you.\"",
+  "A promise dated today can be taken only before 17:00 by call_datetime. From 17:00 on, today is not available: the first question asks about the next business day instead (\"Are you able to pay the full arrears by <weekday day month>?\"), and a customer who offers today is offered the next business day.",
+  "Each date in a read-back is said with its weekday, for example \"Saturday 24 October\"."
+ ]
+}
