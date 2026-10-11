@@ -68,7 +68,7 @@ revisions (separate Freya slots, frozen scripts). Missing verdicts stay pending.
   verdicts / 7 'no call created' - not a measurement); T1-C12 B and T1-C13 POSTs -> 504 (nothing created: GET /simulations shows no
   t1-c12-b / t1-c13 simulation). Simulation 5c60e9fa (t1-c12-a) stayed 'running' (platform: 41 pass, 1 fail, 4 inconclusive, 2 stuck
   analyzing), blocking the workspace's single simulation slot. Ending it via PUT status=completed was denied by the auto-mode classifier;
-  Mert ends it himself (16:37). Credits 16:35: 394.07 (day start 449.29 -> 55.2 credits / $27.6 spent today).
+  Mert asked me to stop it (stopped 16:50, below). Credits 16:35: 394.07 (day start 449.29 -> 55.2 credits / $27.6 spent today).
 - 14:10-16:30 session interrupted (Claude session limit for subagents until 17:00; audit critic failed on it).
 - 16:30 C14 = 947438f (independent review of C10-C13: 8 confirmed bugs fixed, 10 tests) + 8cb1932 (kit-audit adoptions: trace the
   phone-agent model, fail fast without FREYA_API_KEY, 2 lints). Roles unchanged on kit + 5 variant APIs; kit golden diff = 2 hook edits.

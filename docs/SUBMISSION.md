@@ -24,7 +24,7 @@ commit that contains the builder, the exported workflows and the per-brief trace
 (Inference: a readable history with the builder frozen before 17:00 UTC and any later bug-fix commits separate makes the
 "nothing from a hidden brief" review easy, so we keep focused real commits, never backdated or synthetic.)
 
-## Repository state (updated 2026-10-11 17:15 Istanbul; details in docs/READINESS_REPORT.md)
+## Repository state (updated 2026-10-11 17:10 Istanbul; details in docs/READINESS_REPORT.md)
 - **Selected submission builder: C5** (builder tree d0b9c09e…, tag `cand/C5`), carried by `dev/overnight`. Measured: r5 full suite
   (runs 93/99, groups 27/30). C14 (`dev/c10` 8cb1932, merge candidate `cand/c14-merge` b53a4c9) is rehearsed but its practice suite
   (r14) could not run (mock bank unreachable from this network); **not promoted** unless r14b runs and meets the rule in DAY_PLAN.
@@ -52,7 +52,10 @@ Pre-final checklist (from docs/RESOURCE_AUDIT.md):
 - Kit still current: the official page / organiser email names kit VERSION 3 (README L3: "when we update the kit, the number goes up"),
   and `(cd kit && shasum -a 256 -c ../kit.sha256)` prints OK for all 16 files. A newer kit (changed freya.py) must be reviewed before the run.
 - Run from the repo root (kit/freya.py keeps `.freya-agents.json` relative to the working directory).
-- `FREYA_AGENT_PROVIDER` / `FREYA_AGENT_MODEL` unset in our shell (the build trace records them; only organisers may set them).
+- `FREYA_AGENT_PROVIDER` / `FREYA_AGENT_MODEL` unset in our shell (final_run.sh aborts if set; only the C14 builder also traces them,
+  C5 does not; the variables are for the organisers' own tests).
+- Hidden files in `briefs/` at the repo root with distinct names; `submission/` holds only final exports (dev exports moved to
+  archive/final-runs/dev-exports-20261011/).
 
 Manual equivalent:
 1. Freeze: `git status` clean (tracked files), all offline tests pass, commit C = the builder to submit. Note C.

@@ -18,7 +18,7 @@ DECISIONS = [
      "Traced in every build (trace step 'phone-agent model', with an `overridden` flag). Rejecting an override was NOT adopted: "
      "kit/freya.py:83 says organisers may point a test at another model with these two variables, so failing would break their test."),
     (r"^Check before the final for a kit update", "ADOPTED (checklist)",
-     "docs/SUBMISSION.md pre-final checklist: check the official page/email for a kit version > 3 and re-run `shasum -a 256 -c kit.sha256`."),
+     "docs/SUBMISSION.md pre-final checklist: check the official page/email for a kit version > 3 and re-run `(cd kit && shasum -a 256 -c ../kit.sha256)`."),
     (r"^Lint for multiple transitions with the same target_node", "ADOPTED (C14 8cb1932)",
      "builder/validate.py lint + tests/test_c14_review.py::test_lint_flags_transitions_the_engine_would_merge_and_previous_outside_globals."),
     (r"^Lint: __previous__ allowed only in global nodes", "ADOPTED (C14 8cb1932)", "Same lint/test as above."),
