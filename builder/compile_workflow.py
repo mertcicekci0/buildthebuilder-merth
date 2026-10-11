@@ -864,6 +864,14 @@ def compile_workflow(ir, api, roles, warnings=None):
     return _strip_absent_tools(wf, absent) if absent else wf
 
 
+SPEAK_ON_ENTRY = {
+    "someone_else": "Your first message in this step must always say something to the person, never nothing: if you already asked when the customer "
+                    "can be reached, repeat that question in one short sentence.",
+    "": "Your first message in this step must always say something to the person, never nothing: if you already asked your question, "
+        "repeat it in one short sentence.",
+}
+
+
 def _compile(ir, api, roles, warnings=None):
     cfg = runtime_config(ir, api, roles)
     cv = {k: clean_var(v, "") for k, v in (ir.get("call_variables") or {}).items()}
@@ -1198,6 +1206,11 @@ def _compile(ir, api, roles, warnings=None):
             t = t.replace("<" + k + ">", "{{" + name + "}}")
         return t
     system_prompt = fill_prompt(system_prompt)
+    for n in nodes.values():
+        if (n.get("on_enter") or {}).get("type") == "llm" and isinstance(n.get("task_message"), str):
+            # the model speaks first in this step: it must never produce an empty turn (practice run: silence, then a hang-up)
+            first, _, rest = n["task_message"].partition("\n")
+            n["task_message"] = first + "\n" + SPEAK_ON_ENTRY.get(n["name"], SPEAK_ON_ENTRY[""]) + ("\n" + rest if rest else "")
     for n in nodes.values():
         if isinstance(n.get("task_message"), str):
             n["task_message"] = fill_prompt(n["task_message"])

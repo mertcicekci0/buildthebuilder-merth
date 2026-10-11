@@ -186,3 +186,12 @@ def test_paid_reason_sent_when_the_reason_enum_has_it():
     assert close(spec, ir) == {"customer_id": "c1", "outcome": "paid", "reason": "P2"}
     ir["outcomes"]["reasons"]["paid"] = "not_a_code"                              # not in the enum: still not sent
     assert close(spec, ir) == {"customer_id": "c1", "outcome": "paid"}
+
+
+def test_llm_entered_steps_always_speak_first():
+    _, _, wf = build(IR)
+    llm_nodes = [n for n in wf["nodes"].values() if (n.get("on_enter") or {}).get("type") == "llm"]
+    assert [n["name"] for n in llm_nodes] == ["someone_else"]
+    lines = wf["nodes"]["someone_else"]["task_message"].split("\n")
+    assert lines[1] == cw.SPEAK_ON_ENTRY["someone_else"]
+    assert "repeat that question in one short sentence" in lines[1]
