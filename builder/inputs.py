@@ -114,8 +114,43 @@ def _xlsx_text(f):
     return "\n".join(out)
 
 
+PDF_SWIFT = """import PDFKit
+import Foundation
+var out: [String: String] = [:]
+for p in CommandLine.arguments.dropFirst() {
+    if let d = PDFDocument(url: URL(fileURLWithPath: p)) { out[p] = d.string ?? "" } else { out[p] = "\\u{0}UNREADABLE" }
+}
+let data = try! JSONSerialization.data(withJSONObject: out)
+print(String(data: data, encoding: .utf8)!)
+"""
+
+
+def pdf_texts(files):
+    """{path: text} for PDFs via macOS PDFKit (swift), one process for all files. Raises InputError when unavailable or empty."""
+    import shutil as _sh
+    import subprocess
+    files = [str(f) for f in files]
+    if not files:
+        return {}
+    swift = _sh.which("swift")
+    if not swift:
+        raise InputError("PDF documents need a converter (macOS swift/PDFKit not found): " + ", ".join(pathlib.Path(f).name for f in files))
+    r = subprocess.run([swift, "-e", PDF_SWIFT, *files], capture_output=True, timeout=240)
+    try:
+        got = json.loads(r.stdout.decode("utf-8", "replace").strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        raise InputError(f"PDF text extraction failed: {r.stderr.decode('utf-8', 'replace')[-300:]}")
+    for f in files:
+        t = got.get(f, "")
+        if t.startswith("\x00UNREADABLE") or not t.strip():
+            raise InputError(f"{pathlib.Path(f).name}: no text layer could be read (scanned or protected PDF?); provide a text version")
+    return {f: got[f] for f in files}
+
+
 def _read_document(f, rel):
     ext = f.suffix.lower()
+    if ext == ".pdf":
+        return pdf_texts([f])[str(f)], "pdf (PDFKit)"
     if ext not in (".docx", ".xlsx"):
         raise InputError(f"cannot read {rel} as text (no converter installed); provide a text version or extend builder/inputs.py")
     try:
@@ -192,6 +227,8 @@ def read_brief(path, dest, exclude=()):
     skip = {pathlib.Path(x).resolve() for x in exclude}
     files = sorted(f for f in folder.rglob("*") if f.is_file() and not IGNORED.search(str(f.relative_to(folder))))
     stems_with_text = {(f.parent, f.stem) for f in files if f.suffix.lower() in TEXT_EXT}
+    pdfs = [f for f in files if f.suffix.lower() == ".pdf" and (f.parent, f.stem) not in stems_with_text]
+    pdf_text = pdf_texts(pdfs) if pdfs else {}   # one swift process for every PDF of the bundle
     parts, meta, unreadable = [], [], []
     for f in files:
         rel = str(f.relative_to(folder))
@@ -204,6 +241,8 @@ def read_brief(path, dest, exclude=()):
             text, how = f.read_text(encoding="utf-8", errors="replace"), "text"
         elif ext in (".docx", ".xlsx"):
             text, how = _read_document(f, rel)
+        elif str(f) in pdf_text:
+            text, how = pdf_text[str(f)], "pdf (PDFKit)"
         elif (f.parent, f.stem) in stems_with_text:
             meta.append({**entry, "read_as": "skipped: a text version with the same name is read instead"})
             continue

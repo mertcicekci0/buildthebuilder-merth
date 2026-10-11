@@ -267,3 +267,22 @@ def test_yaml_contract_in_a_bundle_is_converted_and_kept_out_of_the_brief(tmp_pa
     single = tmp_path / "api.yml"
     single.write_bytes(yml)
     assert ot.load(str(bi.find_contract(single, tmp_path / "c2")))["missing_tools"] == []
+
+
+TINY_PDF = (b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 100]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+            b"4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 10 50 Td (Floor is 50 EUR) Tj ET\nendstream endobj\n"
+            b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n")
+
+
+@pytest.mark.skipif(not __import__("shutil").which("swift"), reason="PDF text uses macOS PDFKit via swift")
+def test_pdf_documents_are_read_with_pdfkit(tmp_path):
+    d = tmp_path / "case"
+    d.mkdir()
+    (d / "policy.md").write_text("Main policy.")
+    (d / "annex.pdf").write_bytes(TINY_PDF)
+    text, files = bi.read_brief(d, tmp_path / "o")
+    assert "Floor is 50 EUR" in text and {f["path"]: f["read_as"] for f in files}["annex.pdf"] == "pdf (PDFKit)"
+    single = tmp_path / "brief.pdf"
+    single.write_bytes(TINY_PDF)
+    assert "Floor is 50 EUR" in bi.read_brief(single, tmp_path / "o2")[0]
