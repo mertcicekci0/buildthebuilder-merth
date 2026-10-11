@@ -37,6 +37,8 @@ How to build (follow the Freya format documentation below exactly; it is authori
 - Disclosure: say only what the documents allow, to whom they allow it; mask what they say to mask.
 - Hand-offs (to a human agent, or ending the call) follow the documents: use the documented service or mechanism; say the documented
   sentence; end the call cleanly with an end node.
+- Keep it compact so it can be written in one pass: about 4 to 8 nodes, rules stated once (in system_prompt or the node that needs
+  them), no repeated text, short tool descriptions; hooks only where a value must be computed or checked in code.
 - Keep the graph simple and robust: a short opening, one main conversation node that holds the tools it needs (or a few clear
   stages), global rules in system_prompt, explicit end_call nodes. Every node must be reachable and every path must reach an end.
 - Use only node types, fields and tool handlers that the Freya documentation describes. Hooks and code nodes follow its rules
@@ -80,7 +82,7 @@ def build(case_path, mock_url, llm, trace, root, slot, max_rounds=3):
     example = (kit / "examples/base-agent.json").read_text()
     prompt = (f"MOCK_BASE_URL: {mock_url.rstrip('/')}\n\n{ref}\n\n=== A VALID MINIMAL EXAMPLE WORKFLOW (format only) ===\n{example}\n\n"
               f"=== THE CASE DOCUMENTS ===\n{docs}\n\nWrite the complete workflow for this case.")
-    out = llm.ask_json("write the phone-agent workflow from the case documents", GUIDE, prompt, SCHEMA, timeout_s=1200)
+    out = llm.ask_json("write the phone-agent workflow from the case documents", GUIDE, prompt, SCHEMA, timeout_s=1200, effort="medium")
     wf, notes = out["workflow"], out.get("design_notes", "")
     trace.step("design notes from the construction model", notes=notes[:4000])
     for rnd in range(1, max_rounds + 1):
@@ -91,6 +93,6 @@ def build(case_path, mock_url, llm, trace, root, slot, max_rounds=3):
         if rnd == max_rounds:
             break
         out = llm.ask_json("repair the workflow so the checks pass", GUIDE, prompt + "\n\n=== YOUR PREVIOUS WORKFLOW ===\n" + json.dumps(wf) +
-                           "\n\n=== PROBLEMS FOUND BY THE CHECKS (fix all, change nothing else) ===\n" + "\n".join(probs[:40]), SCHEMA, timeout_s=900)
+                           "\n\n=== PROBLEMS FOUND BY THE CHECKS (fix all, change nothing else) ===\n" + "\n".join(probs[:40]), SCHEMA, timeout_s=600, effort="medium")
         wf, notes = out["workflow"], out.get("design_notes", notes)
     raise SystemExit("the generated workflow still fails the checks after repair rounds")
