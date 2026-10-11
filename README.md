@@ -2,9 +2,13 @@
 
 Builder: reads one bank brief (Markdown) and its tool API (OpenAPI JSON) and creates a Freya phone agent.
 Contract (organisers): `python3 builder/build.py {brief_path} {tool_api_path}`.
-Status: deterministic pipeline implemented and live-tested on the public briefs with a hand-written policy (see `docs/STRATEGY.md`); the model-based brief reader (`builder/extract.py`) is written and unit-tested offline but not yet run against a model.
+Status (2026-10-11): fully automatic. The model reads the brief into a typed policy (2 Claude calls via the Agent SDK), code checks and compiles it, saves and exports the agent. On the public briefs and our raw-material variant the extracted policy matches the hand-written references on every structured field (`evidence/`); live practice results are in `docs/MORNING_REPORT.md`.
 
 ## Setup (macOS/Linux, Python >= 3.10)
+
+`python3 builder/build.py ...` works with any `python3`: if that interpreter lacks `claude-agent-sdk`, the builder uses the
+repo's `.venv`, creating it first from the lock files (`uv sync --frozen --no-dev`, or `pip --require-hashes` when uv is
+missing) and re-runs itself there. It prints each step. To prepare it yourself:
 
 ```bash
 uv sync                       # creates .venv from uv.lock (exact versions + hashes)
@@ -41,7 +45,7 @@ Secrets: `env.sh` (600, gitignored); every log/trace passes through `devtools/re
 python3 builder/build.py brief.md tools.openapi.json                       # full run (model reads the brief)
 python3 builder/build.py brief.md tools.openapi.json --ir policy.json      # compile a given policy, no model call
 python3 builder/build.py brief.md tools.openapi.json --no-save             # stop before writing to Freya
-.venv/bin/python -m pytest -q                                              # 24 offline tests, no network
+.venv/bin/python -m pytest -q                                              # offline tests, no network
 ```
 
 ## Development tools
@@ -57,11 +61,12 @@ python3 builder/build.py brief.md tools.openapi.json --no-save             # sto
 ```
 `run_cases_ext.py` packs all repetitions into one simulation (own bank session per repetition), has a hard deadline and saves transcripts of failures under `results/<label>/calls/`.
 
-## Clean-run procedure (what organisers do; to be rehearsed before 20:00 Istanbul Sunday)
+## Clean-run procedure (what organisers do; rehearsed, see docs/MORNING_REPORT.md)
 ```bash
 git clone <repo> && cd <repo> && git checkout <commit>
-uv sync   # or pip install -r requirements.hashes.txt --require-hashes
-cp env.example env.sh  # their FREYA_API_KEY and FREYA_BANK_TEAM_KEY; Claude access = their own Claude Code login (or their own key)
-set -a && . ./env.sh && set +a
+export FREYA_API_KEY=...        # their workspace key (FREYA_API_URL optional)
+claude auth status              # Claude access: the runner's own Claude Code login, CLAUDE_CODE_OAUTH_TOKEN, or ANTHROPIC_API_KEY
 python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log
 ```
+Outputs: `submission/<brief>.workflow.json` (export of the saved agent), `traces/<brief>.jsonl` (machine-readable trace),
+`out/<brief>.policy.json` (extracted policy). Typical run: 2-3 minutes, 2 model calls (internal hard stop at 27 minutes).
