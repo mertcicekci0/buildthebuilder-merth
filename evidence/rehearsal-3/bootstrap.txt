@@ -1,0 +1,3 @@
+[runtime] /opt/homebrew/opt/python@3.14/bin/python3.14 has claude-agent-sdk not installed (pinned 0.2.165)
+[runtime] preparing .venv from the lock files
+[runtime] re-running with .venv/bin/python (claude-agent-sdk 0.2.165)
