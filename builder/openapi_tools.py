@@ -13,6 +13,43 @@ TOOL_NAMES = ("verify_identity", "get_account", "create_promise", "add_note",
 REQUIRED_TOOLS = ("verify_identity", "get_account", "create_promise", "close_call")
 OPTIONAL_TOOLS = ("add_note", "schedule_callback", "transfer_to_agent")   # a brief that never notes, books or transfers may omit them
 
+# canonical tool -> generic vocabulary (English and Turkish words for the same ideas) for contracts whose operations have other
+# names. Used only when no explicit --tool-map is given and the exact names are absent; every guess is traced.
+TOOL_WORDS = {
+    "verify_identity": r"verif|identit|authenticat|security.?(question|check)|kyc|kimlik|do[gğ]rula",
+    "get_account": r"account|debt|balance|statement|arrear|overdue|products?\b|customer.?(detail|info|summary)|hesap|bor[cç]|ekstre|bakiye",
+    "create_promise": r"promise|commit|pledge|ptp|payment.?(plan|arrangement|date)|arrangement|taahh[uü]t|s[oö]z|[oö]deme.?(s[oö]z|plan|tarih)",
+    "add_note": r"\bnotes?\b|annotat|memo|comment|\bnot(lar)?\b|a[cç][iı]klama",
+    "schedule_callback": r"callback|call.?back|schedul|appointment|geri.?ara|randevu",
+    "transfer_to_agent": r"transfer|escalat|hand.?off|handover|human|live.?agent|operator|temsilci|aktar|y[oö]nlendir",
+    "close_call": r"close|end.?call|finish|disposition|outcome|wrap|log.?call|result|kapat|sonu[cç]|bitir",
+}
+
+
+def auto_tool_map(spec):
+    """{canonical: 'METHOD /path'} for operations whose id, path, summary or description clearly match one canonical tool."""
+    ops = []
+    for path, item in (spec.get("paths") or {}).items():
+        for method, op in (item or {}).items():
+            if method.lower() not in ("post", "put", "get", "patch") or not isinstance(op, dict):
+                continue
+            text = " ".join(str(x) for x in (op.get("operationId"), path, op.get("summary"), op.get("description"), " ".join(op.get("tags") or [])))
+            text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text).replace("_", " ").replace("-", " ").replace("/", " ")
+            scores = {t: len(re.findall(w, text, re.I)) for t, w in TOOL_WORDS.items()}
+            ops.append((f"{method.upper()} {path}", scores))
+    out = {}
+    for t in TOOL_NAMES:
+        ranked = sorted(((sc[t], ref, sc) for ref, sc in ops if sc[t] > 0), key=lambda x: (-x[0], x[1]))
+        if not ranked:
+            continue
+        best, ref, sc = ranked[0]
+        unique = len(ranked) == 1 or ranked[1][0] < best
+        own = best >= max(v for k, v in sc.items() if k != t)   # the operation fits this tool at least as well as any other
+        if unique and own and ref not in out.values():
+            out[t] = ref
+    return out
+
+
 # role -> (tool, name patterns in priority order). Patterns are generic words, not values from any brief.
 ROLE_PATTERNS = {
     "customer_id":      ("*", [r"^customer_?id$", r"^client_?id$", r"customer", r"^id$"]),
@@ -139,6 +176,13 @@ def load(path_or_dict, tool_map=None, base_url=None):
     if not re.match(r"^https?://[^/{}]+", base) or "{" in base:
         raise OpenAPIError(f"servers[0].url {base!r} is not an absolute URL without variables: tool calls need one")
     alias = {}
+    auto = None
+    if tool_map is None:   # no explicit map: names first; if required tools are missing, the generic vocabulary decides (traced)
+        exact = {(op.get("operationId") or p.strip("/").split("/")[-1]) for p, it in (spec.get("paths") or {}).items()
+                 for m, op in (it or {}).items() if isinstance(op, dict)} | {p.strip("/").split("/")[-1] for p in (spec.get("paths") or {})}
+        if any(t not in exact for t in REQUIRED_TOOLS):
+            auto = {t: r for t, r in auto_tool_map(spec).items() if t not in exact}
+            tool_map = auto
     for canon, ref in (tool_map or {}).items():
         if canon not in TOOL_NAMES:
             raise OpenAPIError(f"tool map: {canon!r} is not one of {TOOL_NAMES}")
@@ -189,6 +233,7 @@ def load(path_or_dict, tool_map=None, base_url=None):
             if any(((c.get("security") or []) and any(n in req for req in c["security"])) for c in contracts.values())
             or any(n in req for req in (spec.get("security") or []))}
     return {"base_url": base, "title": info.get("title", ""), "api_description": info.get("description", ""), "auth": auth,
+            "auto_tool_map": auto or {},
             "tools": contracts, "missing_tools": missing, "absent_optional": [t for t in OPTIONAL_TOOLS if t not in contracts],
             "unknown_operations": unknown}
 

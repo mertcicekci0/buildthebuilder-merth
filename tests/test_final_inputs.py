@@ -106,9 +106,10 @@ def renamed_contract():
     return s
 
 
-def test_renamed_operations_need_an_explicit_tool_map():
+def test_renamed_operations_are_mapped_automatically_or_explicitly():
     s = renamed_contract()
-    assert set(ot.load(copy.deepcopy(s))["missing_tools"]) == {"verify_identity", "get_account"}
+    auto = ot.load(copy.deepcopy(s))
+    assert auto["missing_tools"] == [] and auto["auto_tool_map"] == {"verify_identity": "POST /identity/verify", "get_account": "POST /accounts/lookup"}
     api = ot.load(s, tool_map={"verify_identity": "verifyCustomer", "get_account": "POST /accounts/lookup"})
     assert api["missing_tools"] == [] and api["tools"]["verify_identity"]["url"].endswith("/identity/verify")
     with pytest.raises(ot.OpenAPIError, match="not one of"):
@@ -404,3 +405,22 @@ def test_an_image_document_is_read_by_ocr(tmp_path):
     text, files = bi.read_brief(d, tmp_path / "o")
     assert {f["path"]: f["read_as"] for f in files}["flow.png"] == "OCR (Vision)"
     assert "Borç bildir" in text and "1.250,00" in text
+
+
+
+def test_a_fully_renamed_contract_is_mapped_by_generic_vocabulary():
+    k = json.loads(KIT_API.read_text())
+    ren = {"/verify_identity": ("/customers/identity-check", "checkSecurityAnswer"), "/get_account": ("/customers/debt-summary", "getDebtSummary"),
+           "/create_promise": ("/payment-commitments", "createPaymentCommitment"), "/add_note": ("/case-notes", "addCaseNote"),
+           "/schedule_callback": ("/callbacks", "bookCallback"), "/transfer_to_agent": ("/escalations", "escalateToHuman"),
+           "/close_call": ("/calls/disposition", "setCallDisposition")}
+    for old, (new, oid) in ren.items():
+        k["paths"][new] = k["paths"].pop(old)
+        k["paths"][new]["post"]["operationId"] = oid
+    api = ot.load(k)
+    assert api["missing_tools"] == [] and api["absent_optional"] == []
+    assert {t: c["path"] for t, c in api["tools"].items()} == {
+        "verify_identity": "/customers/identity-check", "get_account": "/customers/debt-summary", "create_promise": "/payment-commitments",
+        "add_note": "/case-notes", "schedule_callback": "/callbacks", "transfer_to_agent": "/escalations", "close_call": "/calls/disposition"}
+    roles, problems = ot.infer_roles(api)
+    assert problems == []

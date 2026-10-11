@@ -255,6 +255,8 @@ def main():
         for x in input_warnings:
             trace.warn("input document not read (the agent policy may miss what it says): " + x)
         api = ot.load(str(contract), tool_map=tool_map, base_url=mock_base or mock_url or None)
+        if api.get("auto_tool_map"):
+            trace.warn("contract operations mapped to tools by generic vocabulary (check): " + json.dumps(api["auto_tool_map"]))
         if api["unknown_operations"]:
             trace.warn("contract operations not used by the builder: " + ", ".join(api["unknown_operations"]))
         api["static_headers"] = tool_headers
