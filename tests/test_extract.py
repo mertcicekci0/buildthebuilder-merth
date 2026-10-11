@@ -57,3 +57,16 @@ def test_failed_and_skipped_model_calls_are_traced(tmp_path):
     calls = [c for c in tr.model_calls]
     assert [c["status"] for c in calls] == ["failed", "skipped_no_time"]
     assert "timed out" in calls[0]["error"]
+
+
+def test_trace_lists_aux_models_and_replaces_file_on_rerun(tmp_path):
+    from builder.trace import Trace
+    out = tmp_path / "o.txt"
+    for _ in range(2):
+        tr = Trace(tmp_path / "t.jsonl", stream=open(out, "w"))
+        tr.start(x=1)
+        tr.model_call("claude-opus-5-5", "p", status="success", model_usage={"claude-opus-5-5": {"inputTokens": 1, "outputTokens": 2},
+                                                                              "claude-haiku-5-5": {"inputTokens": 3, "outputTokens": 4}})
+        tr.end("ok")
+    assert open(out).read().count("aux_model=claude-haiku-5-5(in=3,out=4)") == 1
+    assert sum(1 for l in open(tmp_path / "t.jsonl") if '"kind": "start"' in l) == 1

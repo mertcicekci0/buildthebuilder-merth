@@ -50,6 +50,8 @@ def main(argv):
         except Exception as e:  # noqa: BLE001
             problems.append(f"{n}: cannot read artefacts: {e}")
             continue
+        if sum(e["kind"] == "start" for e in events) != 1 or sum(e["kind"] == "end" for e in events) != 1:
+            problems.append(f"{n}: {jl_p} must hold exactly one run (one start, one end)")
         start = next((e for e in events if e["kind"] == "start"), {})
         end = next((e for e in events if e["kind"] == "end"), {})
         commit = str(start.get("commit", ""))
@@ -79,6 +81,11 @@ def main(argv):
         problems.append(f"briefs were built from different commits: {sorted(code_commits)}")
     for c in code_commits:
         if not c or c == "unknown":
+            continue
+        ok = subprocess.run(["git", "rev-parse", "--verify", "-q", c + "^{commit}"], cwd=ROOT, capture_output=True).returncode == 0
+        anc = subprocess.run(["git", "merge-base", "--is-ancestor", c, a.commit], cwd=ROOT, capture_output=True).returncode == 0
+        if not ok or not anc:
+            problems.append(f"code commit {c} is unknown here or not an ancestor of {a.commit}")
             continue
         changed = [f for f in git("diff", "--name-only", c, a.commit).split() if f]
         bad = [f for f in changed if not f.startswith(ARTEFACT_PREFIXES)]

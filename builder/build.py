@@ -120,6 +120,9 @@ def ensure_model_runtime():
     if ok:
         print(f"[runtime] re-running with .venv/bin/python (claude-agent-sdk {PINNED_SDK})", flush=True)
         env = dict(os.environ, BUILDER_REEXEC="1", BUILDER_T0=str(T0))
+        import signal
+        if hasattr(signal, "setitimer"):
+            signal.setitimer(signal.ITIMER_REAL, 0)   # the re-executed process re-arms from the same T0
         os.execve(str(venv_py), [str(venv_py), str(pathlib.Path(__file__).resolve())] + sys.argv[1:], env)
     if here:
         print(f"[runtime] warning: could not prepare .venv; continuing with claude-agent-sdk {here}", flush=True)
@@ -135,8 +138,10 @@ def _sdk_version():
 def _git_commit():
     try:
         import subprocess
-        out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=5)
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True, text=True, timeout=5).stdout.strip()
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=5)
+        # dirty = a change to execution-relevant files only (artefacts of earlier runs do not count; untracked code does)
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "builder", "kit", "pyproject.toml", "uv.lock", "requirements.hashes.txt",
+                                "requirements.lock.txt", ".python-version"], cwd=ROOT, capture_output=True, text=True, timeout=5).stdout.strip()
         return (out.stdout.strip() or "unknown") + ("+dirty" if dirty else "")
     except Exception:  # noqa: BLE001
         return "unknown"
@@ -256,6 +261,7 @@ def main():
         import freya
         trace.test("platform dry run", json.dumps(freya.validate_workflow(slot, wf)))
         res = freya.save_workflow(slot, wf)
+        trace.created(f"save returned workflow_id={res.get('workflow_id')} agent_id={res.get('agent_id')} version={res.get('version')}")
         if "version" not in res:   # first creation: update once so agent_config gets the event model and it is published
             res = freya.save_workflow(slot, wf)
         trace.created(f"saved workflow_id={res['workflow_id']} agent_id={res['agent_id']} version={res.get('version')} steps={st['steps']} tools={st['tools']}", **res)

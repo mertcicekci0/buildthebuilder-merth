@@ -175,6 +175,8 @@ def product_facts(items, today, cfg):
         for key, val in it.items():
             spoken = spoken.replace("<" + str(key) + ">", str(val))
         a1 = end_of_week_offer(today, cfg)
+        if a1 and deadline and a1 > deadline:   # a short deadline caps every proposed date
+            a1 = deadline
         out.append({"index": i, "product_id": str(it.get(f["product_id"], "p%d" % (i + 1))), "type": ptype, "spoken": spoken,
                     "full": full, "floor": floor, "days_late": days_late, "band": band.get("name", ""),
                     "attempts": int(band.get("attempts", 0) or 0), "deadline": iso(deadline) if deadline else "",

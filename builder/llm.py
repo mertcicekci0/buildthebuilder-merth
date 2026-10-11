@@ -57,6 +57,10 @@ class LLM:
             self.trace.model_call(self.model, purpose, backend="agent_sdk", status="failed", seconds=round(time.time() - t0, 1), key=key,
                                   error=f"{type(e).__name__}: {str(e)[:300]}", rate_limit=self.rate_limit)
             raise
+        except BaseException as e:  # the builder's hard time limit interrupted the call
+            self.trace.model_call(self.model, purpose, backend="agent_sdk", status="interrupted", seconds=round(time.time() - t0, 1), key=key,
+                                  error=type(e).__name__)
+            raise
         meta.update(backend="agent_sdk", seconds=round(time.time() - t0, 1), key=key, rate_limit=self.rate_limit)
         self.trace.model_call(meta.pop("model", self.model), purpose, **meta)
         if self.record_dir:
@@ -73,7 +77,8 @@ class LLM:
         opts = ClaudeAgentOptions(
             model=self.model, system_prompt=system, tools=[], allowed_tools=[], setting_sources=[],
             permission_mode="dontAsk", max_turns=6, output_format={"type": "json_schema", "schema": schema},
-            env={"CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION": "false", "DISABLE_AUTOUPDATER": "1", "CLAUDECODE": ""},
+            env={"CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION": "false", "DISABLE_AUTOUPDATER": "1", "CLAUDECODE": "",
+                 "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"},
             **({"effort": effort} if effort else {}))
         models, result = set(), None
 

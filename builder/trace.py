@@ -35,7 +35,7 @@ class Trace:
     def __init__(self, jsonl_path=None, stream=sys.stdout, t0=None):
         self.t0 = t0 or time.time()   # the builder passes its process start (kept across a runtime re-exec)
         self.stream = stream
-        self.jsonl = open(jsonl_path, "a") if jsonl_path else None
+        self.jsonl = open(jsonl_path, "w") if jsonl_path else None   # one run per file: a rerun replaces the previous trace
         self.model_calls = []
 
     def _emit(self, kind, text, **data):
@@ -54,6 +54,9 @@ class Trace:
     def model_call(self, model, purpose, **data):
         self.model_calls.append({"model": model, "purpose": purpose, **data})
         extra = " ".join(f"{k}={v}" for k, v in data.items() if k in ("seconds", "input_tokens", "output_tokens", "status", "backend", "error"))
+        for m, u in (data.get("model_usage") or {}).items():   # requests the Claude Code CLI made to other models during this call
+            if m != model and m not in str(model):
+                extra += f" aux_model={m}(in={u.get('inputTokens')},out={u.get('outputTokens')})"
         if data.get("rate_limit"):
             extra += " rate_limit=" + ",".join(f"{k}:{v}" for k, v in data["rate_limit"].items() if v is not None)
         self._emit("model", f"model={model} purpose=\"{purpose}\" {extra}", **data)

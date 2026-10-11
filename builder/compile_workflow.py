@@ -387,6 +387,14 @@ try:
     vars['verify_sent'] = str(b.get(FIELD_ROLE)) + '=' + str(b.get(ANSWER_ROLE))
 except Exception:
     pass
+_f = FORMATS.get(str((config.get('body') or {}).get(FIELD_ROLE)), 'text')
+_v = str((config.get('body') or {}).get(ANSWER_ROLE) or '')
+_n = _f[6:] if _f.startswith('digits') else ''
+if (_n.isdigit() and not (_v.isdigit() and len(_v) == int(_n))) or (_f == 'date' and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', _v)):
+    vars['verify_sent'] = ''
+    raise Exception('NOT SENT (not counted): the answer is incomplete or unreadable (' + _v + '). ' +
+                    ('All ' + _n + ' digits are needed.' if _n.isdigit() else 'A whole date with day, month and year is needed, sent as YYYY-MM-DD.') +
+                    ' If the customer is still saying it, let them finish; otherwise ask for the rest in one short sentence.')
 """, FORMATS=fmt_by_value, ORDERS=order_by_value or {}, FIELD_ROLE=field_role, ANSWER_ROLE=answer_role)
 
 
@@ -899,12 +907,18 @@ def _compile(ir, api, roles, warnings=None):
             "before anything else, even if the same message also contains a question, a complaint, small talk or cut-off words. "
             "Example: \"3 May 1985. Why do you need this?\" -> call verify_identity with that date first; the rules below apply only to messages with no answer. "
             "Follow the what_to_do_next in its result.\n"
+            "An answer may come in pieces over several messages, or just before a cut-off or a complaint: join everything the customer said since you last asked "
+            "(\"3 May\" then \"1985\" = 1985-05-03). If they gave an answer you have not checked yet (also one before a \"Go on.\" or a complaint), call verify_identity with it now, before replying.\n"
+            "Only the result of verify_identity decides that the check is over; the system then says the closing message and ends the call. "
+            "If you think enough wrong answers were given but the system has not ended the check, an answer is still unchecked: call verify_identity with it. Never say the closing message yourself.\n"
             "Only if the answer itself is missing or incomplete (small talk only, a date without the year, fewer digits than asked, a message cut off before the answer) is it not an answer yet, and not a refusal: "
-            "do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence.\n"
+            "do not repeat the question; reply with two or three words such as \"Take your time.\" or \"Go on.\" and let them finish. After two such replies in a row, ask the question again in one short sentence. "
+            "Right after you gave the explanation below or answered their question, a message without an answer gets the question again in one short sentence instead.\n"
             f"If the customer refuses, or asks a question back instead of answering (the message holds no answer; why, which account, what this is about): say once \"{idn.get('refusal_explanation', '')}\" "
             "(or answer their question in one short sentence without saying why you are calling) and stop there: do not repeat the security question in that turn. "
             "If their next message neither answers nor refuses, ask the question once more. "
-            "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined.\n"
+            "If they refuse again (or ask a second time what the call is about instead of answering), call transition_to_close_declined. "
+            "Only consecutive non-answers to the same question count: any answer, right or wrong, resets this count, and a question about robots, scams or a human is answered under its own rule and never counts as declining.\n"
             "If they insist on a human after you asked once whether you can help, call transition_to_transfer_human.\n"
             "Never say goodbye or end the call yourself in this step: the call ends only through the system (too many wrong answers) or a transition tool."),
         "tools": [verify_tool], "max_node_turns": 30, "max_turn_transition": "close_declined",

@@ -167,3 +167,26 @@ def test_fold_fallbacks_never_send_an_empty_no_promise_reason():
     assert close(base) == {"customer_id": "c1", "outcome": "not_reached", "reason": "unclear"}
     assert close({**base, "contact": "customer"}) == {"customer_id": "c1", "outcome": "not_verified", "reason": "declined"}
     assert close({**base, "contact": "customer", "verified": "yes"}) == {"customer_id": "c1", "outcome": "no_promise", "reason": "refused"}
+
+
+def test_incomplete_identity_answers_are_not_sent():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    tool = le._tool(wf, "verify", "verify_identity")
+    for field, answer in (("phone_last4", "44"), ("phone_last4", "four four"), ("date_of_birth", "14 March")):
+        try:
+            le.run_pre(tool, {}, {"customer_id": "c", "field": field, "answer": answer})
+            raise AssertionError("must not be sent: " + answer)
+        except le.Blocked as b:
+            assert str(b).startswith("NOT SENT")
+    assert le.run_pre(tool, {}, {"customer_id": "c", "field": "phone_last4", "answer": "four four seven one"})["answer"] == "4471"
+    assert le.run_pre(tool, {}, {"customer_id": "c", "field": "date_of_birth", "answer": "14 March 1988"})["answer"] == "1988-03-14"
+
+
+def test_attempt_one_date_never_after_a_short_deadline():
+    ir = copy.deepcopy(IR)
+    ir["bands"] = [{"name": "only", "min": 1, "max": 90, "deadline_business_days": 1, "deadline_unit": "business_days", "attempts": 1}]
+    ir["ladder"] = [{"attempt": 1, "amount": "full_or_floor", "date": "end_of_week", "bands": []}]
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), ir)
+    prods = [{"product_id": "p1", "type": "credit_card", "card_last4": "1", "past_due": 300, "days_late": 4, "minimum_payment": 90}]
+    p = le.smoke(wf, roles, prods)["state"]["products"]["p1"]     # Wed 14 Oct: deadline Thu 15, end of week Fri 16
+    assert p["deadline"] == "2026-10-15" and p["attempt1_date"] == "2026-10-15"
