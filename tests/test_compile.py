@@ -215,3 +215,13 @@ def test_undescribed_hint_is_not_reported_as_a_wrong_answer():
     le.run_pre(tool, vars, {"customer_id": "c", "field": "date_of_birth", "answer": "1988-14-03".replace("14-03", "03-14")})
     out = le.run_post(tool, vars, {"ok": True, "verified": False, "wrong_answers_left": 3, "hint": "day_month_swapped"})
     assert vars["id_state"] == "hint" and "not counted" in out["what_to_do_next"] and "wrong" not in out["what_to_do_next"].split("not counted")[0]
+
+
+def test_bare_tens_day_words_are_never_completed():
+    api, roles, wf = build(json.load(open(ROOT / "kit/tools/openapi.json")), IR)
+    vars = _negotiation_vars(wf, TWO[:1])
+    for words in ("I can pay that on the thirty", "the twenty", "on the thirty."):
+        msg = _oracle(wf, "negotiate", "check_date", vars, {"product_id": "p1", "customer_words": words, "date": "2026-10-30"})
+        assert "may have been cut off" in msg and "30 October is" not in msg
+    ok = _oracle(wf, "negotiate", "check_date", vars, {"product_id": "p1", "customer_words": "the thirtieth", "date": "2026-10-30"})
+    assert "cut off" not in ok

@@ -708,6 +708,10 @@ prods = st.get('products', {})
 pid = str(b.get('product_id') or '').strip()
 chosen = [prods[pid]] if pid in prods else list(prods.values())
 words = str(b.get('customer_words') or '')
+if re.search(r'\\b(twenty|thirty)[\\s.,!?-]*$', words.strip().lower()):
+    raise Exception('DATE CHECK RESULT (normal answer, not an error): the customer said "' + words.strip() + '", which stops at a number that may have been '
+                    'cut off (twenty-something, thirty-something). Never complete it yourself. If they were accepting a date you offered, read back that '
+                    'date; otherwise ask them once to say the day again.')
 d, kind = resolve_day_words(words, today, CFG) if words else (None, 'none')
 if kind == 'vague':
     d = None

@@ -234,9 +234,21 @@ def _split_code(src):
     return defs, cfg, src[j + 1:]
 
 
+def _without_bare_tens_guard(code):
+    lines = code.split("\n")
+    for i, ln in enumerate(lines):
+        if ln.startswith("if re.search(r'\\b(twenty|thirty)"):
+            j = i + 1
+            while j < len(lines) and lines[j].startswith(" "):
+                j += 1
+            return "\n".join(lines[:i] + lines[j:])
+    return code
+
+
 def _same_code(old, new, where):
     od, ocfg, oentry = _split_code(old)
     nd, ncfg, nentry = _split_code(new)
+    nentry = _without_bare_tens_guard(nentry)   # documented C10 change: check_date refuses cut-off "twenty"/"thirty" day words
     assert nentry == oentry, f"{where}: entry code changed"
     ocfg["calendar"]["next_weekday"] = "following_week"
     assert ncfg == ocfg, f"{where}: CFG changed beyond calendar.next_weekday"
