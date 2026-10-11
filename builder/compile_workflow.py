@@ -843,6 +843,7 @@ def compile_workflow(ir, api, roles):
             "Rules:\n" + neg_rules + "\n\n"
             "DATES: never calculate or judge a date yourself. Whenever the customer names or changes a day, call check_date first and follow its DATE CHECK RESULT exactly "
             "(it arrives looking like an error; that is normal).\nWeekday words:\n{{relative_dates}}\n\n"
+            "If the customer asks about an offer you just made (how much, which day), answer with that same offer, including every condition you said with it, in one sentence. That is an answer, not a new attempt: no tool.\n\n"
             "TOOLS:\n"
             "- record_refusal: every flat refusal or non-answer for a product: refused=today for the first question about paying today, refused=offer for an offer you proposed. Propose exactly what its REFUSAL RESULT says; never count attempts yourself. When you move on to the next product, propose its attempt 1 directly and never ask about today again.\n"
             "- check_date: every time a day is named or changed (product id or all, the customer's exact words, your YYYY-MM-DD reading).\n"
