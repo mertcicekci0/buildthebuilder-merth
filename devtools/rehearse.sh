@@ -17,8 +17,9 @@ while [ $# -ge 3 ]; do   # inputs keep their extension: a .md brief, or a .zip /
   bb=$(basename "$2"); ba=$(basename "$3")
   case "$bb" in *.*) EB=".${bb##*.}";; *) EB="";; esac
   case "$ba" in *.*) EA=".${ba##*.}";; *) EA="";; esac
-  cp -R "$2" "$W/inputs/$1$EB" && cp -R "$3" "$W/inputs/$1.contract$EA" || exit 1
-  NAMES="$NAMES $1"; ARGS="$ARGS ../inputs/$1$EB ../inputs/$1.contract$EA"; eval "IN_$(echo "$1" | tr -c 'A-Za-z0-9_\n' _)=\"../inputs/$1$EB ../inputs/$1.contract$EA\""; shift 3
+  case "$3" in https://*|http://*) API="$3";; *) cp -R "$3" "$W/inputs/$1.contract$EA" || exit 1; API="../inputs/$1.contract$EA";; esac
+  cp -R "$2" "$W/inputs/$1$EB" || exit 1
+  NAMES="$NAMES $1"; ARGS="$ARGS ../inputs/$1$EB $API"; eval "IN_$(echo "$1" | tr -c 'A-Za-z0-9_\n' _)=\"../inputs/$1$EB ../inputs/$1.contract$EA\""; shift 3
 done
 cd "$W/repo" || exit 1
 mkdir -p traces submission
