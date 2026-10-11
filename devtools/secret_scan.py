@@ -16,6 +16,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 NAMES = ("FREYA_API_KEY", "FREYA_BANK_TEAM_KEY", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
 PATTERNS = {"Freya key": re.compile(r"fak_[A-Za-z0-9_\-]{12,}"), "Anthropic key": re.compile(r"sk-ant-[A-Za-z0-9_\-]{12,}")}
 PLACEHOLDERS = ("fak_your_key_here", "sk-ant-...")
+# Narrow exception for test fixtures: a key-shaped string that contains this marker is synthetic (a real, randomly generated key never
+# contains the word). Exact values of the real secrets (env.sh / environment) are always reported, marker or not.
+SYNTHETIC_MARKER = "SYNTHETICTEST"
 
 
 def secret_values():
@@ -39,7 +42,7 @@ def scan_text(name, text, vals):
     for ph in PLACEHOLDERS:
         cleaned = cleaned.replace(ph, "")
     for label, pattern in PATTERNS.items():
-        if pattern.search(cleaned):
+        if any(SYNTHETIC_MARKER not in m.group(0) for m in pattern.finditer(cleaned)):
             hits.append(f"{name}: contains a {label}-shaped string")
     for k, v in vals.items():
         if v in text:
