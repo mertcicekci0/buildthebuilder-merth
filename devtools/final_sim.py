@@ -38,6 +38,7 @@ def main():
     ap.add_argument("scenarios")
     ap.add_argument("label")
     ap.add_argument("--reps", type=int, default=1)
+    ap.add_argument("--collect", help="read-only: collect an existing simulation id (personas are matched by name)")
     a = ap.parse_args()
     agent_id = json.loads((ROOT / ".freya-agents.json").read_text())[a.slot]["agent_id"]
     scen = json.loads(pathlib.Path(a.scenarios).read_text())
@@ -46,7 +47,7 @@ def main():
         for s in scen:
             specs.append({"name": f"{s['id']} {s['title']} #r{rep}", "prompt": s["prompt"],
                           "successCriteria": "All of these are true:\n- " + "\n- ".join(s["checks"]), "tags": ["final-case", f"rep-{rep}"]})
-    made = freya.create_personas(specs)["personas"]
+    made = freya.create_personas(specs)["personas"] if not a.collect else [{"id": None}] * len(specs)
     i = 0
     for rep in range(1, a.reps + 1):
         for s in scen:
@@ -55,14 +56,20 @@ def main():
             keyof[pid] = f"{s['id']}#r{rep}"
             i += 1
     out = ROOT / "results" / f"final-sim-{a.label}"
-    out.mkdir(parents=True, exist_ok=False)
+    out.mkdir(parents=True, exist_ok=bool(a.collect))
     t0 = time.time()
-    sim_id, it_id = freya.run_simulation(agent_id, f"final {a.label}", varmap, max_seconds=900)
+    if a.collect:
+        sim_id = a.collect
+        its = freya.api("GET", f"/api/v2/simulations/{sim_id}/iterations")
+        its = its.get("iterations") or its.get("items") or its
+        it_id, status = its[0]["id"], "collected"
+    else:
+        sim_id, it_id, status = freya.run_simulation(agent_id, f"final {a.label}", varmap, max_seconds=900)
     it = freya.get_iteration(sim_id, it_id)
     rows = []
     for r in it.get("runs", []):
         pid = r.get("personaId") or (r.get("persona") or {}).get("id")
-        key = keyof.get(pid, pid)
+        key = keyof.get(pid) or str(r.get("personaName") or (r.get("persona") or {}).get("name") or pid)
         verdict = r.get("status") or r.get("result")
         call_id = r.get("callId") or (r.get("call") or {}).get("id")
         text = ""
@@ -76,7 +83,7 @@ def main():
         (out / f"{key.replace('#', '_')}.txt").write_text(text)
         rows.append({"key": key, "verdict": verdict, "analysis": r.get("analysis") or r.get("reason") or r.get("evaluation"),
                      "call_id": call_id, "variables": varmap.get(pid)})
-    summary = {"slot": a.slot, "agent_id": agent_id, "simulation_id": sim_id, "iteration_id": it_id, "seconds": round(time.time() - t0),
+    summary = {"slot": a.slot, "agent_id": agent_id, "simulation_id": sim_id, "iteration_id": it_id, "status": status, "seconds": round(time.time() - t0),
                "agent_version": it.get("agentVersionNumber"), "runs": rows}
     (out / "summary.json").write_text(json.dumps(summary, indent=1, ensure_ascii=False))
     for row in rows:

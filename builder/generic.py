@@ -61,6 +61,40 @@ def api_urls(wf):
     return out
 
 
+def _known_vars(wf):
+    """Variable names the workflow itself sets or reads as call variables (a model-filled field must not share one)."""
+    text = json.dumps(wf)
+    names = set(re.findall(r"vars\[['\"]([A-Za-z_][\w.]*)['\"]\]", text)) | set(re.findall(r"vars\.get\(['\"]([A-Za-z_][\w.]*)['\"]", text))
+    names |= set((wf.get("test_variables") or {}).keys())
+    for node in (wf.get("nodes") or {}).values():
+        for m in (node.get("response_mapping") or {}) if isinstance(node.get("response_mapping"), dict) else {}:
+            names.add(m)
+        for f in ((node.get("extraction_schema") or {}).get("properties") or {}) if isinstance(node.get("extraction_schema"), dict) else {}:
+            names.add(f)
+    return names
+
+
+def normalize_model_fields(wf):
+    """Kit docs (tools-and-code.md, 'How a parameter gets its value'): the verified way to let the model fill an api_call body field is
+    `"default": "{{<field>}}"` naming no existing variable. A body field without a default never reached the request in live tests, so
+    every model-filled body leaf gets such a default. Returns the changes for the trace."""
+    known, changes = _known_vars(wf), []
+    holders = [n for n in (wf.get("nodes") or {}).values()] + [n for n in (wf.get("global_nodes") or {}).values()]
+    tools = [t for n in holders for t in (n.get("tools") or [])] + list(wf.get("tools") or [])
+    for t in tools:
+        fn = t.get("function") or {}
+        if fn.get("handler") != "__function__:api_call":
+            continue
+        body = ((fn.get("parameters") or {}).get("properties") or {}).get("body") or {}
+        for field, leaf in (body.get("properties") or {}).items():
+            if isinstance(leaf, dict) and "default" not in leaf:
+                var = field if field not in known else f"{fn.get('name')}_{field}"
+                leaf["default"] = "{{" + var + "}}"
+                known.add(var)
+                changes.append(f"{fn.get('name')}.{field} -> {{{{{var}}}}}")
+    return changes
+
+
 def problems(wf, mock_url):
     p = list(v.lint(wf))
     urls = api_urls(wf)
@@ -86,6 +120,9 @@ def build(case_path, mock_url, llm, trace, root, slot, max_rounds=3):
     wf, notes = out["workflow"], out.get("design_notes", "")
     trace.step("design notes from the construction model", notes=notes[:4000])
     for rnd in range(1, max_rounds + 1):
+        changed = normalize_model_fields(wf)
+        if changed:
+            trace.step("model-filled api_call fields given their {{field}} default (kit docs rule)", fields=changed)
         probs = problems(wf, mock_url)
         trace.test(f"workflow checks (round {rnd})", "pass" if not probs else f"{len(probs)} problem(s)", problems=probs[:30])
         if not probs:
